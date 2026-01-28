@@ -1,0 +1,20 @@
+# Cognitive complexity threshold for functions
+cognitive-complexity-threshold = 30
+
+# Maximum allowed nesting depth
+excessive-nesting-threshold = 6
+
+# Disallowed methods (security-sensitive)
+disallowed-methods = [
+    { path = "std::env::set_var", reason = "Environment manipulation should be avoided in library code" },
+    { path = "std::env::remove_var", reason = "Environment manipulation should be avoided in library code" },
+]
+
+# Type complexity threshold
+type-complexity-threshold = 300
+
+# Maximum number of lines in a single expression
+single-char-binding-names-threshold = 4
+
+# Avoid panics in library code
+avoid-breaking-exported-api = true

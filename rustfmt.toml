@@ -1,0 +1,17 @@
+edition = "2024"
+
+# Line width and formatting
+max_width = 100
+use_small_heuristics = "Default"
+
+# Import organization (stable features only)
+reorder_imports = true
+reorder_modules = true
+
+# Code style
+newline_style = "Auto"
+use_field_init_shorthand = true
+use_try_shorthand = true
+
+# Function formatting
+fn_params_layout = "Tall"

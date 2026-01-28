@@ -1,0 +1,19 @@
+[package]
+name = "machi"
+version = "0.1.0"
+edition = "2024"
+description = "A multi-chain cryptocurrency wallet CLI tool"
+license = "MIT OR Apache-2.0"
+readme = "../README.md"
+repository = "https://github.com/pyroth/machi"
+keywords = ["crypto", "wallet", "bitcoin", "ethereum", "cli"]
+categories = ["command-line-utilities", "cryptography"]
+
+[[bin]]
+name = "machi"
+path = "src/main.rs"
+
+[dependencies]
+
+[lints]
+workspace = true

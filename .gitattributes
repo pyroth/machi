@@ -1,0 +1,37 @@
+# Basic settings
+* text=auto eol=lf
+
+# Source code files
+*.rs    text diff=rust
+*.toml  text diff=toml
+
+# Scripts and configuration files
+*.sh    text eol=lf
+*.bat   text eol=crlf
+*.cmd   text eol=crlf
+*.json  text
+*.yaml  text
+*.xml   text
+*.md    text
+*.txt   text
+
+# Visual Studio files
+*.sln        text eol=crlf
+*.vcxproj    text eol=crlf
+*.vcxproj.filters text eol=crlf
+
+# Binary files
+*.png   binary
+*.jpg   binary
+*.gif   binary
+*.ico   binary
+*.zip   binary
+*.dll   binary
+*.exe   binary
+*.lib   binary
+*.pdf   binary
+
+# Special handling
+*.json  merge=union
+*.yaml  merge=union
+*.xml   merge=union
