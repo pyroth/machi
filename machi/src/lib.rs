@@ -32,6 +32,8 @@ pub use modalities::audio::transcription;
 #[cfg(feature = "audio")]
 pub use modalities::audio::generation as audio_generation;
 #[cfg(feature = "image")]
+pub use modalities::image::ImageGenerationError;
+#[cfg(feature = "image")]
 pub use modalities::image::generation as image_generation;
 
 #[cfg(feature = "derive")]

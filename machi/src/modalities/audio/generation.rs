@@ -1,31 +1,11 @@
 //! Everything related to audio generation (ie, Text To Speech).
 //! Rig abstracts over a number of different providers using the [AudioGenerationModel] trait.
+
 use crate::core::wasm_compat::{WasmCompatSend, WasmCompatSync};
 use serde_json::Value;
-use thiserror::Error;
 
-#[derive(Debug, Error)]
-pub enum AudioGenerationError {
-    /// Http error (e.g.: connection error, timeout, etc.)
-    #[error("HttpError: {0}")]
-    HttpError(#[from] http::Error),
+use super::errors::AudioGenerationError;
 
-    /// Json error (e.g.: serialization, deserialization)
-    #[error("JsonError: {0}")]
-    JsonError(#[from] serde_json::Error),
-
-    /// Error building the transcription request
-    #[error("RequestError: {0}")]
-    RequestError(#[from] Box<dyn std::error::Error + Send + Sync + 'static>),
-
-    /// Error parsing the transcription response
-    #[error("ResponseError: {0}")]
-    ResponseError(String),
-
-    /// Error returned by the transcription model provider
-    #[error("ProviderError: {0}")]
-    ProviderError(String),
-}
 pub trait AudioGeneration<M>
 where
     M: AudioGenerationModel,

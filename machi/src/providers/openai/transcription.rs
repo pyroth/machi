@@ -2,8 +2,7 @@ use bytes::Bytes;
 
 use crate::http::multipart::Part;
 use crate::http::{HttpClientExt, MultipartForm};
-use crate::modalities::audio::transcription;
-use crate::modalities::audio::transcription::TranscriptionError;
+use crate::modalities::audio::{TranscriptionError, transcription};
 use crate::providers::openai::{Client, client::ApiResponse};
 use serde::Deserialize;
 
@@ -61,10 +60,7 @@ where
     async fn transcription(
         &self,
         request: transcription::TranscriptionRequest,
-    ) -> Result<
-        transcription::TranscriptionResponse<Self::Response>,
-        transcription::TranscriptionError,
-    > {
+    ) -> Result<transcription::TranscriptionResponse<Self::Response>, TranscriptionError> {
         let data = request.data;
 
         let mut body = MultipartForm::new()

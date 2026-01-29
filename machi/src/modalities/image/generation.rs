@@ -1,31 +1,10 @@
 //! Everything related to core image generation abstractions in Rig.
 //! Rig allows calling a number of different providers (that support image generation) using the [ImageGenerationModel] trait.
-use crate::http;
+
 use serde_json::Value;
-use thiserror::Error;
 
-#[derive(Debug, Error)]
-pub enum ImageGenerationError {
-    /// Http error (e.g.: connection error, timeout, etc.)
-    #[error("HttpError: {0}")]
-    HttpError(#[from] http::Error),
+use super::errors::ImageGenerationError;
 
-    /// Json error (e.g.: serialization, deserialization)
-    #[error("JsonError: {0}")]
-    JsonError(#[from] serde_json::Error),
-
-    /// Error building the transcription request
-    #[error("RequestError: {0}")]
-    RequestError(#[from] Box<dyn std::error::Error + Send + Sync + 'static>),
-
-    /// Error parsing the transcription response
-    #[error("ResponseError: {0}")]
-    ResponseError(String),
-
-    /// Error returned by the transcription model provider
-    #[error("ProviderError: {0}")]
-    ProviderError(String),
-}
 pub trait ImageGeneration<M>
 where
     M: ImageGenerationModel,

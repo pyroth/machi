@@ -16,14 +16,18 @@
 //!
 //! Note: The EpubFileLoader requires the `epub` feature to be enabled in the `Cargo.toml` file.
 
+pub mod errors;
 pub mod file;
 
+pub use errors::FileLoaderError;
 pub use file::FileLoader;
 
 #[cfg(feature = "pdf")]
 #[cfg_attr(docsrs, doc(cfg(feature = "pdf")))]
 pub mod pdf;
 
+#[cfg(feature = "pdf")]
+pub use errors::PdfLoaderError;
 #[cfg(feature = "pdf")]
 pub use pdf::PdfFileLoader;
 

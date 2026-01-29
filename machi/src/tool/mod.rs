@@ -9,9 +9,10 @@
 //! The [ToolSet] struct is a collection of tools that can be used by an [Agent](crate::agent::Agent)
 //! and optionally RAGged.
 
+pub mod errors;
 pub mod server;
+
 use std::collections::HashMap;
-use std::fmt;
 
 use futures::Future;
 use serde::{Deserialize, Serialize};
@@ -22,36 +23,7 @@ use crate::{
     wasm_compat::{WasmBoxedFuture, WasmCompatSend, WasmCompatSync},
 };
 
-#[derive(Debug, thiserror::Error)]
-pub enum ToolError {
-    #[cfg(not(target_family = "wasm"))]
-    /// Error returned by the tool
-    ToolCallError(#[from] Box<dyn std::error::Error + Send + Sync>),
-
-    #[cfg(target_family = "wasm")]
-    /// Error returned by the tool
-    ToolCallError(#[from] Box<dyn std::error::Error>),
-    /// Error caused by a de/serialization fail
-    JsonError(#[from] serde_json::Error),
-}
-
-impl fmt::Display for ToolError {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        match self {
-            ToolError::ToolCallError(e) => {
-                let error_str = e.to_string();
-                // This is required due to being able to use agents as tools
-                // which means it is possible to get recursive tool call errors
-                if error_str.starts_with("ToolCallError: ") {
-                    write!(f, "{}", error_str)
-                } else {
-                    write!(f, "ToolCallError: {}", error_str)
-                }
-            }
-            ToolError::JsonError(e) => write!(f, "JsonError: {e}"),
-        }
-    }
-}
+pub use errors::{ToolError, ToolSetError};
 
 /// Trait that represents a simple LLM tool
 ///
@@ -400,25 +372,6 @@ impl ToolType {
             ToolType::Embedding(tool) => tool.call(args).await,
         }
     }
-}
-
-#[derive(Debug, thiserror::Error)]
-pub enum ToolSetError {
-    /// Error returned by the tool
-    #[error("ToolCallError: {0}")]
-    ToolCallError(#[from] ToolError),
-
-    /// Could not find a tool
-    #[error("ToolNotFoundError: {0}")]
-    ToolNotFoundError(String),
-
-    // TODO: Revisit this
-    #[error("JsonError: {0}")]
-    JsonError(#[from] serde_json::Error),
-
-    /// Tool call was interrupted. Primarily useful for agent multi-step/turn prompting.
-    #[error("Tool call interrupted")]
-    Interrupted,
 }
 
 /// A struct that holds a set of tools

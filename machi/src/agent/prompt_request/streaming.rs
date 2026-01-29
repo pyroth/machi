@@ -17,9 +17,8 @@ use tracing_futures::Instrument;
 use super::ToolCallHookAction;
 use crate::{
     agent::Agent,
-    completion::{CompletionError, CompletionModel, PromptError},
+    completion::{CompletionModel, PromptError},
     message::{Message, Text},
-    tool::ToolSetError,
 };
 
 #[cfg(not(all(feature = "wasm", target_arch = "wasm32")))]
@@ -79,15 +78,7 @@ impl<R> MultiTurnStreamItem<R> {
     }
 }
 
-#[derive(Debug, thiserror::Error)]
-pub enum StreamingError {
-    #[error("CompletionError: {0}")]
-    Completion(#[from] CompletionError),
-    #[error("PromptError: {0}")]
-    Prompt(#[from] Box<PromptError>),
-    #[error("ToolSetError: {0}")]
-    Tool(#[from] ToolSetError),
-}
+pub use super::super::errors::StreamingError;
 
 /// A builder for creating prompt requests with customizable options.
 /// Uses generics to track which options have been set during the build process.

@@ -1,7 +1,6 @@
 use crate::core::wasm_compat::WasmCompatSync;
 use crate::http::HttpClientExt;
-use crate::modalities::audio::transcription;
-use crate::modalities::audio::transcription::TranscriptionError;
+use crate::modalities::audio::{TranscriptionError, transcription};
 use crate::providers::huggingface::Client;
 use crate::providers::huggingface::completion::ApiResponse;
 use base64::Engine;

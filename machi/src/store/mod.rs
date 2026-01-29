@@ -10,8 +10,15 @@
 //!
 //! Types implementing [`VectorStoreIndex`] automatically implement [`Tool`].
 
+pub mod builder;
+pub mod errors;
+pub mod in_memory_store;
+pub mod lsh;
+pub mod request;
+
+pub use errors::VectorStoreError;
 pub use request::VectorSearchRequest;
-use reqwest::StatusCode;
+
 use serde::{Deserialize, Serialize};
 use serde_json::{Value, json};
 
@@ -19,48 +26,10 @@ use crate::{
     Embed, OneOrMany,
     completion::ToolDefinition,
     core::wasm_compat::{WasmBoxedFuture, WasmCompatSend, WasmCompatSync},
-    embedding::{Embedding, EmbeddingError},
-    store::request::{Filter, FilterError, SearchFilter},
+    embedding::Embedding,
+    store::request::{Filter, SearchFilter},
     tool::Tool,
 };
-
-pub mod builder;
-pub mod in_memory_store;
-pub mod lsh;
-pub mod request;
-
-/// Errors from vector store operations.
-#[derive(Debug, thiserror::Error)]
-pub enum VectorStoreError {
-    #[error("Embedding error: {0}")]
-    EmbeddingError(#[from] EmbeddingError),
-
-    #[error("Json error: {0}")]
-    JsonError(#[from] serde_json::Error),
-
-    #[cfg(not(target_family = "wasm"))]
-    #[error("Datastore error: {0}")]
-    DatastoreError(#[from] Box<dyn std::error::Error + Send + Sync + 'static>),
-
-    #[error("Filter error: {0}")]
-    FilterError(#[from] FilterError),
-
-    #[cfg(target_family = "wasm")]
-    #[error("Datastore error: {0}")]
-    DatastoreError(#[from] Box<dyn std::error::Error + 'static>),
-
-    #[error("Missing Id: {0}")]
-    MissingIdError(String),
-
-    #[error("HTTP request error: {0}")]
-    ReqwestError(#[from] reqwest::Error),
-
-    #[error("External call to API returned an error. Error code: {0} Message: {1}")]
-    ExternalAPIError(StatusCode, String),
-
-    #[error("Error while building VectorSearchRequest: {0}")]
-    BuilderError(String),
-}
 
 /// Trait for inserting documents and embeddings into a vector store.
 pub trait InsertDocuments: WasmCompatSend + WasmCompatSync {

@@ -1,25 +1,8 @@
-use std::{fs, path::PathBuf, string::FromUtf8Error};
+use std::{fs, path::PathBuf};
 
 use glob::glob;
-use thiserror::Error;
 
-#[derive(Error, Debug)]
-pub enum FileLoaderError {
-    #[error("Invalid glob pattern: {0}")]
-    InvalidGlobPattern(String),
-
-    #[error("IO error: {0}")]
-    IoError(#[from] std::io::Error),
-
-    #[error("Pattern error: {0}")]
-    PatternError(#[from] glob::PatternError),
-
-    #[error("Glob error: {0}")]
-    GlobError(#[from] glob::GlobError),
-
-    #[error("String conversion error: {0}")]
-    StringUtf8Error(#[from] FromUtf8Error),
-}
+use super::errors::FileLoaderError;
 
 // ================================================================
 // Implementing Readable trait for reading file contents

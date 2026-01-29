@@ -19,10 +19,7 @@ pub struct OneOrMany<T> {
     rest: Vec<T>,
 }
 
-/// Error type for when trying to create a OneOrMany object with an empty vector.
-#[derive(Debug, thiserror::Error)]
-#[error("Cannot create OneOrMany with an empty vector.")]
-pub struct EmptyListError;
+pub use super::errors::EmptyListError;
 
 impl<T: Clone> OneOrMany<T> {
     /// Get the first item in the list.

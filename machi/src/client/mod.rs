@@ -5,6 +5,7 @@
 pub mod audio_generation;
 pub mod completion;
 pub mod embeddings;
+pub mod errors;
 pub mod image_generation;
 pub mod transcription;
 pub mod verify;
@@ -12,11 +13,11 @@ pub mod verify;
 use bytes::Bytes;
 pub use completion::CompletionClient;
 pub use embeddings::EmbeddingsClient;
+pub use errors::{ClientBuilderError, VerifyError};
 use http::{HeaderMap, HeaderName, HeaderValue};
 use serde::{Deserialize, Serialize};
 use std::{fmt::Debug, marker::PhantomData, sync::Arc};
-use thiserror::Error;
-pub use verify::{VerifyClient, VerifyError};
+pub use verify::VerifyClient;
 
 #[cfg(feature = "image")]
 use crate::image_generation::ImageGenerationModel;
@@ -39,19 +40,6 @@ use crate::{
     modalities::audio::transcription::TranscriptionModel,
     prelude::TranscriptionClient,
 };
-
-#[derive(Debug, Error)]
-#[non_exhaustive]
-pub enum ClientBuilderError {
-    #[error("reqwest error: {0}")]
-    HttpError(
-        #[from]
-        #[source]
-        reqwest::Error,
-    ),
-    #[error("invalid property: {0}")]
-    InvalidProperty(&'static str),
-}
 
 /// Abstracts over the ability to instantiate a client, either via environment variables or some
 /// `Self::Input`

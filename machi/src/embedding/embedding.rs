@@ -2,45 +2,11 @@
 //! generate embeddings for documents.
 //!
 //! The module also defines the [Embedding] struct, which represents a single document embedding.
-//!
-//! Finally, the module defines the [EmbeddingError] enum, which represents various errors that
-//! can occur during embedding generation or processing.
 
 use crate::core::wasm_compat::*;
-use crate::http;
 use serde::{Deserialize, Serialize};
 
-#[derive(Debug, thiserror::Error)]
-pub enum EmbeddingError {
-    /// Http error (e.g.: connection error, timeout, etc.)
-    #[error("HttpError: {0}")]
-    HttpError(#[from] http::Error),
-
-    /// Json error (e.g.: serialization, deserialization)
-    #[error("JsonError: {0}")]
-    JsonError(#[from] serde_json::Error),
-
-    #[error("UrlError: {0}")]
-    UrlError(#[from] url::ParseError),
-
-    #[cfg(not(target_family = "wasm"))]
-    /// Error processing the document for embedding
-    #[error("DocumentError: {0}")]
-    DocumentError(Box<dyn std::error::Error + Send + Sync + 'static>),
-
-    #[cfg(target_family = "wasm")]
-    /// Error processing the document for embedding
-    #[error("DocumentError: {0}")]
-    DocumentError(Box<dyn std::error::Error + 'static>),
-
-    /// Error parsing the completion response
-    #[error("ResponseError: {0}")]
-    ResponseError(String),
-
-    /// Error returned by the embedding model provider
-    #[error("ProviderError: {0}")]
-    ProviderError(String),
-}
+use super::errors::EmbeddingError;
 
 /// Trait for embedding models that can generate embeddings for documents.
 pub trait EmbeddingModel: WasmCompatSend + WasmCompatSync {

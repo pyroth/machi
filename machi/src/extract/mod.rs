@@ -28,33 +28,25 @@
 //!     .expect("Failed to extract data from text");
 //! ```
 
+pub mod errors;
+
 use std::marker::PhantomData;
 
 use schemars::{JsonSchema, schema_for};
 use serde::{Deserialize, Serialize};
 use serde_json::json;
 
+pub use errors::ExtractionError;
+
 use crate::{
     agent::{Agent, AgentBuilder, AgentBuilderSimple},
-    completion::{Completion, CompletionError, CompletionModel, ToolDefinition},
+    completion::{Completion, CompletionModel, ToolDefinition},
     core::wasm_compat::{WasmCompatSend, WasmCompatSync},
     message::{AssistantContent, Message, ToolCall, ToolChoice, ToolFunction},
     tool::Tool,
 };
 
 const SUBMIT_TOOL_NAME: &str = "submit";
-
-#[derive(Debug, thiserror::Error)]
-pub enum ExtractionError {
-    #[error("No data extracted")]
-    NoData,
-
-    #[error("Failed to deserialize the extracted data: {0}")]
-    DeserializationError(#[from] serde_json::Error),
-
-    #[error("CompletionError: {0}")]
-    CompletionError(#[from] CompletionError),
-}
 
 /// Extractor for structured data from text
 pub struct Extractor<M, T>

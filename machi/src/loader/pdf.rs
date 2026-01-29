@@ -1,22 +1,9 @@
 use std::{fs, path::PathBuf};
 
 use glob::glob;
-use lopdf::{Document, Error as LopdfError};
-use thiserror::Error;
+use lopdf::Document;
 
-use super::file::FileLoaderError;
-
-#[derive(Error, Debug)]
-pub enum PdfLoaderError {
-    #[error("{0}")]
-    FileLoaderError(#[from] FileLoaderError),
-
-    #[error("UTF-8 conversion error: {0}")]
-    FromUtf8Error(#[from] std::string::FromUtf8Error),
-
-    #[error("IO error: {0}")]
-    PdfError(#[from] LopdfError),
-}
+use super::errors::PdfLoaderError;
 
 // ================================================================
 // Implementing Loadable trait for loading pdfs

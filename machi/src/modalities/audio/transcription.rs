@@ -1,42 +1,12 @@
 //! This module provides functionality for working with audio transcription models.
 //! It provides traits, structs, and enums for generating audio transcription requests,
 //! handling transcription responses, and defining transcription models.
+
 use crate::core::json_utils;
 use crate::core::wasm_compat::{WasmCompatSend, WasmCompatSync};
-use crate::http;
 use std::{fs, path::Path};
-use thiserror::Error;
 
-// Errors
-#[derive(Debug, Error)]
-#[non_exhaustive]
-pub enum TranscriptionError {
-    /// Http error (e.g.: connection error, timeout, etc.)
-    #[error("HttpError: {0}")]
-    HttpError(#[from] http::Error),
-
-    /// Json error (e.g.: serialization, deserialization)
-    #[error("JsonError: {0}")]
-    JsonError(#[from] serde_json::Error),
-
-    #[cfg(not(target_family = "wasm"))]
-    /// Error building the transcription request
-    #[error("RequestError: {0}")]
-    RequestError(#[from] Box<dyn std::error::Error + Send + Sync + 'static>),
-
-    #[cfg(target_family = "wasm")]
-    /// Error building the transcription request
-    #[error("RequestError: {0}")]
-    RequestError(#[from] Box<dyn std::error::Error + 'static>),
-
-    /// Error parsing the transcription response
-    #[error("ResponseError: {0}")]
-    ResponseError(String),
-
-    /// Error returned by the transcription model provider
-    #[error("ProviderError: {0}")]
-    ProviderError(String),
-}
+use super::errors::TranscriptionError;
 
 /// Trait defining a low-level LLM transcription interface
 pub trait Transcription<M>

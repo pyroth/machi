@@ -5,7 +5,7 @@ use crate::client::{
 use crate::http;
 #[cfg(feature = "image")]
 use crate::image_generation::ImageGenerationError;
-use crate::modalities::audio::transcription::TranscriptionError;
+use crate::modalities::audio::TranscriptionError;
 use std::fmt::Debug;
 use std::fmt::Display;
 
