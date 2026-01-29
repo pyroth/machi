@@ -1,12 +1,9 @@
 //! This module provides functionality for working with audio transcription models.
 //! It provides traits, structs, and enums for generating audio transcription requests,
 //! handling transcription responses, and defining transcription models.
-#[allow(deprecated)]
-use crate::client::transcription::TranscriptionModelHandle;
-use crate::core::wasm_compat::{WasmBoxedFuture, WasmCompatSend, WasmCompatSync};
+use crate::core::wasm_compat::{WasmCompatSend, WasmCompatSync};
 use crate::core::json_utils;
 use crate::http;
-use std::sync::Arc;
 use std::{fs, path::Path};
 use thiserror::Error;
 
@@ -94,45 +91,6 @@ pub trait TranscriptionModel: Clone + WasmCompatSend + WasmCompatSync {
     }
 }
 
-#[allow(deprecated)]
-#[deprecated(
-    since = "0.25.0",
-    note = "`DynClientBuilder` and related features have been deprecated and will be removed in a future release. In this case, use `TranscriptionModel` instead."
-)]
-pub trait TranscriptionModelDyn: WasmCompatSend + WasmCompatSync {
-    fn transcription(
-        &self,
-        request: TranscriptionRequest,
-    ) -> WasmBoxedFuture<'_, Result<TranscriptionResponse<()>, TranscriptionError>>;
-
-    fn transcription_request(&self) -> TranscriptionRequestBuilder<TranscriptionModelHandle<'_>>;
-}
-
-#[allow(deprecated)]
-impl<T> TranscriptionModelDyn for T
-where
-    T: TranscriptionModel,
-{
-    fn transcription(
-        &self,
-        request: TranscriptionRequest,
-    ) -> WasmBoxedFuture<'_, Result<TranscriptionResponse<()>, TranscriptionError>> {
-        Box::pin(async move {
-            let resp = self.transcription(request).await?;
-
-            Ok(TranscriptionResponse {
-                text: resp.text,
-                response: (),
-            })
-        })
-    }
-
-    fn transcription_request(&self) -> TranscriptionRequestBuilder<TranscriptionModelHandle<'_>> {
-        TranscriptionRequestBuilder::new(TranscriptionModelHandle {
-            inner: Arc::new(self.clone()),
-        })
-    }
-}
 
 /// Struct representing a general transcription request that can be sent to a transcription model provider.
 pub struct TranscriptionRequest {

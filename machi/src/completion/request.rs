@@ -64,16 +64,13 @@
 //! the individual traits, structs, and enums defined in this module.
 
 use super::message::{AssistantContent, DocumentMediaType};
-use crate::client::FinalCompletionResponse;
-#[allow(deprecated)]
-use crate::client::completion::CompletionModelHandle;
 use crate::message::ToolChoice;
-use crate::streaming::StreamingCompletionResponse;
+use crate::completion::streaming::StreamingCompletionResponse;
 use crate::tool::server::ToolServerError;
-use crate::wasm_compat::{WasmBoxedFuture, WasmCompatSend, WasmCompatSync};
-use crate::{OneOrMany, http_client, streaming};
+use crate::core::wasm_compat::{WasmCompatSend, WasmCompatSync};
+use crate::{OneOrMany, http as http_client};
 use crate::{
-    json_utils,
+    core::json_utils,
     message::{Message, UserContent},
     tool::ToolSetError,
 };
@@ -81,7 +78,6 @@ use serde::de::DeserializeOwned;
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
 use std::ops::{Add, AddAssign};
-use std::sync::Arc;
 use thiserror::Error;
 
 // Errors
@@ -382,79 +378,6 @@ pub trait CompletionModel: Clone + WasmCompatSend + WasmCompatSync {
     }
 }
 
-#[allow(deprecated)]
-#[deprecated(
-    since = "0.25.0",
-    note = "`DynClientBuilder` and related features have been deprecated and will be removed in a future release. In this case, use `CompletionModel` instead."
-)]
-pub trait CompletionModelDyn: WasmCompatSend + WasmCompatSync {
-    fn completion(
-        &self,
-        request: CompletionRequest,
-    ) -> WasmBoxedFuture<'_, Result<CompletionResponse<()>, CompletionError>>;
-
-    fn stream(
-        &self,
-        request: CompletionRequest,
-    ) -> WasmBoxedFuture<
-        '_,
-        Result<StreamingCompletionResponse<FinalCompletionResponse>, CompletionError>,
-    >;
-
-    fn completion_request(
-        &self,
-        prompt: Message,
-    ) -> CompletionRequestBuilder<CompletionModelHandle<'_>>;
-}
-
-#[allow(deprecated)]
-impl<T, R> CompletionModelDyn for T
-where
-    T: CompletionModel<StreamingResponse = R>,
-    R: Clone + Unpin + GetTokenUsage + 'static,
-{
-    fn completion(
-        &self,
-        request: CompletionRequest,
-    ) -> WasmBoxedFuture<'_, Result<CompletionResponse<()>, CompletionError>> {
-        Box::pin(async move {
-            self.completion(request)
-                .await
-                .map(|resp| CompletionResponse {
-                    choice: resp.choice,
-                    usage: resp.usage,
-                    raw_response: (),
-                })
-        })
-    }
-
-    fn stream(
-        &self,
-        request: CompletionRequest,
-    ) -> WasmBoxedFuture<
-        '_,
-        Result<StreamingCompletionResponse<FinalCompletionResponse>, CompletionError>,
-    > {
-        Box::pin(async move {
-            let resp = self.stream(request).await?;
-            let inner = resp.inner;
-
-            let stream = streaming::StreamingResultDyn {
-                inner: Box::pin(inner),
-            };
-
-            Ok(StreamingCompletionResponse::stream(Box::pin(stream)))
-        })
-    }
-
-    /// Generates a completion request builder for the given `prompt`.
-    fn completion_request(
-        &self,
-        prompt: Message,
-    ) -> CompletionRequestBuilder<CompletionModelHandle<'_>> {
-        CompletionRequestBuilder::new(CompletionModelHandle::new(Arc::new(self.clone())), prompt)
-    }
-}
 
 /// Struct representing a general completion request that can be sent to a completion model provider.
 #[derive(Debug, Clone)]
