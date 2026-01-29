@@ -5,8 +5,10 @@
 
 use crate::http::sse::BoxedStream;
 use bytes::Bytes;
-pub use http::{HeaderMap, HeaderValue, Method, Request, Response, Uri, request::Builder};
-use http::{HeaderName, StatusCode};
+use http::StatusCode;
+pub use http::{
+    HeaderMap, HeaderName, HeaderValue, Method, Request, Response, Uri, request::Builder,
+};
 use reqwest::Body;
 
 pub mod multipart;
@@ -422,7 +424,3 @@ impl HttpClientExt for reqwest_middleware::ClientWithMiddleware {
         }
     }
 }
-
-
-
-

@@ -1,14 +1,14 @@
-﻿//! The streaming module for the OpenAI Responses API.
+//! The streaming module for the OpenAI Responses API.
 //! Please see the `openai_streaming` or `openai_streaming_with_tools` example for more practical usage.
+use crate::completion::streaming;
+use crate::completion::streaming::RawStreamingChoice;
 use crate::completion::{CompletionError, GetTokenUsage};
-use crate::http_client::HttpClientExt;
-use crate::http_client::sse::{Event, GenericEventSource};
+use crate::core::wasm_compat::WasmCompatSend;
+use crate::http::HttpClientExt;
+use crate::http::sse::{Event, GenericEventSource};
 use crate::providers::openai::responses_api::{
     ReasoningSummary, ResponsesCompletionModel, ResponsesUsage,
 };
-use crate::streaming;
-use crate::streaming::RawStreamingChoice;
-use crate::wasm_compat::WasmCompatSend;
 use async_stream::stream;
 use futures::StreamExt;
 use serde::{Deserialize, Serialize};
@@ -352,7 +352,7 @@ where
                             }
                         }
                     }
-                    Err(crate::http_client::Error::StreamEnded) => {
+                    Err(crate::http::Error::StreamEnded) => {
                         event_source.close();
                     }
                     Err(error) => {
@@ -384,5 +384,3 @@ where
         )))
     }
 }
-
-

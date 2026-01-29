@@ -1,4 +1,4 @@
-﻿//! This module contains the implementation of the [Agent] struct and its builder.
+//! This module contains the implementation of the [Agent] struct and its builder.
 //!
 //! The [Agent] struct represents an LLM agent, which combines an LLM model with a preamble (system prompt),
 //! a set of context documents, and a set of tools. Note: both context documents and tools can be either
@@ -120,5 +120,3 @@ pub use prompt_request::streaming::{
 };
 pub use prompt_request::{CancelSignal, PromptRequest, PromptResponse};
 pub use prompt_request::{PromptHook, StreamingPromptHook, ToolCallHookAction};
-
-

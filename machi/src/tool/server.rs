@@ -1,10 +1,10 @@
-﻿use futures::{StreamExt, TryStreamExt, channel::oneshot::Canceled, stream};
+use futures::{StreamExt, TryStreamExt, channel::oneshot::Canceled, stream};
 use tokio::sync::mpsc::{Sender, error::SendError};
 
 use crate::{
     completion::{CompletionError, ToolDefinition},
+    store::{VectorSearchRequest, VectorStoreError, VectorStoreIndexDyn, request::Filter},
     tool::{Tool, ToolDyn, ToolError, ToolSet, ToolSetError},
-    vector_store::{VectorSearchRequest, VectorStoreError, VectorStoreIndexDyn, request::Filter},
 };
 
 pub struct ToolServer {
@@ -428,5 +428,3 @@ mod tests {
         assert_eq!(res.len(), 0);
     }
 }
-
-

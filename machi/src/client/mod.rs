@@ -1,4 +1,4 @@
-﻿//! This module provides traits for defining and creating provider clients.
+//! This module provides traits for defining and creating provider clients.
 //! Clients are used to create models for completion, embeddings, etc.
 //! Dyn-compatible traits have been provided to allow for more provider-agnostic code.
 
@@ -30,13 +30,14 @@ use audio_generation::*;
 
 use crate::{
     completion::CompletionModel,
-    embeddings::EmbeddingModel,
-    http_client::{
-        self, Builder, HttpClientExt, LazyBody, MultipartForm, Request, Response, make_auth_header,
+    core::wasm_compat::{WasmCompatSend, WasmCompatSync},
+    embedding::EmbeddingModel,
+    http::{
+        self as http_client, Builder, HttpClientExt, LazyBody, MultipartForm, Request, Response,
+        make_auth_header,
     },
+    modalities::audio::transcription::TranscriptionModel,
     prelude::TranscriptionClient,
-    transcription::TranscriptionModel,
-    wasm_compat::{WasmCompatSend, WasmCompatSync},
 };
 
 #[derive(Debug, Error)]
@@ -668,5 +669,3 @@ where
         M::make(self, model)
     }
 }
-
-

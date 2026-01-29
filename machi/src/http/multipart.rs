@@ -246,7 +246,3 @@ mod tests {
         assert!(body_str.contains("file contents"));
     }
 }
-
-
-
-

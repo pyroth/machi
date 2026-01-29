@@ -128,7 +128,3 @@ impl LSHIndex {
         }
     }
 }
-
-
-
-

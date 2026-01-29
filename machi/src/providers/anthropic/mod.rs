@@ -1,4 +1,4 @@
-﻿//! Anthropic API client and Rig integration
+//! Anthropic API client and Rig integration
 //!
 //! # Example
 //! ```
@@ -15,5 +15,3 @@ pub mod decoders;
 pub mod streaming;
 
 pub use client::{Client, ClientBuilder};
-
-

@@ -1,7 +1,7 @@
 //! Ollama embedding model implementation
 
-use crate::embeddings::{self, EmbeddingError};
-use crate::http_client::{self, HttpClientExt};
+use crate::embedding::{self, EmbeddingError};
+use crate::http::{self, HttpClientExt};
 use serde::{Deserialize, Serialize};
 use serde_json::json;
 
@@ -32,7 +32,9 @@ impl From<super::client::ApiErrorResponse> for EmbeddingError {
     }
 }
 
-impl From<super::client::ApiResponse<EmbeddingResponse>> for Result<EmbeddingResponse, EmbeddingError> {
+impl From<super::client::ApiResponse<EmbeddingResponse>>
+    for Result<EmbeddingResponse, EmbeddingError>
+{
     fn from(value: super::client::ApiResponse<EmbeddingResponse>) -> Self {
         match value {
             super::client::ApiResponse::Ok(response) => Ok(response),
@@ -68,7 +70,7 @@ impl<T> EmbeddingModel<T> {
     }
 }
 
-impl<T> embeddings::EmbeddingModel for EmbeddingModel<T>
+impl<T> embedding::EmbeddingModel for EmbeddingModel<T>
 where
     T: HttpClientExt + Clone + 'static,
 {
@@ -87,7 +89,7 @@ where
     async fn embed_texts(
         &self,
         documents: impl IntoIterator<Item = String>,
-    ) -> Result<Vec<embeddings::Embedding>, EmbeddingError> {
+    ) -> Result<Vec<embedding::Embedding>, EmbeddingError> {
         let docs: Vec<String> = documents.into_iter().collect();
 
         let body = serde_json::to_vec(&json!({
@@ -104,7 +106,7 @@ where
         let response = self.client.send(req).await?;
 
         if !response.status().is_success() {
-            let text = http_client::text(response).await?;
+            let text = http::text(response).await?;
             return Err(EmbeddingError::ProviderError(text));
         }
 
@@ -121,7 +123,7 @@ where
             .embeddings
             .into_iter()
             .zip(docs.into_iter())
-            .map(|(vec, document)| embeddings::Embedding { document, vec })
+            .map(|(vec, document)| embedding::Embedding { document, vec })
             .collect())
     }
 }

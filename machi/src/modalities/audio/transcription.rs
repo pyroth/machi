@@ -1,8 +1,8 @@
 //! This module provides functionality for working with audio transcription models.
 //! It provides traits, structs, and enums for generating audio transcription requests,
 //! handling transcription responses, and defining transcription models.
-use crate::core::wasm_compat::{WasmCompatSend, WasmCompatSync};
 use crate::core::json_utils;
+use crate::core::wasm_compat::{WasmCompatSend, WasmCompatSync};
 use crate::http;
 use std::{fs, path::Path};
 use thiserror::Error;
@@ -90,7 +90,6 @@ pub trait TranscriptionModel: Clone + WasmCompatSend + WasmCompatSync {
         TranscriptionRequestBuilder::new(self.clone())
     }
 }
-
 
 /// Struct representing a general transcription request that can be sent to a transcription model provider.
 pub struct TranscriptionRequest {
@@ -269,7 +268,3 @@ where
         model.transcription(self.build()).await
     }
 }
-
-
-
-

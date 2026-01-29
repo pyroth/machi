@@ -1,4 +1,4 @@
-﻿//! OpenAI API client and Rig integration
+//! OpenAI API client and Rig integration
 //!
 //! # Example
 //! ```
@@ -104,5 +104,3 @@ pub use audio_generation::{TTS_1, TTS_1_HD};
 
 pub use streaming::*;
 pub use transcription::*;
-
-

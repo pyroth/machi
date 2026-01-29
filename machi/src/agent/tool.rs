@@ -1,4 +1,4 @@
-﻿use crate::{
+use crate::{
     agent::Agent,
     completion::{CompletionModel, Prompt, PromptError, ToolDefinition},
     tool::Tool,
@@ -48,5 +48,3 @@ impl<M: CompletionModel> Tool for Agent<M> {
         self.name.clone().unwrap_or_else(|| Self::NAME.to_string())
     }
 }
-
-

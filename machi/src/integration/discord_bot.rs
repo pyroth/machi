@@ -255,7 +255,3 @@ where
             .expect("Failed to create Discord client")
     }
 }
-
-
-
-

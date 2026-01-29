@@ -19,9 +19,7 @@ impl<T> WasmCompatSend for T where T: Send {}
 impl<T> WasmCompatSend for T {}
 
 #[cfg(not(all(feature = "wasm", target_arch = "wasm32")))]
-pub trait WasmCompatSendStream:
-    Stream<Item = Result<Bytes, crate::http::Error>> + Send
-{
+pub trait WasmCompatSendStream: Stream<Item = Result<Bytes, crate::http::Error>> + Send {
     type InnerItem: Send;
 }
 
@@ -79,7 +77,3 @@ macro_rules! if_not_wasm {
 
     };
 }
-
-
-
-

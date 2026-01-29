@@ -1,9 +1,9 @@
 use crate::{
     agent::{Agent, MultiTurnStreamItem, Text},
     completion::{Chat, CompletionError, CompletionModel, PromptError, Usage},
+    core::wasm_compat::WasmCompatSend,
     message::Message,
     streaming::{StreamedAssistantContent, StreamingPrompt},
-    core::wasm_compat::WasmCompatSend,
 };
 use futures::StreamExt;
 use std::io::{self, Write};
@@ -222,7 +222,3 @@ where
         Ok(())
     }
 }
-
-
-
-

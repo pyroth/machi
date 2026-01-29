@@ -78,7 +78,3 @@ impl TextProcessor for StripXmlProcessor {
         Ok(result)
     }
 }
-
-
-
-

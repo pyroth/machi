@@ -1,4 +1,4 @@
-﻿use std::{convert::Infallible, str::FromStr};
+use std::{convert::Infallible, str::FromStr};
 
 use crate::OneOrMany;
 use serde::{Deserialize, Serialize};
@@ -1083,5 +1083,3 @@ impl From<MessageError> for CompletionError {
         CompletionError::RequestError(error.into())
     }
 }
-
-

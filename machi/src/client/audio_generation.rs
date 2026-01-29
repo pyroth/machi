@@ -1,4 +1,4 @@
-﻿#[cfg(feature = "audio")]
+#[cfg(feature = "audio")]
 mod audio {
     use crate::modalities::audio::generation::AudioGenerationModel;
 
@@ -16,5 +16,3 @@ mod audio {
 
 #[cfg(feature = "audio")]
 pub use audio::*;
-
-

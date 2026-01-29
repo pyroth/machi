@@ -1,7 +1,7 @@
-﻿use crate::audio_generation::{
+use crate::audio_generation::{
     self, AudioGenerationError, AudioGenerationRequest, AudioGenerationResponse,
 };
-use crate::http_client::{self, HttpClientExt};
+use crate::http::{self, HttpClientExt};
 use crate::providers::openai::Client;
 use bytes::{Buf, Bytes};
 use serde_json::json;
@@ -77,5 +77,3 @@ where
         })
     }
 }
-
-

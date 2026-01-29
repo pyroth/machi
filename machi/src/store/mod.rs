@@ -18,10 +18,10 @@ use serde_json::{Value, json};
 use crate::{
     Embed, OneOrMany,
     completion::ToolDefinition,
-    embedding::{Embedding, EmbeddingError},
-    tool::Tool,
-    store::request::{Filter, FilterError, SearchFilter},
     core::wasm_compat::{WasmBoxedFuture, WasmCompatSend, WasmCompatSync},
+    embedding::{Embedding, EmbeddingError},
+    store::request::{Filter, FilterError, SearchFilter},
+    tool::Tool,
 };
 
 pub mod builder;
@@ -248,7 +248,3 @@ impl Default for IndexStrategy {
         Self::BruteForce
     }
 }
-
-
-
-

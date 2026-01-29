@@ -1,4 +1,4 @@
-﻿//! Module defining tool related structs and traits.
+//! Module defining tool related structs and traits.
 //!
 //! The [Tool] trait defines a simple interface for creating tools that can be used
 //! by [Agents](crate::agent::Agent).
@@ -18,7 +18,7 @@ use serde::{Deserialize, Serialize};
 
 use crate::{
     completion::{self, ToolDefinition},
-    embeddings::{embed::EmbedError, tool::ToolSchema},
+    embedding::{embed::EmbedError, tool::ToolSchema},
     wasm_compat::{WasmBoxedFuture, WasmCompatSend, WasmCompatSync},
 };
 
@@ -204,9 +204,9 @@ impl<T: Tool> ToolDyn for T {
 #[cfg_attr(docsrs, doc(cfg(feature = "rmcp")))]
 pub mod rmcp {
     use crate::completion::ToolDefinition;
+    use crate::core::wasm_compat::WasmBoxedFuture;
     use crate::tool::ToolDyn;
     use crate::tool::ToolError;
-    use crate::wasm_compat::WasmBoxedFuture;
     use rmcp::model::RawContent;
     use std::borrow::Cow;
 
@@ -698,5 +698,3 @@ mod tests {
         assert_eq!(toolset.tools.len(), 1);
     }
 }
-
-

@@ -23,4 +23,3 @@ pub(crate) fn add_struct_bounds(generics: &mut syn::Generics, field_type: &syn::
         #field_type: Embed
     });
 }
-

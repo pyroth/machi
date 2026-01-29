@@ -68,4 +68,3 @@ pub fn provider_client(input: TokenStream) -> TokenStream {
     };
     output.into()
 }
-

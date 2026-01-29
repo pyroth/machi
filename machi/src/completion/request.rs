@@ -1,4 +1,4 @@
-﻿//! This module provides functionality for working with completion models.
+//! This module provides functionality for working with completion models.
 //! It provides traits, structs, and enums for generating completion requests,
 //! handling completion responses, and defining completion models.
 //!
@@ -64,10 +64,10 @@
 //! the individual traits, structs, and enums defined in this module.
 
 use super::message::{AssistantContent, DocumentMediaType};
-use crate::message::ToolChoice;
 use crate::completion::streaming::StreamingCompletionResponse;
-use crate::tool::server::ToolServerError;
 use crate::core::wasm_compat::{WasmCompatSend, WasmCompatSync};
+use crate::message::ToolChoice;
+use crate::tool::server::ToolServerError;
 use crate::{OneOrMany, http as http_client};
 use crate::{
     core::json_utils,
@@ -377,7 +377,6 @@ pub trait CompletionModel: Clone + WasmCompatSend + WasmCompatSync {
         CompletionRequestBuilder::new(self.clone(), prompt)
     }
 }
-
 
 /// Struct representing a general completion request that can be sent to a completion model provider.
 #[derive(Debug, Clone)]
@@ -745,5 +744,3 @@ mod tests {
         assert_eq!(request.normalized_documents(), None);
     }
 }
-
-

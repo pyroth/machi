@@ -1,18 +1,18 @@
-﻿// ================================================================
+// ================================================================
 //! xAI Completion Integration
 //! From [xAI Reference](https://docs.x.ai/docs/api-reference#chat-completions)
 // ================================================================
 
 use crate::{
     completion::{self, CompletionError},
-    http_client::HttpClientExt,
+    http::HttpClientExt,
     providers::openai::Message,
 };
 
 use super::client::{Client, xai_api_types::ApiResponse};
 use crate::completion::CompletionRequest;
+use crate::completion::streaming::StreamingCompletionResponse;
 use crate::providers::openai;
-use crate::streaming::StreamingCompletionResponse;
 use bytes::Bytes;
 use serde::{Deserialize, Serialize};
 use tracing::{Instrument, Level, enabled, info_span};
@@ -313,5 +313,3 @@ pub mod xai_api_types {
         pub total_tokens: i32,
     }
 }
-
-

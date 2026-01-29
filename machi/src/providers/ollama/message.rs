@@ -1,7 +1,7 @@
 //! Ollama message types and conversions
 
 use crate::message::{DocumentSourceKind, ImageDetail, Text};
-use crate::{completion, json_utils, message, OneOrMany};
+use crate::{OneOrMany, completion, json_utils, message};
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
 use std::str::FromStr;
@@ -227,13 +227,11 @@ impl From<Message> for crate::completion::Message {
                         text: content,
                     })];
                 for tc in tool_calls {
-                    assistant_contents.push(
-                        completion::message::AssistantContent::tool_call(
-                            tc.function.name.clone(),
-                            tc.function.name,
-                            tc.function.arguments,
-                        ),
-                    );
+                    assistant_contents.push(completion::message::AssistantContent::tool_call(
+                        tc.function.name.clone(),
+                        tc.function.name,
+                        tc.function.arguments,
+                    ));
                 }
                 crate::completion::Message::Assistant {
                     id: None,

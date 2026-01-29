@@ -1,4 +1,4 @@
-﻿#[cfg(feature = "image")]
+#[cfg(feature = "image")]
 mod image {
     use crate::modalities::image::generation::ImageGenerationModel;
 
@@ -22,5 +22,3 @@ mod image {
 
 #[cfg(feature = "image")]
 pub use image::*;
-
-

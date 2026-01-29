@@ -1,11 +1,11 @@
-﻿use crate::client::{
+use crate::client::{
     self, BearerAuth, Capabilities, Capable, DebugExt, Nothing, Provider, ProviderBuilder,
     ProviderClient,
 };
-use crate::http_client;
+use crate::http;
 #[cfg(feature = "image")]
 use crate::image_generation::ImageGenerationError;
-use crate::transcription::TranscriptionError;
+use crate::modalities::audio::transcription::TranscriptionError;
 use std::fmt::Debug;
 use std::fmt::Display;
 
@@ -120,7 +120,7 @@ impl Provider for HuggingFaceExt {
 
     fn build<H>(
         builder: &client::ClientBuilder<Self::Builder, HuggingFaceApiKey, H>,
-    ) -> http_client::Result<Self> {
+    ) -> http::Result<Self> {
         Ok(Self {
             subprovider: builder.ext().subprovider.clone(),
         })
@@ -179,5 +179,3 @@ impl<H> Client<H> {
         &self.ext().subprovider
     }
 }
-
-

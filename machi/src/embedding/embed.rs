@@ -188,7 +188,3 @@ impl<T: Embed> Embed for Vec<T> {
         Ok(())
     }
 }
-
-
-
-

@@ -1,5 +1,5 @@
-﻿use super::client::Client;
-use crate::http_client::HttpClientExt;
+use super::client::Client;
+use crate::http::HttpClientExt;
 use crate::image_generation;
 use crate::image_generation::{ImageGenerationError, ImageGenerationRequest};
 use serde_json::json;
@@ -102,5 +102,3 @@ where
         ImageGenerationResponse { data }.try_into()
     }
 }
-
-

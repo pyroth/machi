@@ -75,7 +75,6 @@ pub trait EmbeddingModel: WasmCompatSend + WasmCompatSync {
     }
 }
 
-
 /// Trait for embedding models that can generate embeddings for images.
 pub trait ImageEmbeddingModel: Clone + WasmCompatSend + WasmCompatSync {
     /// The maximum number of images that can be embedded in a single request.
@@ -121,7 +120,3 @@ impl PartialEq for Embedding {
 }
 
 impl Eq for Embedding {}
-
-
-
-

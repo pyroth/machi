@@ -1,4 +1,4 @@
-﻿use crate::agent::AgentBuilder;
+use crate::agent::AgentBuilder;
 use crate::completion::CompletionModel;
 use crate::extract::ExtractorBuilder;
 use schemars::JsonSchema;
@@ -53,5 +53,3 @@ pub trait CompletionClient {
         ExtractorBuilder::new(self.completion_model(model))
     }
 }
-
-

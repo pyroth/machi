@@ -1,4 +1,4 @@
-﻿use std::str;
+use std::str;
 
 /// A line decoder that handles incrementally reading lines from text.
 /// Ported from JavaScript implementation.
@@ -383,5 +383,3 @@ mod tests {
         assert_eq!(find_double_newline_index("foo\r\n".as_bytes()), -1);
     }
 }
-
-

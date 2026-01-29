@@ -1,10 +1,10 @@
-﻿use crate::{
+use crate::{
     client::{
         self, BearerAuth, Capabilities, Capable, DebugExt, Provider, ProviderBuilder,
         ProviderClient,
     },
-    extractor::ExtractorBuilder,
-    http_client::{self, HttpClientExt},
+    extract::ExtractorBuilder,
+    http::{self, HttpClientExt},
     prelude::CompletionClient,
     wasm_compat::{WasmCompatSend, WasmCompatSync},
 };
@@ -54,7 +54,7 @@ impl Provider for OpenAIResponsesExt {
 
     fn build<H>(
         _: &crate::client::ClientBuilder<Self::Builder, OpenAIApiKey, H>,
-    ) -> http_client::Result<Self> {
+    ) -> http::Result<Self> {
         Ok(Self)
     }
 }
@@ -66,7 +66,7 @@ impl Provider for OpenAICompletionsExt {
 
     fn build<H>(
         _: &crate::client::ClientBuilder<Self::Builder, OpenAIApiKey, H>,
-    ) -> http_client::Result<Self> {
+    ) -> http::Result<Self> {
         Ok(Self)
     }
 }
@@ -520,5 +520,3 @@ mod tests {
         assert_eq!(original_assistant_message[0], assistant_message);
     }
 }
-
-

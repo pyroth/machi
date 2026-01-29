@@ -199,7 +199,3 @@ mod tests {
         assert_eq!(embedding_1.chebyshev_distance(&embedding_2), 4.0)
     }
 }
-
-
-
-

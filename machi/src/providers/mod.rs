@@ -1,4 +1,4 @@
-﻿//! This module contains clients for the different LLM providers that Machi supports.
+//! This module contains clients for the different LLM providers that Machi supports.
 //!
 //! Currently, the following providers are supported:
 //! - OpenAI
@@ -17,5 +17,3 @@ pub mod huggingface;
 pub mod ollama;
 pub mod openai;
 pub mod xai;
-
-

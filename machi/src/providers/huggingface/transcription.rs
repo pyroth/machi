@@ -1,9 +1,9 @@
-﻿use crate::http_client::HttpClientExt;
+use crate::core::wasm_compat::WasmCompatSync;
+use crate::http::HttpClientExt;
+use crate::modalities::audio::transcription;
+use crate::modalities::audio::transcription::TranscriptionError;
 use crate::providers::huggingface::Client;
 use crate::providers::huggingface::completion::ApiResponse;
-use crate::transcription;
-use crate::transcription::TranscriptionError;
-use crate::wasm_compat::WasmCompatSync;
 use base64::Engine;
 use base64::prelude::BASE64_STANDARD;
 use serde::Deserialize;
@@ -101,5 +101,3 @@ where
         }
     }
 }
-
-

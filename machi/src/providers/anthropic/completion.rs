@@ -1,9 +1,9 @@
-﻿//! Anthropic completion api implementation
+//! Anthropic completion api implementation
 
 use crate::{
     OneOrMany,
     completion::{self, CompletionError, GetTokenUsage},
-    http_client::HttpClientExt,
+    http::HttpClientExt,
     message::{self, DocumentMediaType, DocumentSourceKind, MessageError, Reasoning},
     one_or_many::string_or_one_or_many,
     telemetry::{ProviderResponseExt, SpanCombinator},
@@ -1036,7 +1036,7 @@ where
         &self,
         request: CompletionRequest,
     ) -> Result<
-        crate::streaming::StreamingCompletionResponse<Self::StreamingResponse>,
+        crate::completion::streaming::StreamingCompletionResponse<Self::StreamingResponse>,
         CompletionError,
     > {
         CompletionModel::stream(self, request).await
@@ -1465,5 +1465,3 @@ mod tests {
         }
     }
 }
-
-

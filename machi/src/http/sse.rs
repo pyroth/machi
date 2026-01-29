@@ -23,11 +23,11 @@ use mime_guess::mime;
 use pin_project_lite::pin_project;
 
 use crate::{
+    core::wasm_compat::{WasmCompatSend, WasmCompatSendStream},
     http::{
         HttpClientExt, Result as StreamResult, instance_error,
         retry::{DEFAULT_RETRY, RetryPolicy},
     },
-    core::wasm_compat::{WasmCompatSend, WasmCompatSendStream},
 };
 
 pub type BoxedStream = Pin<Box<dyn WasmCompatSendStream<InnerItem = StreamResult<Bytes>>>>;
@@ -311,7 +311,3 @@ fn check_response<T>(response: Response<T>) -> Result<Response<T>, super::Error>
         Err(super::Error::InvalidContentType(content_type.clone()))
     }
 }
-
-
-
-

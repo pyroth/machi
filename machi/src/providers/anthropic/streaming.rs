@@ -1,4 +1,4 @@
-﻿use async_stream::stream;
+use async_stream::stream;
 use futures::StreamExt;
 use serde::{Deserialize, Serialize};
 use serde_json::json;
@@ -9,13 +9,13 @@ use super::completion::{
     CompletionModel, Content, Message, SystemContent, ToolChoice, ToolDefinition, Usage,
     apply_cache_control,
 };
-use crate::completion::{CompletionError, CompletionRequest, GetTokenUsage};
-use crate::http_client::sse::{Event, GenericEventSource};
-use crate::http_client::{self, HttpClientExt};
-use crate::json_utils::merge_inplace;
-use crate::streaming::{
+use crate::completion::streaming::{
     self, RawStreamingChoice, RawStreamingToolCall, StreamingResult, ToolCallDeltaContent,
 };
+use crate::completion::{CompletionError, CompletionRequest, GetTokenUsage};
+use crate::core::json_utils::merge_inplace;
+use crate::http::sse::{Event, GenericEventSource};
+use crate::http::{self, HttpClientExt};
 use crate::telemetry::SpanCombinator;
 
 #[derive(Debug, Deserialize)]
@@ -239,7 +239,7 @@ where
             .client
             .post("/v1/messages")?
             .body(body)
-            .map_err(http_client::Error::Protocol)?;
+            .map_err(http::Error::Protocol)?;
 
         let stream = GenericEventSource::new(self.client.clone(), req);
 
@@ -735,5 +735,3 @@ mod tests {
         assert!(tool_call_state.is_none());
     }
 }
-
-

@@ -1,4 +1,4 @@
-﻿use std::collections::HashMap;
+use std::collections::HashMap;
 
 use async_stream::stream;
 use futures::StreamExt;
@@ -8,13 +8,13 @@ use serde_json::json;
 use tracing::{Level, enabled, info_span};
 use tracing_futures::Instrument;
 
+use crate::completion::streaming::{self, RawStreamingChoice};
 use crate::completion::{CompletionError, CompletionRequest, GetTokenUsage};
-use crate::http_client::HttpClientExt;
-use crate::http_client::sse::{Event, GenericEventSource};
-use crate::json_utils::{self, merge};
+use crate::core::json_utils::{self, merge};
+use crate::http::HttpClientExt;
+use crate::http::sse::{Event, GenericEventSource};
 use crate::message::{ToolCall, ToolFunction};
 use crate::providers::openai::completion::{self, CompletionModel, OpenAIRequestParams, Usage};
-use crate::streaming::{self, RawStreamingChoice};
 
 // ================================================================
 // OpenAI Completion Streaming API
@@ -281,7 +281,7 @@ where
                         tool_calls = HashMap::new();
                     }
                 }
-                Err(crate::http_client::Error::StreamEnded) => {
+                Err(crate::http::Error::StreamEnded) => {
                     break;
                 }
                 Err(error) => {
@@ -511,41 +511,37 @@ mod tests {
             sse_bytes: Bytes,
         }
 
-        impl crate::http_client::HttpClientExt for MockHttpClient {
+        impl crate::http::HttpClientExt for MockHttpClient {
             fn send<T, U>(
                 &self,
                 _req: http::Request<T>,
             ) -> impl std::future::Future<
-                Output = crate::http_client::Result<
-                    http::Response<crate::http_client::LazyBody<U>>,
-                >,
-            > + crate::wasm_compat::WasmCompatSend
+                Output = crate::http::Result<http::Response<crate::http::LazyBody<U>>>,
+            > + crate::core::wasm_compat::WasmCompatSend
             + 'static
             where
                 T: Into<Bytes>,
-                T: crate::wasm_compat::WasmCompatSend,
+                T: crate::core::wasm_compat::WasmCompatSend,
                 U: From<Bytes>,
-                U: crate::wasm_compat::WasmCompatSend + 'static,
+                U: crate::core::wasm_compat::WasmCompatSend + 'static,
             {
-                std::future::ready(Err(crate::http_client::Error::InvalidStatusCode(
+                std::future::ready(Err(crate::http::Error::InvalidStatusCode(
                     http::StatusCode::NOT_IMPLEMENTED,
                 )))
             }
 
             fn send_multipart<U>(
                 &self,
-                _req: http::Request<crate::http_client::MultipartForm>,
+                _req: http::Request<crate::http::MultipartForm>,
             ) -> impl std::future::Future<
-                Output = crate::http_client::Result<
-                    http::Response<crate::http_client::LazyBody<U>>,
-                >,
-            > + crate::wasm_compat::WasmCompatSend
+                Output = crate::http::Result<http::Response<crate::http::LazyBody<U>>>,
+            > + crate::core::wasm_compat::WasmCompatSend
             + 'static
             where
                 U: From<Bytes>,
-                U: crate::wasm_compat::WasmCompatSend + 'static,
+                U: crate::core::wasm_compat::WasmCompatSend + 'static,
             {
-                std::future::ready(Err(crate::http_client::Error::InvalidStatusCode(
+                std::future::ready(Err(crate::http::Error::InvalidStatusCode(
                     http::StatusCode::NOT_IMPLEMENTED,
                 )))
             }
@@ -554,24 +550,22 @@ mod tests {
                 &self,
                 _req: http::Request<T>,
             ) -> impl std::future::Future<
-                Output = crate::http_client::Result<crate::http_client::StreamingResponse>,
-            > + crate::wasm_compat::WasmCompatSend
+                Output = crate::http::Result<crate::http::StreamingResponse>,
+            > + crate::core::wasm_compat::WasmCompatSend
             where
                 T: Into<Bytes>,
             {
                 let sse_bytes = self.sse_bytes.clone();
                 async move {
-                    let byte_stream = futures::stream::iter(vec![Ok::<
-                        Bytes,
-                        crate::http_client::Error,
-                    >(sse_bytes)]);
-                    let boxed_stream: crate::http_client::sse::BoxedStream = Box::pin(byte_stream);
+                    let byte_stream =
+                        futures::stream::iter(vec![Ok::<Bytes, crate::http::Error>(sse_bytes)]);
+                    let boxed_stream: crate::http::sse::BoxedStream = Box::pin(byte_stream);
 
                     http::Response::builder()
                         .status(http::StatusCode::OK)
                         .header(reqwest::header::CONTENT_TYPE, "text/event-stream")
                         .body(boxed_stream)
-                        .map_err(crate::http_client::Error::Protocol)
+                        .map_err(crate::http::Error::Protocol)
                 }
             }
         }
@@ -610,5 +604,3 @@ mod tests {
         assert_eq!(usage.total_tokens, 15);
     }
 }
-
-

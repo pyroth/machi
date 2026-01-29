@@ -1,4 +1,4 @@
-﻿/*
+/*
  * The code from this module is a Rust port of the
  * https://github.com/anthropics/anthropic-sdk-typescript/tree/main decoders
  *
@@ -8,5 +8,3 @@
 pub mod jsonl;
 pub mod line;
 pub mod sse;
-
-

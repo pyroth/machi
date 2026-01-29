@@ -546,7 +546,3 @@ mod tests {
         assert_eq!(path, &PathBuf::from("tests/data/dummy.epub"));
     }
 }
-
-
-
-

@@ -120,4 +120,3 @@ impl CustomAttributeParser for syn::Attribute {
         Ok(custom_func_path.unwrap())
     }
 }
-

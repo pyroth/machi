@@ -108,4 +108,3 @@ impl StructParser for DataStruct {
         ))
     }
 }
-

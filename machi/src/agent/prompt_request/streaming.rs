@@ -1,4 +1,4 @@
-﻿use crate::{
+use crate::{
     OneOrMany,
     agent::CancelSignal,
     completion::GetTokenUsage,
@@ -378,8 +378,8 @@ where
                         Ok(StreamedAssistantContent::ToolCallDelta { id, content }) => {
                             if let Some(ref hook) = self.hook {
                                 let (name, delta) = match &content {
-                                    crate::streaming::ToolCallDeltaContent::Name(n) => (Some(n.as_str()), ""),
-                                    crate::streaming::ToolCallDeltaContent::Delta(d) => (None, d.as_str()),
+                                    crate::completion::streaming::ToolCallDeltaContent::Name(n) => (Some(n.as_str()), ""),
+                                    crate::completion::streaming::ToolCallDeltaContent::Delta(d) => (None, d.as_str()),
                                 };
                                 hook.on_tool_call_delta(&id, name, delta, cancel_sig.clone())
                                 .await;
@@ -619,8 +619,8 @@ mod tests {
     use super::*;
     use crate::client::ProviderClient;
     use crate::client::completion::CompletionClient;
+    use crate::completion::streaming::StreamingPrompt;
     use crate::providers::anthropic;
-    use crate::streaming::StreamingPrompt;
     use futures::StreamExt;
     use std::sync::Arc;
     use std::sync::atomic::{AtomicBool, AtomicU32, Ordering};
@@ -723,5 +723,3 @@ mod tests {
         );
     }
 }
-
-

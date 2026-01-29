@@ -1,4 +1,4 @@
-﻿use super::prompt_request::{self, PromptRequest};
+use super::prompt_request::{self, PromptRequest};
 use crate::{
     agent::prompt_request::streaming::StreamingPromptRequest,
     completion::{
@@ -6,9 +6,9 @@ use crate::{
         GetTokenUsage, Message, Prompt, PromptError,
     },
     message::ToolChoice,
+    store::{VectorStoreError, request::VectorSearchRequest},
     streaming::{StreamingChat, StreamingCompletion, StreamingPrompt},
     tool::server::ToolServerHandle,
-    vector_store::{VectorStoreError, request::VectorSearchRequest},
     wasm_compat::WasmCompatSend,
 };
 use futures::{StreamExt, TryStreamExt, stream};
@@ -21,7 +21,7 @@ pub type DynamicContextStore = Arc<
     RwLock<
         Vec<(
             usize,
-            Box<dyn crate::vector_store::VectorStoreIndexDyn + Send + Sync>,
+            Box<dyn crate::store::VectorStoreIndexDyn + Send + Sync>,
         )>,
     >,
 >;
@@ -281,5 +281,3 @@ where
         StreamingPromptRequest::new(arc, prompt).with_history(chat_history)
     }
 }
-
-

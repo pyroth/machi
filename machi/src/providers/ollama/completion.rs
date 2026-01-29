@@ -1,9 +1,9 @@
 //! Ollama completion model implementation
 
+use crate::completion::streaming::{self, RawStreamingChoice};
 use crate::completion::{self, CompletionError, CompletionRequest, GetTokenUsage, Usage};
-use crate::http_client::{self, HttpClientExt};
-use crate::streaming::{self, RawStreamingChoice};
-use crate::{json_utils, message, OneOrMany};
+use crate::http::{self as http_client, HttpClientExt};
+use crate::{OneOrMany, json_utils, message};
 use async_stream::try_stream;
 use bytes::Bytes;
 use futures::StreamExt;
@@ -408,7 +408,7 @@ where
                         for tool_call in tool_calls {
                             tool_calls_final.push(tool_call.clone());
                             yield RawStreamingChoice::ToolCall(
-                                crate::streaming::RawStreamingToolCall::new(String::new(), tool_call.function.name, tool_call.function.arguments)
+                                crate::completion::streaming::RawStreamingToolCall::new(String::new(), tool_call.function.name, tool_call.function.arguments)
                             );
                         }
                     }

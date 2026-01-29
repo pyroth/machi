@@ -149,7 +149,3 @@ where
         model.image_generation(self.build()).await
     }
 }
-
-
-
-

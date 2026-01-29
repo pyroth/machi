@@ -1,4 +1,4 @@
-﻿//! xAi API client and Rig integration
+//! xAi API client and Rig integration
 //!
 //! # Example
 //! ```
@@ -14,5 +14,3 @@ pub mod completion;
 pub mod streaming;
 
 pub use client::Client;
-
-

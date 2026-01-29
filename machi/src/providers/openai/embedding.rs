@@ -1,11 +1,11 @@
-﻿use super::{
+use super::{
     Client,
     client::{ApiErrorResponse, ApiResponse},
     completion::Usage,
 };
-use crate::embeddings::EmbeddingError;
-use crate::http_client::HttpClientExt;
-use crate::{embeddings, http_client};
+use crate::embedding::EmbeddingError;
+use crate::http::HttpClientExt;
+use crate::{embedding, http};
 use serde::{Deserialize, Serialize};
 use serde_json::json;
 
@@ -73,7 +73,7 @@ fn model_dimensions_from_identifier(identifier: &str) -> Option<usize> {
     }
 }
 
-impl<T> embeddings::EmbeddingModel for EmbeddingModel<T>
+impl<T> embedding::EmbeddingModel for EmbeddingModel<T>
 where
     T: HttpClientExt + Clone + std::fmt::Debug + Default + Send + 'static,
 {
@@ -97,7 +97,7 @@ where
     async fn embed_texts(
         &self,
         documents: impl IntoIterator<Item = String>,
-    ) -> Result<Vec<embeddings::Embedding>, EmbeddingError> {
+    ) -> Result<Vec<embedding::Embedding>, EmbeddingError> {
         let documents = documents.into_iter().collect::<Vec<_>>();
 
         let mut body = json!({
@@ -148,7 +148,7 @@ where
                         .data
                         .into_iter()
                         .zip(documents.into_iter())
-                        .map(|(embedding, document)| embeddings::Embedding {
+                        .map(|(embedding, document)| embedding::Embedding {
                             document,
                             vec: embedding.embedding,
                         })
@@ -157,7 +157,7 @@ where
                 ApiResponse::Err(err) => Err(EmbeddingError::ProviderError(err.message)),
             }
         } else {
-            let text = http_client::text(response).await?;
+            let text = http::text(response).await?;
             Err(EmbeddingError::ProviderError(text))
         }
     }
@@ -209,5 +209,3 @@ impl<T> EmbeddingModel<T> {
         self
     }
 }
-
-

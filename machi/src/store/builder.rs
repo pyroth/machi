@@ -104,7 +104,3 @@ where
         InMemoryVectorStore::from_builder(self.embeddings, self.index_strategy)
     }
 }
-
-
-
-

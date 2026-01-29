@@ -1,4 +1,4 @@
-﻿// ================================================================
+// ================================================================
 // OpenAI Completion API
 // ================================================================
 
@@ -10,11 +10,11 @@ use super::{
 use crate::completion::{
     CompletionError, CompletionRequest as CoreCompletionRequest, GetTokenUsage,
 };
-use crate::http_client::{self, HttpClientExt};
+use crate::core::one_or_many::string_or_one_or_many;
+use crate::core::wasm_compat::{WasmCompatSend, WasmCompatSync};
+use crate::http::{self, HttpClientExt};
 use crate::message::{AudioMediaType, DocumentSourceKind, ImageDetail, MimeType};
-use crate::one_or_many::string_or_one_or_many;
 use crate::telemetry::{ProviderResponseExt, SpanCombinator};
-use crate::wasm_compat::{WasmCompatSend, WasmCompatSync};
 use crate::{OneOrMany, completion, json_utils, message};
 use serde::{Deserialize, Serialize};
 use std::convert::Infallible;
@@ -1169,7 +1169,7 @@ where
             let response = self.client.send(req).await?;
 
             if response.status().is_success() {
-                let text = http_client::text(response).await?;
+                let text = http::text(response).await?;
 
                 match serde_json::from_str::<ApiResponse<CompletionResponse>>(&text)? {
                     ApiResponse::Ok(response) => {
@@ -1190,7 +1190,7 @@ where
                     ApiResponse::Err(err) => Err(CompletionError::ProviderError(err.message)),
                 }
             } else {
-                let text = http_client::text(response).await?;
+                let text = http::text(response).await?;
                 Err(CompletionError::ProviderError(text))
             }
         }
@@ -1202,11 +1202,9 @@ where
         &self,
         request: CoreCompletionRequest,
     ) -> Result<
-        crate::streaming::StreamingCompletionResponse<Self::StreamingResponse>,
+        crate::completion::streaming::StreamingCompletionResponse<Self::StreamingResponse>,
         CompletionError,
     > {
         Self::stream(self, request).await
     }
 }
-
-

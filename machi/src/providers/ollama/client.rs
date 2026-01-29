@@ -3,7 +3,7 @@
 use crate::client::{
     self, Capabilities, Capable, DebugExt, Nothing, Provider, ProviderBuilder, ProviderClient,
 };
-use crate::http_client;
+use crate::http;
 
 use super::completion::CompletionModel;
 use super::embedding::EmbeddingModel;
@@ -27,7 +27,7 @@ impl Provider for OllamaExt {
             <Self::Builder as crate::client::ProviderBuilder>::ApiKey,
             H,
         >,
-    ) -> http_client::Result<Self> {
+    ) -> http::Result<Self> {
         Ok(Self)
     }
 }

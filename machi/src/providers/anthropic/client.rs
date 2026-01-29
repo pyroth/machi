@@ -1,5 +1,5 @@
-﻿//! Anthropic client api implementation
-use http::{HeaderName, HeaderValue};
+//! Anthropic client api implementation
+use crate::http::{HeaderName, HeaderValue};
 
 use super::completion::{ANTHROPIC_VERSION_LATEST, CompletionModel};
 use crate::{
@@ -7,7 +7,7 @@ use crate::{
         self, ApiKey, Capabilities, Capable, DebugExt, Nothing, Provider, ProviderBuilder,
         ProviderClient,
     },
-    http_client,
+    http,
 };
 
 // ================================================================
@@ -23,7 +23,7 @@ impl Provider for AnthropicExt {
 
     fn build<H>(
         _builder: &client::ClientBuilder<Self::Builder, AnthropicKey, H>,
-    ) -> http_client::Result<Self> {
+    ) -> http::Result<Self> {
         Ok(Self)
     }
 }
@@ -58,7 +58,7 @@ where
 }
 
 impl ApiKey for AnthropicKey {
-    fn into_header(self) -> Option<http_client::Result<(http::HeaderName, HeaderValue)>> {
+    fn into_header(self) -> Option<http::Result<(http::HeaderName, HeaderValue)>> {
         Some(
             HeaderValue::from_str(&self.0)
                 .map(|val| (HeaderName::from_static("x-api-key"), val))
@@ -89,7 +89,7 @@ impl ProviderBuilder for AnthropicBuilder {
     fn finish<H>(
         &self,
         mut builder: client::ClientBuilder<Self, AnthropicKey, H>,
-    ) -> http_client::Result<client::ClientBuilder<Self, AnthropicKey, H>> {
+    ) -> http::Result<client::ClientBuilder<Self, AnthropicKey, H>> {
         builder.headers_mut().insert(
             "anthropic-version",
             HeaderValue::from_str(&self.anthropic_version)?,
@@ -165,5 +165,3 @@ impl<H> ClientBuilder<H> {
         })
     }
 }
-
-

@@ -1,7 +1,7 @@
-﻿use super::{Client, client::ApiResponse};
-use crate::http_client::HttpClientExt;
+use super::{Client, client::ApiResponse};
+use crate::core::json_utils::merge_inplace;
+use crate::http::HttpClientExt;
 use crate::image_generation::{ImageGenerationError, ImageGenerationRequest};
-use crate::json_utils::merge_inplace;
 use crate::{http_client, image_generation};
 use base64::Engine;
 use base64::prelude::BASE64_STANDARD;
@@ -121,5 +121,3 @@ where
         }
     }
 }
-
-

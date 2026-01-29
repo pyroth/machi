@@ -1,4 +1,4 @@
-﻿use crate::{http, core::wasm_compat::WasmCompatSend};
+use crate::{core::wasm_compat::WasmCompatSend, http};
 use std::future::Future;
 use thiserror::Error;
 
@@ -17,5 +17,3 @@ pub trait VerifyClient {
     /// Verify the configuration.
     fn verify(&self) -> impl Future<Output = Result<(), VerifyError>> + WasmCompatSend;
 }
-
-

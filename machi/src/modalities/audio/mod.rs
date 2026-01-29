@@ -7,5 +7,3 @@ pub mod transcription;
 
 pub use generation::*;
 pub use transcription::*;
-
-

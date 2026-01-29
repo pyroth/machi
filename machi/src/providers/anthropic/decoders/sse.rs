@@ -1,4 +1,4 @@
-﻿use super::line::{self, LineDecoder};
+use super::line::{self, LineDecoder};
 use crate::{if_not_wasm, if_wasm};
 use bytes::Bytes;
 use futures::{Stream, StreamExt};
@@ -216,5 +216,3 @@ if_not_wasm! {
         }))
     }
 }
-
-

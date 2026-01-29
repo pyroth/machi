@@ -1,10 +1,10 @@
-﻿use crate::completion::{CompletionError, CompletionRequest};
-use crate::http_client::HttpClientExt;
-use crate::json_utils::{self};
+use crate::completion::streaming::StreamingCompletionResponse;
+use crate::completion::{CompletionError, CompletionRequest};
+use crate::core::json_utils::{self};
+use crate::http::HttpClientExt;
 use crate::providers::openai;
 use crate::providers::openai::send_compatible_streaming_request;
 use crate::providers::xai::completion::{CompletionModel, XAICompletionRequest};
-use crate::streaming::StreamingCompletionResponse;
 use tracing::{Instrument, Level, enabled, info_span};
 
 impl<T> CompletionModel<T>
@@ -63,5 +63,3 @@ where
             .await
     }
 }
-
-

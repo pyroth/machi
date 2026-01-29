@@ -1,4 +1,4 @@
-﻿//! Create a new completion model with the given name
+//! Create a new completion model with the given name
 //!
 //! # Example
 //! ```
@@ -22,5 +22,3 @@ pub mod transcription;
 pub use client::{Client, ClientBuilder, SubProvider};
 #[cfg(feature = "image")]
 pub use image_generation::image_generation_models::*;
-
-

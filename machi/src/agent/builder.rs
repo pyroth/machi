@@ -1,15 +1,15 @@
-﻿use std::{collections::HashMap, sync::Arc};
+use std::{collections::HashMap, sync::Arc};
 
 use tokio::sync::RwLock;
 
 use crate::{
     completion::{CompletionModel, Document},
     message::ToolChoice,
+    store::VectorStoreIndexDyn,
     tool::{
         Tool, ToolDyn, ToolSet,
         server::{ToolServer, ToolServerHandle},
     },
-    vector_store::VectorStoreIndexDyn,
 };
 
 #[cfg(feature = "rmcp")]
@@ -585,5 +585,3 @@ where
         }
     }
 }
-
-

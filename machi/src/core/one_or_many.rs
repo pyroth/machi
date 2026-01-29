@@ -728,7 +728,3 @@ mod test {
         assert!(dummy.field.is_none());
     }
 }
-
-
-
-

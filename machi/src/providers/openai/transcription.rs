@@ -1,10 +1,10 @@
-﻿use bytes::Bytes;
+use bytes::Bytes;
 
-use crate::http_client::multipart::Part;
-use crate::http_client::{HttpClientExt, MultipartForm};
+use crate::http::multipart::Part;
+use crate::http::{HttpClientExt, MultipartForm};
+use crate::modalities::audio::transcription;
+use crate::modalities::audio::transcription::TranscriptionError;
 use crate::providers::openai::{Client, client::ApiResponse};
-use crate::transcription;
-use crate::transcription::TranscriptionError;
 use serde::Deserialize;
 
 // ================================================================
@@ -115,5 +115,3 @@ where
         }
     }
 }
-
-

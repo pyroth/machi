@@ -1,4 +1,4 @@
-﻿//! The OpenAI Responses API.
+//! The OpenAI Responses API.
 //!
 //! By default when creating a completion client, this is the API that gets used.
 //!
@@ -11,16 +11,16 @@ use super::completion::ToolChoice;
 use super::{Client, responses_api::streaming::StreamingCompletionResponse};
 use super::{InputAudio, SystemContent};
 use crate::completion::CompletionError;
-use crate::http_client;
-use crate::http_client::HttpClientExt;
-use crate::json_utils;
+use crate::core::json_utils;
+use crate::core::one_or_many::string_or_one_or_many;
+use crate::http;
+use crate::http::HttpClientExt;
 use crate::message::{
     AudioMediaType, Document, DocumentMediaType, DocumentSourceKind, ImageDetail, MessageError,
     MimeType, Text,
 };
-use crate::one_or_many::string_or_one_or_many;
 
-use crate::wasm_compat::{WasmCompatSend, WasmCompatSync};
+use crate::core::wasm_compat::{WasmCompatSend, WasmCompatSync};
 use crate::{OneOrMany, completion, message};
 use serde::{Deserialize, Serialize};
 use serde_json::{Map, Value};
@@ -1071,7 +1071,7 @@ where
             let response = self.client.send(req).await?;
 
             if response.status().is_success() {
-                let t = http_client::text(response).await?;
+                let t = http::text(response).await?;
                 let response = serde_json::from_str::<Self::Response>(&t)?;
                 let span = tracing::Span::current();
                 span.record("gen_ai.response.id", &response.id);
@@ -1089,7 +1089,7 @@ where
                 }
                 response.try_into()
             } else {
-                let text = http_client::text(response).await?;
+                let text = http::text(response).await?;
                 Err(CompletionError::ProviderError(text))
             }
         }
@@ -1101,7 +1101,7 @@ where
         &self,
         request: crate::completion::CompletionRequest,
     ) -> Result<
-        crate::streaming::StreamingCompletionResponse<Self::StreamingResponse>,
+        crate::completion::streaming::StreamingCompletionResponse<Self::StreamingResponse>,
         CompletionError,
     > {
         ResponsesCompletionModel::stream(self, request).await
@@ -1467,5 +1467,3 @@ impl FromStr for UserContent {
         })
     }
 }
-
-

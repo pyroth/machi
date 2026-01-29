@@ -1,4 +1,4 @@
-﻿use crate::Embed;
+use crate::Embed;
 use crate::embedding::{EmbeddingModel, EmbeddingsBuilder};
 
 /// A provider client with embedding capabilities.
@@ -34,5 +34,3 @@ pub trait EmbeddingsClient {
         EmbeddingsBuilder::new(self.embedding_model_with_ndims(model, ndims))
     }
 }
-
-

@@ -16,8 +16,8 @@ use crate::completion::{
     CompletionError, CompletionModel, CompletionRequestBuilder, CompletionResponse, GetTokenUsage,
     Message, Usage,
 };
-use crate::message::{AssistantContent, Reasoning, Text, ToolCall, ToolFunction, ToolResult};
 use crate::core::wasm_compat::{WasmCompatSend, WasmCompatSync};
+use crate::message::{AssistantContent, Reasoning, Text, ToolCall, ToolFunction, ToolResult};
 use futures::stream::{AbortHandle, Abortable};
 use futures::{Stream, StreamExt};
 use serde::{Deserialize, Serialize};
@@ -387,6 +387,7 @@ pub trait StreamingCompletion<M: CompletionModel> {
     ) -> impl Future<Output = Result<CompletionRequestBuilder<M>, CompletionError>>;
 }
 
+#[allow(dead_code)]
 pub(crate) struct StreamingResultDyn<R: Clone + Unpin + GetTokenUsage> {
     pub(crate) inner: StreamingResult<R>,
 }
@@ -656,7 +657,3 @@ impl StreamedUserContent {
         Self::ToolResult(tool_result)
     }
 }
-
-
-
-

@@ -1,6 +1,6 @@
-﻿use super::client::Client;
+use super::client::Client;
 use crate::completion::GetTokenUsage;
-use crate::http_client::HttpClientExt;
+use crate::http::HttpClientExt;
 use crate::providers::openai::StreamingCompletionResponse;
 use crate::telemetry::SpanCombinator;
 use crate::{
@@ -790,7 +790,7 @@ where
         &self,
         request: CompletionRequest,
     ) -> Result<
-        crate::streaming::StreamingCompletionResponse<Self::StreamingResponse>,
+        crate::completion::streaming::StreamingCompletionResponse<Self::StreamingResponse>,
         CompletionError,
     > {
         CompletionModel::stream(self, request).await
@@ -1183,5 +1183,3 @@ mod tests {
         };
     }
 }
-
-

@@ -7,9 +7,10 @@ use std::{cmp::max, collections::HashMap};
 use futures::{StreamExt, stream};
 
 use crate::{
-    core::OneOrMany, embedding::{
+    core::OneOrMany,
+    embedding::{
         Embed, EmbedError, Embedding, EmbeddingError, EmbeddingModel, embed::TextEmbedder,
-    }
+    },
 };
 
 /// Builder for creating embeddings from one or more documents of type `T`.
@@ -407,7 +408,3 @@ mod tests {
         )
     }
 }
-
-
-
-

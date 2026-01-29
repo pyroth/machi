@@ -1,9 +1,9 @@
-﻿use crate::{
+use crate::{
     client::{
         self, BearerAuth, Capabilities, Capable, DebugExt, Nothing, Provider, ProviderBuilder,
         ProviderClient,
     },
-    http_client,
+    http,
 };
 
 // ================================================================
@@ -27,9 +27,7 @@ impl Provider for XAiExt {
 
     const VERIFY_PATH: &'static str = "/v1/api-key";
 
-    fn build<H>(
-        _: &client::ClientBuilder<Self::Builder, XAiApiKey, H>,
-    ) -> http_client::Result<Self> {
+    fn build<H>(_: &client::ClientBuilder<Self::Builder, XAiApiKey, H>) -> http::Result<Self> {
         Ok(Self)
     }
 }
@@ -91,5 +89,3 @@ pub mod xai_api_types {
         Error(ApiErrorResponse),
     }
 }
-
-

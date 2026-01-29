@@ -1,4 +1,4 @@
-﻿//! JSONL is currently not used, it might be used when Anthropic batches beta feature is used.
+//! JSONL is currently not used, it might be used when Anthropic batches beta feature is used.
 use crate::providers::anthropic::decoders::line::LineDecoder;
 use futures::{Stream, StreamExt};
 use serde::de::DeserializeOwned;
@@ -145,5 +145,3 @@ where
         }
     }
 }
-
-

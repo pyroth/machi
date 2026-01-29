@@ -1,10 +1,10 @@
-﻿use super::completion::CompletionModel;
+use super::completion::CompletionModel;
+use crate::completion::streaming;
 use crate::completion::{CompletionError, CompletionRequest};
-use crate::http_client::HttpClientExt;
-use crate::json_utils::{self};
+use crate::core::json_utils::{self};
+use crate::http::HttpClientExt;
 use crate::providers::huggingface::completion::HuggingfaceCompletionRequest;
 use crate::providers::openai::{StreamingCompletionResponse, send_compatible_streaming_request};
-use crate::streaming;
 use tracing::{Instrument, info_span};
 
 impl<T> CompletionModel<T>
@@ -29,7 +29,7 @@ where
 
         if tracing::enabled!(tracing::Level::TRACE) {
             tracing::trace!(
-                target: "crate::streaming",
+                target: "crate::completion::streaming",
                 "Huggingface streaming completion request: {}",
                 serde_json::to_string_pretty(&request)?
             );
@@ -68,5 +68,3 @@ where
             .await
     }
 }
-
-

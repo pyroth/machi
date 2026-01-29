@@ -1,4 +1,4 @@
-﻿pub mod streaming;
+pub mod streaming;
 
 pub use streaming::StreamingPromptHook;
 
@@ -635,5 +635,3 @@ where
         })
     }
 }
-
-

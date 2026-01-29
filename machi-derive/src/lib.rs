@@ -360,4 +360,3 @@ pub fn machi_tool(args: TokenStream, input: TokenStream) -> TokenStream {
 
     TokenStream::from(expanded)
 }
-

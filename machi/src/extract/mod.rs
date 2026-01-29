@@ -37,9 +37,9 @@ use serde_json::json;
 use crate::{
     agent::{Agent, AgentBuilder, AgentBuilderSimple},
     completion::{Completion, CompletionError, CompletionModel, ToolDefinition},
+    core::wasm_compat::{WasmCompatSend, WasmCompatSync},
     message::{AssistantContent, Message, ToolCall, ToolChoice, ToolFunction},
     tool::Tool,
-    core::wasm_compat::{WasmCompatSend, WasmCompatSync},
 };
 
 const SUBMIT_TOOL_NAME: &str = "submit";
@@ -318,7 +318,3 @@ where
         Ok(data)
     }
 }
-
-
-
-
