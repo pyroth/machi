@@ -53,17 +53,17 @@ impl ToolSet {
     /// Create a new `ToolSet` from a list of tools
     pub fn from_tools(tools: Vec<impl ToolDyn + 'static>) -> Self {
         let mut toolset = Self::default();
-        tools.into_iter().for_each(|tool| {
+        for tool in tools {
             toolset.add_tool(tool);
-        });
+        }
         toolset
     }
 
     pub fn from_tools_boxed(tools: Vec<Box<dyn ToolDyn + 'static>>) -> Self {
         let mut toolset = Self::default();
-        tools.into_iter().for_each(|tool| {
+        for tool in tools {
             toolset.add_tool_boxed(tool);
-        });
+        }
         toolset
     }
 
@@ -186,16 +186,19 @@ pub struct ToolSetBuilder {
 }
 
 impl ToolSetBuilder {
+    #[must_use]
     pub fn static_tool(mut self, tool: impl ToolDyn + 'static) -> Self {
         self.tools.push(ToolType::Simple(Box::new(tool)));
         self
     }
 
+    #[must_use]
     pub fn dynamic_tool(mut self, tool: impl ToolEmbeddingDyn + 'static) -> Self {
         self.tools.push(ToolType::Embedding(Box::new(tool)));
         self
     }
 
+    #[must_use]
     pub fn build(self) -> ToolSet {
         ToolSet {
             tools: self

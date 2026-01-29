@@ -212,11 +212,11 @@ where
 
                             // Update fields if present
                             if let Some(id) = &tool_call.id && !id.is_empty() {
-                                    existing_tool_call.id = id.clone();
+                                    existing_tool_call.id.clone_from(id);
                             }
 
                             if let Some(name) = &tool_call.function.name && !name.is_empty() {
-                                    existing_tool_call.function.name = name.clone();
+                                    existing_tool_call.function.name.clone_from(name);
                                     yield Ok(streaming::RawStreamingChoice::ToolCallDelta {
                                         id: existing_tool_call.id.clone(),
                                         content: streaming::ToolCallDeltaContent::Name(name.clone()),

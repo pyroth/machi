@@ -502,12 +502,12 @@ mod tests {
                 ]
             },
             "done": true,
-            "total_duration": 8000000000u64,
-            "load_duration": 6000000u64,
+            "total_duration": 8_000_000_000_u64,
+            "load_duration": 6_000_000_u64,
             "prompt_eval_count": 61u64,
-            "prompt_eval_duration": 400000000u64,
+            "prompt_eval_duration": 400_000_000_u64,
             "eval_count": 468u64,
-            "eval_duration": 7700000000u64
+            "eval_duration": 7_700_000_000_u64
         });
         let sample_text = sample_chat_response.to_string();
 
@@ -560,12 +560,12 @@ mod tests {
                 "tool_calls": []
             },
             "done": true,
-            "total_duration": 8000000000u64,
-            "load_duration": 6000000u64,
+            "total_duration": 8_000_000_000_u64,
+            "load_duration": 6_000_000_u64,
             "prompt_eval_count": 61u64,
-            "prompt_eval_duration": 400000000u64,
+            "prompt_eval_duration": 400_000_000_u64,
             "eval_count": 468u64,
-            "eval_duration": 7700000000u64
+            "eval_duration": 7_700_000_000_u64
         });
 
         let chat_resp: CompletionResponse =

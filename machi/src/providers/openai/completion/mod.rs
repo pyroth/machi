@@ -82,7 +82,7 @@ pub const O3_MINI: &str = "o3-mini";
 pub const O3_MINI_2025_01_31: &str = "o3-mini-2025-01-31";
 /// `o1-pro` completion model
 pub const O1_PRO: &str = "o1-pro";
-/// `o1`` completion model
+/// `o1` completion model
 pub const O1: &str = "o1";
 /// `o1-2024-12-17` completion model
 pub const O1_2024_12_17: &str = "o1-2024-12-17";
@@ -90,7 +90,7 @@ pub const O1_2024_12_17: &str = "o1-2024-12-17";
 pub const O1_PREVIEW: &str = "o1-preview";
 /// `o1-preview-2024-09-12` completion model
 pub const O1_PREVIEW_2024_09_12: &str = "o1-preview-2024-09-12";
-/// `o1-mini completion model
+/// `o1-mini` completion model
 pub const O1_MINI: &str = "o1-mini";
 /// `o1-mini-2024-09-12` completion model
 pub const O1_MINI_2024_09_12: &str = "o1-mini-2024-09-12";
@@ -387,9 +387,11 @@ impl TryFrom<message::ToolResult> for Message {
             .into_iter()
             .map(|content| match content {
                 message::ToolResultContent::Text(message::Text { text }) => Ok(text),
-                _ => Err(message::MessageError::ConversionError(
-                    "Tool result content does not support non-text".into(),
-                )),
+                message::ToolResultContent::Image(_) => {
+                    Err(message::MessageError::ConversionError(
+                        "Tool result content does not support non-text".into(),
+                    ))
+                }
             })
             .collect::<Result<Vec<_>, _>>()?
             .join("\n");

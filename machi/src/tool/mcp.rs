@@ -147,8 +147,8 @@ impl ToolDyn for McpTool {
                     RawContent::Audio(_) => {
                         panic!("Support for audio results from an MCP tool is currently unimplemented. Come back later!")
                     }
-                    thing => {
-                        panic!("Unsupported type found: {thing:?}")
+                    RawContent::ResourceLink(thing) => {
+                        panic!("Unsupported ResourceLink type found: {thing:?}")
                     }
                 })
                 .collect::<String>())

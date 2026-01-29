@@ -1393,7 +1393,7 @@ impl TryFrom<message::Message> for Vec<Message> {
                                         completion::message::ToolResultContent::Text(Text {
                                             text,
                                         }) => text,
-                                        _ => return  Err(MessageError::ConversionError("This API only currently supports text tool results".into()))
+                                        completion::message::ToolResultContent::Image(_) => return Err(MessageError::ConversionError("This API only currently supports text tool results".into()))
                                     }
                                 },
                             }),

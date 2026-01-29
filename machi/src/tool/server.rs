@@ -51,6 +51,7 @@ impl ToolServer {
     }
 
     /// Add a static tool to the agent
+    #[must_use]
     pub fn tool(mut self, tool: impl Tool + 'static) -> Self {
         let toolname = tool.name();
         self.toolset.add_tool(tool);
@@ -61,6 +62,7 @@ impl ToolServer {
     // Add an MCP tool (from `rmcp`) to the agent
     #[cfg_attr(docsrs, doc(cfg(feature = "rmcp")))]
     #[cfg(feature = "rmcp")]
+    #[must_use]
     pub fn rmcp_tool(mut self, tool: rmcp::model::Tool, client: rmcp::service::ServerSink) -> Self {
         use crate::tool::mcp::McpTool;
         let toolname = tool.name.clone();
@@ -72,6 +74,7 @@ impl ToolServer {
 
     /// Add some dynamic tools to the agent. On each prompt, `sample` tools from the
     /// dynamic toolset will be inserted in the request.
+    #[must_use]
     pub fn dynamic_tools(
         mut self,
         sample: usize,
