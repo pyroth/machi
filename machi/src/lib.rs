@@ -11,7 +11,6 @@ pub mod core;
 pub mod embedding;
 pub mod extract;
 pub mod http;
-pub mod integration;
 pub mod loader;
 pub mod modalities;
 pub mod prelude;

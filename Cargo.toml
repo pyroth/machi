@@ -1,5 +1,5 @@
 [workspace]
-members = ["machi", "machi-cli", "machi-derive"]
+members = ["machi", "machi-cli", "machi-derive", "machi-integrations"]
 default-members = ["machi"]
 resolver = "3"
 
@@ -10,6 +10,10 @@ license = "MIT OR Apache-2.0"
 repository = "https://github.com/pyroth/machi"
 
 [workspace.dependencies]
+machi = { path = "machi" }
+machi-derive = { path = "machi-derive" }
+machi-integrations = { path = "machi-integrations" }
+
 # A-F
 anyhow = "1.0"
 as-any = "0.3"
@@ -30,8 +34,6 @@ glob = "0.3"
 http = "1.3"
 indoc = "2.0"
 lopdf = "0.39"
-machi = { path = "machi" }
-machi-derive = { path = "machi-derive" }
 mime = "0.3"
 mime_guess = "2.0"
 

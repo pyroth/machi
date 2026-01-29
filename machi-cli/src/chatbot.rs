@@ -1,11 +1,15 @@
-use crate::{
+//! CLI chatbot module for interactive conversations with AI agents.
+//!
+//! This module provides a simple CLI interface for chatting with agents.
+
+use futures::StreamExt;
+use machi::{
     agent::{Agent, MultiTurnStreamItem, Text},
     completion::{Chat, CompletionError, CompletionModel, PromptError, Usage},
     core::wasm_compat::WasmCompatSend,
     message::Message,
     streaming::{StreamedAssistantContent, StreamingPrompt},
 };
-use futures::StreamExt;
 use std::io::{self, Write};
 
 pub struct NoImplProvided;

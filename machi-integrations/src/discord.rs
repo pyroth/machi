@@ -1,9 +1,11 @@
-//! Integration for deploying your Rig agents (and more) as Discord bots.
-//! This feature is not WASM-compatible (and as such, is incompatible with the `worker` feature).
-use crate::OneOrMany;
-use crate::agent::Agent;
-use crate::completion::{AssistantContent, CompletionModel, request::Chat};
-use crate::message::{Message as RigMessage, UserContent};
+//! Integration for deploying your Machi agents as Discord bots.
+//!
+//! This feature is not WASM-compatible.
+
+use machi::OneOrMany;
+use machi::agent::Agent;
+use machi::completion::{AssistantContent, CompletionModel, request::Chat};
+use machi::message::{Message as MachiMessage, UserContent};
 use serenity::all::{
     Command, CommandInteraction, Context, CreateCommand, CreateThread, EventHandler,
     GatewayIntents, Interaction, Message, Ready, async_trait,
@@ -12,10 +14,10 @@ use std::collections::HashMap;
 use std::sync::Arc;
 use tokio::sync::RwLock;
 
-// Bot state containing the agent and conversation histories
+/// Bot state containing the agent and conversation histories
 struct BotState<M: CompletionModel> {
     agent: Agent<M>,
-    conversations: Arc<RwLock<HashMap<u64, Vec<RigMessage>>>>,
+    conversations: Arc<RwLock<HashMap<u64, Vec<MachiMessage>>>>,
 }
 
 impl<M: CompletionModel> BotState<M> {
@@ -27,7 +29,7 @@ impl<M: CompletionModel> BotState<M> {
     }
 }
 
-// Event handler for the Discord bot
+/// Event handler for the Discord bot
 struct Handler<M: CompletionModel> {
     state: Arc<BotState<M>>,
 }
@@ -121,11 +123,10 @@ where
             if let Err(e) = command
                 .edit_response(
                     &ctx.http,
-                    serenity::all::EditInteractionResponse::new()
-                        .content(format!(
-                            "Started a new conversation in <#{}>! Send messages there to chat with the AI.",
-                            thread.id
-                        ))
+                    serenity::all::EditInteractionResponse::new().content(format!(
+                        "Started a new conversation in <#{}>! Send messages there to chat with the AI.",
+                        thread.id
+                    )),
                 )
                 .await
             {
@@ -153,7 +154,7 @@ where
         {
             let mut conversations = self.state.conversations.write().await;
             if let Some(history) = conversations.get_mut(&thread_id) {
-                history.push(RigMessage::User {
+                history.push(MachiMessage::User {
                     content: OneOrMany::one(UserContent::text(msg.content.clone())),
                 });
             }
@@ -191,7 +192,7 @@ where
         {
             let mut conversations = self.state.conversations.write().await;
             if let Some(history) = conversations.get_mut(&thread_id) {
-                history.push(RigMessage::Assistant {
+                history.push(MachiMessage::Assistant {
                     content: OneOrMany::one(AssistantContent::text(msg.content.clone())),
                     id: None,
                 });
@@ -215,7 +216,6 @@ where
 }
 
 /// A trait for turning a type into a `serenity` client.
-///
 pub trait DiscordExt: Sized + Send + Sync
 where
     Self: 'static,

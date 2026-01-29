@@ -2,7 +2,7 @@
 name = "machi"
 version.workspace = true
 edition.workspace = true
-description = "A Web3-native AI Agent Framework with embedded wallet capabilities (refactored)"
+description = "A Web3-native AI Agent Framework with embedded wallet capabilities"
 license.workspace = true
 readme = "../README.md"
 repository.workspace = true
@@ -51,7 +51,6 @@ quick-xml = { workspace = true, optional = true }
 rayon = { workspace = true, optional = true }
 reqwest-middleware = { workspace = true, optional = true }
 rmcp = { workspace = true, optional = true }
-serenity = { workspace = true, optional = true }
 wasm-bindgen-futures = { workspace = true, optional = true }
 
 [dev-dependencies]
@@ -69,7 +68,6 @@ audio = []
 image = []
 derive = ["dep:machi-derive"]
 experimental = []
-discord-bot = ["dep:serenity"]
 pdf = ["dep:lopdf"]
 epub = ["dep:epub", "dep:quick-xml"]
 rayon = ["dep:rayon"]

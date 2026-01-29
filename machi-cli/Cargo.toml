@@ -2,16 +2,18 @@
 name = "machi-cli"
 version.workspace = true
 edition.workspace = true
-description = "A Web3-native AI Agent Framework with embedded wallet capabilities"
+description = "CLI tools for Machi AI Agent Framework"
 license.workspace = true
 readme = "../README.md"
 repository.workspace = true
-keywords = ["agent", "ai", "web3", "wallet", "ethereum"]
-categories = ["cryptography", "asynchronous"]
-
-
+keywords = ["agent", "ai", "cli", "chatbot"]
+categories = ["command-line-utilities", "asynchronous"]
 
 [dependencies]
+futures.workspace = true
+machi = { workspace = true }
+tokio = { workspace = true, features = ["rt-multi-thread", "macros"] }
+tracing.workspace = true
 
 [lints]
 workspace = true

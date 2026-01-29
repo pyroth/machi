@@ -1440,7 +1440,6 @@ dependencies = [
  "serde",
  "serde_json",
  "serde_path_to_error",
- "serenity",
  "thiserror 2.0.18",
  "tokio",
  "tokio-test",
@@ -1454,6 +1453,12 @@ dependencies = [
 [[package]]
 name = "machi-cli"
 version = "0.1.1"
+dependencies = [
+ "futures",
+ "machi",
+ "tokio",
+ "tracing",
+]
 
 [[package]]
 name = "machi-derive"
@@ -1470,6 +1475,16 @@ dependencies = [
  "syn 2.0.114",
  "tokio",
  "tracing-subscriber",
+]
+
+[[package]]
+name = "machi-integrations"
+version = "0.1.1"
+dependencies = [
+ "machi",
+ "serenity",
+ "tokio",
+ "tracing",
 ]
 
 [[package]]
