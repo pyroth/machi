@@ -6,7 +6,7 @@ use std::marker::PhantomData;
 use std::str::FromStr;
 
 pub fn empty_or_none(value: &Option<String>) -> bool {
-    value.as_ref().map(|v| v.is_empty()).unwrap_or(true)
+    value.as_ref().is_none_or(std::string::String::is_empty)
 }
 
 pub fn merge(a: serde_json::Value, b: serde_json::Value) -> serde_json::Value {
@@ -29,9 +29,9 @@ pub fn merge_inplace(a: &mut serde_json::Value, b: serde_json::Value) {
     }
 }
 
-/// Convert a serde_json::Value to a JSON string for tool arguments.
-/// Handles the case where vLLM returns arguments as a JSON string (Value::String)
-/// instead of a JSON object (Value::Object) like OpenAI does.
+/// Convert a `serde_json::Value` to a JSON string for tool arguments.
+/// Handles the case where vLLM returns arguments as a JSON string (`Value::String`)
+/// instead of a JSON object (`Value::Object`) like `OpenAI` does.
 pub fn value_to_json_string(value: &serde_json::Value) -> String {
     match value {
         serde_json::Value::String(s) => s.clone(),
@@ -41,7 +41,7 @@ pub fn value_to_json_string(value: &serde_json::Value) -> String {
 
 /// This module is helpful in cases where raw json objects are serialized and deserialized as
 ///  strings such as `"{\"key\": \"value\"}"`. This might seem odd but it's actually how some
-///  some providers such as OpenAI return function arguments (for some reason).
+///  some providers such as `OpenAI` return function arguments (for some reason).
 pub mod stringified_json {
     use serde::{self, Deserialize, Deserializer, Serializer};
 

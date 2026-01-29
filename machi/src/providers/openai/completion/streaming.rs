@@ -261,7 +261,7 @@ where
 
                     // Finish reason
                     if let Some(finish_reason) = &choice.finish_reason && *finish_reason == FinishReason::ToolCalls {
-                        for (_idx, tool_call) in tool_calls.into_iter() {
+                        for (_idx, tool_call) in tool_calls {
                             final_tool_calls.push(completion::ToolCall {
                                 id: tool_call.id.clone(),
                                 r#type: completion::ToolType::Function,
@@ -297,7 +297,7 @@ where
         event_source.close();
 
         // Flush any accumulated tool calls (that weren't emitted as ToolCall earlier)
-        for (_idx, tool_call) in tool_calls.into_iter() {
+        for (_idx, tool_call) in tool_calls {
             yield Ok(streaming::RawStreamingChoice::ToolCall(
                 streaming::RawStreamingToolCall::new(
                     tool_call.id,

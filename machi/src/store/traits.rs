@@ -52,15 +52,15 @@ pub type TopNResults = Result<Vec<(f64, String, Value)>, VectorStoreError>;
 
 /// Type-erased [`VectorStoreIndex`] for dynamic dispatch.
 pub trait VectorStoreIndexDyn: WasmCompatSend + WasmCompatSync {
-    fn top_n<'a>(
-        &'a self,
+    fn top_n(
+        &self,
         req: VectorSearchRequest<Filter<serde_json::Value>>,
-    ) -> WasmBoxedFuture<'a, TopNResults>;
+    ) -> WasmBoxedFuture<'_, TopNResults>;
 
-    fn top_n_ids<'a>(
-        &'a self,
+    fn top_n_ids(
+        &self,
         req: VectorSearchRequest<Filter<serde_json::Value>>,
-    ) -> WasmBoxedFuture<'a, Result<Vec<(f64, String)>, VectorStoreError>>;
+    ) -> WasmBoxedFuture<'_, Result<Vec<(f64, String)>, VectorStoreError>>;
 }
 
 impl<I: VectorStoreIndex<Filter = F>, F> VectorStoreIndexDyn for I
@@ -74,10 +74,10 @@ where
         + for<'de> Deserialize<'de>
         + 'static,
 {
-    fn top_n<'a>(
-        &'a self,
+    fn top_n(
+        &self,
         req: VectorSearchRequest<Filter<serde_json::Value>>,
-    ) -> WasmBoxedFuture<'a, TopNResults> {
+    ) -> WasmBoxedFuture<'_, TopNResults> {
         let req = req.map_filter(Filter::interpret);
 
         Box::pin(async move {
@@ -90,10 +90,10 @@ where
         })
     }
 
-    fn top_n_ids<'a>(
-        &'a self,
+    fn top_n_ids(
+        &self,
         req: VectorSearchRequest<Filter<serde_json::Value>>,
-    ) -> WasmBoxedFuture<'a, Result<Vec<(f64, String)>, VectorStoreError>> {
+    ) -> WasmBoxedFuture<'_, Result<Vec<(f64, String)>, VectorStoreError>> {
         let req = req.map_filter(Filter::interpret);
 
         Box::pin(self.top_n_ids(req))

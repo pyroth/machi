@@ -1,7 +1,8 @@
 use super::client::Client;
 use crate::http::HttpClientExt;
 use crate::image_generation;
-use crate::image_generation::{ImageGenerationError, ImageGenerationRequest};
+use crate::image_generation::ImageGenerationRequest;
+use crate::modalities::image::errors::ImageGenerationError;
 use serde_json::json;
 
 #[allow(non_upper_case_globals)]
@@ -92,8 +93,7 @@ where
             let text: String = String::from_utf8_lossy(&text).into();
 
             return Err(ImageGenerationError::ProviderError(format!(
-                "{}: {}",
-                status, text
+                "{status}: {text}"
             )));
         }
 

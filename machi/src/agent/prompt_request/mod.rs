@@ -77,7 +77,7 @@ impl<'a, M> PromptRequest<'a, Standard, M, ()>
 where
     M: CompletionModel,
 {
-    /// Create a new PromptRequest with the given prompt and model
+    /// Create a new `PromptRequest` with the given prompt and model
     pub fn new(agent: &'a Agent<M>, prompt: impl Into<Message>) -> Self {
         Self {
             prompt: prompt.into(),
@@ -196,7 +196,7 @@ impl CancelSignal {
     }
 
     fn cancel_reason(&self) -> Option<&str> {
-        self.reason.get().map(|x| x.as_str())
+        self.reason.get().map(std::string::String::as_str)
     }
 }
 
@@ -346,10 +346,10 @@ where
 
         let agent = self.agent;
         let chat_history = if let Some(history) = self.chat_history {
-            history.push(self.prompt.to_owned());
+            history.push(self.prompt.clone());
             history
         } else {
-            &mut vec![self.prompt.to_owned()]
+            &mut vec![self.prompt.clone()]
         };
 
         if let Some(text) = self.prompt.rag_text() {
@@ -392,7 +392,7 @@ where
                 .await;
                 if cancel_sig.is_cancelled() {
                     return Err(PromptError::prompt_cancelled(
-                        chat_history.to_vec(),
+                        chat_history.clone(),
                         cancel_sig.cancel_reason().unwrap_or("<no reason given>"),
                     ));
                 }
@@ -424,7 +424,7 @@ where
 
             if let Some(id) = chat_span.id() {
                 current_span_id.store(id.into_u64(), Ordering::SeqCst);
-            };
+            }
 
             let resp = agent
                 .completion(
@@ -443,7 +443,7 @@ where
                     .await;
                 if cancel_sig.is_cancelled() {
                     return Err(PromptError::prompt_cancelled(
-                        chat_history.to_vec(),
+                        chat_history.clone(),
                         cancel_sig.cancel_reason().unwrap_or("<no reason given>"),
                     ));
                 }
@@ -514,7 +514,7 @@ where
 
                     if let Some(id) = tool_span.id() {
                         current_span_id.store(id.into_u64(), Ordering::SeqCst);
-                    };
+                    }
 
                     async move {
                         if let AssistantContent::ToolCall(tool_call) = choice {
@@ -552,12 +552,11 @@ where
                                             call_id,
                                             OneOrMany::one(reason.into()),
                                         ));
-                                    } else {
-                                        return Ok(UserContent::tool_result(
-                                            tool_call.id.clone(),
-                                            OneOrMany::one(reason.into()),
-                                        ));
                                     }
+                                    return Ok(UserContent::tool_result(
+                                        tool_call.id.clone(),
+                                        OneOrMany::one(reason.into()),
+                                    ));
                                 }
                             }
                             let output =
@@ -573,7 +572,7 @@ where
                                     tool_name,
                                     tool_call.call_id.clone(),
                                     &args,
-                                    &output.to_string(),
+                                    &output.clone(),
                                     cancel_sig2.clone(),
                                 )
                                 .await;
@@ -614,7 +613,7 @@ where
                 .map_err(|e| {
                     if matches!(e, ToolSetError::Interrupted) {
                         PromptError::prompt_cancelled(
-                            chat_history.to_vec(),
+                            chat_history.clone(),
                             cancel_sig.cancel_reason().unwrap_or("<no reason given>"),
                         )
                     } else {

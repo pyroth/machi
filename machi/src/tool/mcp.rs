@@ -86,7 +86,8 @@ impl ToolDyn for McpTool {
         Box::pin(async move {
             let result = self
                 .client
-                .call_tool(rmcp::model::CallToolRequestParam {
+                .call_tool(rmcp::model::CallToolRequestParams {
+                    meta: None,
                     name,
                     arguments,
                     task: None,
@@ -98,17 +99,16 @@ impl ToolDyn for McpTool {
                 let error_msg = result
                     .content
                     .into_iter()
-                    .map(|x| x.raw.as_text().map(|y| y.to_owned()))
+                    .map(|x| x.raw.as_text().map(std::borrow::ToOwned::to_owned))
                     .map(|x| x.map(|x| x.clone().text))
                     .collect::<Option<Vec<String>>>();
 
                 let error_message = error_msg.map(|x| x.join("\n"));
                 if let Some(error_message) = error_message {
                     return Err(McpToolError(error_message).into());
-                } else {
-                    return Err(McpToolError("No message returned".to_string()).into());
                 }
-            };
+                return Err(McpToolError("No message returned".to_string()).into());
+            }
 
             Ok(result
                 .content

@@ -4,7 +4,7 @@ mod audio {
 
     /// A provider client with audio generation capabilities.
     pub trait AudioGenerationClient {
-        /// The AudioGenerationModel used by the Client
+        /// The `AudioGenerationModel` used by the Client
         type AudioGenerationModel: AudioGenerationModel<Client = Self>;
 
         /// Create an audio generation model with the given name.

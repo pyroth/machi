@@ -222,7 +222,7 @@ where
         }
 
         if let Some(ref params) = completion_request.additional_params {
-            merge_inplace(&mut body, params.clone())
+            merge_inplace(&mut body, params.clone());
         }
 
         if enabled!(Level::TRACE) {
@@ -652,7 +652,7 @@ mod tests {
                     _ => panic!("Expected Delta content"),
                 }
             }
-            _ => panic!("Expected ToolCallDelta choice, got {:?}", choice),
+            _ => panic!("Expected ToolCallDelta choice, got {choice:?}"),
         }
 
         // Verify the input_json was accumulated
@@ -728,7 +728,7 @@ mod tests {
                 );
                 assert_eq!(arguments.get("temp").unwrap().as_str().unwrap(), "20C");
             }
-            other => panic!("Expected ToolCall, got {:?}", other),
+            other => panic!("Expected ToolCall, got {other:?}"),
         }
 
         // Tool call state should be taken

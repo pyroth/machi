@@ -4,7 +4,7 @@ mod image {
 
     /// A provider client with image generation capabilities.
     pub trait ImageGenerationClient {
-        /// The ImageGenerationModel used by the Client
+        /// The `ImageGenerationModel` used by the Client
         type ImageGenerationModel: ImageGenerationModel<Client = Self>;
 
         /// Create an image generation model with the given name.

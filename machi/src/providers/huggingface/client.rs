@@ -3,9 +3,9 @@ use crate::client::{
     ProviderClient,
 };
 use crate::http;
-#[cfg(feature = "image")]
-use crate::image_generation::ImageGenerationError;
 use crate::modalities::audio::TranscriptionError;
+#[cfg(feature = "image")]
+use crate::modalities::image::errors::ImageGenerationError;
 use std::fmt::Debug;
 use std::fmt::Display;
 
@@ -23,14 +23,14 @@ pub enum SubProvider {
 }
 
 impl SubProvider {
-    /// Get the chat completion endpoint for the SubProvider
+    /// Get the chat completion endpoint for the `SubProvider`
     /// Required because Huggingface Inference requires the model
     /// in the url and in the request body.
     pub fn completion_endpoint(&self, _model: &str) -> String {
         "v1/chat/completions".to_string()
     }
 
-    /// Get the transcription endpoint for the SubProvider
+    /// Get the transcription endpoint for the `SubProvider`
     /// Required because Huggingface Inference requires the model
     /// in the url and in the request body.
     pub fn transcription_endpoint(&self, model: &str) -> Result<String, TranscriptionError> {
@@ -42,7 +42,7 @@ impl SubProvider {
         }
     }
 
-    /// Get the image generation endpoint for the SubProvider
+    /// Get the image generation endpoint for the `SubProvider`
     /// Required because Huggingface Inference requires the model
     /// in the url and in the request body.
     #[cfg(feature = "image")]

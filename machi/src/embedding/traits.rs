@@ -5,7 +5,7 @@
 //! - [`ImageEmbeddingModel`] - Trait for embedding models that generate image embeddings
 //! - [`VectorDistance`] - Trait for computing distances between embedding vectors
 
-use crate::core::wasm_compat::*;
+use crate::core::wasm_compat::{WasmCompatSend, WasmCompatSync};
 
 use super::{Embedding, EmbeddingError};
 

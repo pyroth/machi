@@ -56,7 +56,7 @@ where
     pub name: Option<String>,
     /// Agent description. Primarily useful when using sub-agents as part of an agent workflow and converting agents to other formats.
     pub description: Option<String>,
-    /// Completion model (e.g.: OpenAI's gpt-3.5-turbo-1106, Cohere's command-r)
+    /// Completion model (e.g.: `OpenAI`'s gpt-3.5-turbo-1106, Cohere's command-r)
     pub model: Arc<M>,
     /// System prompt
     pub preamble: Option<String>,
@@ -104,7 +104,7 @@ where
             chat_history
                 .iter()
                 .rev()
-                .find_map(|message| message.rag_text())
+                .find_map(super::super::completion::message::Message::rag_text)
         });
 
         let completion_request = self
@@ -127,60 +127,57 @@ where
         };
 
         // If the agent has RAG text, we need to fetch the dynamic context and tools
-        let agent = match &rag_text {
-            Some(text) => {
-                let dynamic_context = stream::iter(self.dynamic_context.read().await.iter())
-                    .then(|(num_sample, index)| async {
-                        let req = VectorSearchRequest::builder().query(text).samples(*num_sample as u64).build().expect("Creating VectorSearchRequest here shouldn't fail since the query and samples to return are always present");
-                        Ok::<_, VectorStoreError>(
-                            index
-                                .top_n(req)
-                                .await?
-                                .into_iter()
-                                .map(|(_, id, doc)| {
-                                    // Pretty print the document if possible for better readability
-                                    let text = serde_json::to_string_pretty(&doc)
-                                        .unwrap_or_else(|_| doc.to_string());
+        let agent = if let Some(text) = &rag_text {
+            let dynamic_context = stream::iter(self.dynamic_context.read().await.iter())
+                .then(|(num_sample, index)| async {
+                    let req = VectorSearchRequest::builder().query(text).samples(*num_sample as u64).build().expect("Creating VectorSearchRequest here shouldn't fail since the query and samples to return are always present");
+                    Ok::<_, VectorStoreError>(
+                        index
+                            .top_n(req)
+                            .await?
+                            .into_iter()
+                            .map(|(_, id, doc)| {
+                                // Pretty print the document if possible for better readability
+                                let text = serde_json::to_string_pretty(&doc)
+                                    .unwrap_or_else(|_| doc.to_string());
 
-                                    Document {
-                                        id,
-                                        text,
-                                        additional_props: HashMap::new(),
-                                    }
-                                })
-                                .collect::<Vec<_>>(),
-                        )
-                    })
-                    .try_fold(vec![], |mut acc, docs| async {
-                        acc.extend(docs);
-                        Ok(acc)
-                    })
-                    .await
-                    .map_err(|e| CompletionError::RequestError(Box::new(e)))?;
+                                Document {
+                                    id,
+                                    text,
+                                    additional_props: HashMap::new(),
+                                }
+                            })
+                            .collect::<Vec<_>>(),
+                    )
+                })
+                .try_fold(vec![], |mut acc, docs| async {
+                    acc.extend(docs);
+                    Ok(acc)
+                })
+                .await
+                .map_err(|e| CompletionError::RequestError(Box::new(e)))?;
 
-                let tooldefs = self
-                    .tool_server_handle
-                    .get_tool_defs(Some(text.to_string()))
-                    .await
-                    .map_err(|_| {
-                        CompletionError::RequestError("Failed to get tool definitions".into())
-                    })?;
+            let tooldefs = self
+                .tool_server_handle
+                .get_tool_defs(Some(text.clone()))
+                .await
+                .map_err(|_| {
+                    CompletionError::RequestError("Failed to get tool definitions".into())
+                })?;
 
-                completion_request
-                    .documents(dynamic_context)
-                    .tools(tooldefs)
-            }
-            None => {
-                let tooldefs = self
-                    .tool_server_handle
-                    .get_tool_defs(None)
-                    .await
-                    .map_err(|_| {
-                        CompletionError::RequestError("Failed to get tool definitions".into())
-                    })?;
+            completion_request
+                .documents(dynamic_context)
+                .tools(tooldefs)
+        } else {
+            let tooldefs = self
+                .tool_server_handle
+                .get_tool_defs(None)
+                .await
+                .map_err(|_| {
+                    CompletionError::RequestError("Failed to get tool definitions".into())
+                })?;
 
-                completion_request.tools(tooldefs)
-            }
+            completion_request.tools(tooldefs)
         };
 
         Ok(agent)

@@ -3,7 +3,7 @@
 use crate::{
     completion::message::{self, DocumentMediaType, DocumentSourceKind, MessageError, Reasoning},
     completion::{self, CompletionError, GetTokenUsage},
-    core::wasm_compat::*,
+    core::wasm_compat::{WasmCompatSend, WasmCompatSync},
     core::{OneOrMany, string_or_one_or_many},
     http::HttpClientExt,
     telemetry::{ProviderResponseExt, SpanCombinator},
@@ -52,11 +52,11 @@ impl ProviderResponseExt for CompletionResponse {
     type Usage = Usage;
 
     fn get_response_id(&self) -> Option<String> {
-        Some(self.id.to_owned())
+        Some(self.id.clone())
     }
 
     fn get_response_model_name(&self) -> Option<String> {
-        Some(self.model.to_owned())
+        Some(self.model.clone())
     }
 
     fn get_output_messages(&self) -> Vec<Self::OutputMessage> {
@@ -414,7 +414,7 @@ impl TryFrom<DocumentMediaType> for DocumentFormat {
             return Err(MessageError::ConversionError(
                 "Anthropic only supports PDF documents".to_string(),
             ));
-        };
+        }
 
         Ok(DocumentFormat::PDF)
     }
@@ -564,7 +564,7 @@ impl TryFrom<message::Message> for Message {
             },
 
             message::Message::Assistant { content, .. } => Message {
-                content: content.try_map(|content| content.try_into())?,
+                content: content.try_map(std::convert::TryInto::try_into)?,
                 role: Role::Assistant,
             },
         })
@@ -623,7 +623,7 @@ impl TryFrom<Message> for message::Message {
                             ..
                         } => message::UserContent::tool_result(
                             tool_use_id,
-                            content.map(|content| content.into()),
+                            content.map(std::convert::Into::into),
                         ),
                         Content::Image { source, .. } => {
                             message::UserContent::Image(message::Image {
@@ -649,7 +649,7 @@ impl TryFrom<Message> for message::Message {
                 Content::Text { .. } | Content::ToolUse { .. } | Content::Thinking { .. } => {
                     message::Message::Assistant {
                         id: None,
-                        content: message.content.try_map(|content| content.try_into())?,
+                        content: message.content.try_map(std::convert::TryInto::try_into)?,
                     }
                 }
 
@@ -668,7 +668,7 @@ pub struct CompletionModel<T = reqwest::Client> {
     pub(crate) client: Client<T>,
     pub model: String,
     pub default_max_tokens: Option<u64>,
-    /// Enable automatic prompt caching (adds cache_control breakpoints to system prompt and messages)
+    /// Enable automatic prompt caching (adds `cache_control` breakpoints to system prompt and messages)
     pub prompt_caching: bool,
 }
 
@@ -699,7 +699,7 @@ where
 
     /// Enable automatic prompt caching.
     ///
-    /// When enabled, cache_control breakpoints are automatically added to:
+    /// When enabled, `cache_control` breakpoints are automatically added to:
     /// - The system prompt (marked with ephemeral cache)
     /// - The last content block of the last message (marked with ephemeral cache)
     ///
@@ -779,7 +779,7 @@ impl TryFrom<message::ToolChoice> for ToolChoice {
                 }
 
                 Self::Tool {
-                    name: function_names.first().unwrap().to_string(),
+                    name: function_names.first().unwrap().clone(),
                 }
             }
         };
@@ -793,7 +793,7 @@ struct AnthropicCompletionRequest {
     model: String,
     messages: Vec<Message>,
     max_tokens: u64,
-    /// System prompt as array of content blocks to support cache_control
+    /// System prompt as array of content blocks to support `cache_control`
     #[serde(skip_serializing_if = "Vec::is_empty")]
     system: Vec<SystemContent>,
     #[serde(skip_serializing_if = "Option::is_none")]
@@ -806,7 +806,7 @@ struct AnthropicCompletionRequest {
     additional_params: Option<serde_json::Value>,
 }
 
-/// Helper to set cache_control on a Content block
+/// Helper to set `cache_control` on a Content block
 fn set_content_cache_control(content: &mut Content, value: Option<CacheControl>) {
     match content {
         Content::Text { cache_control, .. } => *cache_control = value,
@@ -840,7 +840,7 @@ pub fn apply_cache_control(system: &mut [SystemContent], messages: &mut [Message
     }
 }
 
-/// Parameters for building an AnthropicCompletionRequest
+/// Parameters for building an `AnthropicCompletionRequest`
 pub struct AnthropicRequestParams<'a> {
     pub model: &'a str,
     pub request: CompletionRequest,

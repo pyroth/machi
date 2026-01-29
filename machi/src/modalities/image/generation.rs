@@ -1,5 +1,5 @@
 //! Everything related to core image generation abstractions in Rig.
-//! Rig allows calling a number of different providers (that support image generation) using the [ImageGenerationModel] trait.
+//! Rig allows calling a number of different providers (that support image generation) using the [`ImageGenerationModel`] trait.
 
 use serde_json::Value;
 
@@ -82,7 +82,7 @@ where
     pub fn new(model: M) -> Self {
         Self {
             model,
-            prompt: "".to_string(),
+            prompt: String::new(),
             height: 256,
             width: 256,
             additional_params: None,

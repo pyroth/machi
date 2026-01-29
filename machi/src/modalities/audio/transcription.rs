@@ -39,7 +39,7 @@ pub struct TranscriptionResponse<T> {
 
 /// Trait defining a transcription model that can be used to generate transcription requests.
 /// This trait is meant to be implemented by the user to define a custom transcription model,
-/// either from a third-party provider (e.g: OpenAI) or a local model.
+/// either from a third-party provider (e.g: `OpenAI`) or a local model.
 pub trait TranscriptionModel: Clone + WasmCompatSend + WasmCompatSync {
     /// The raw response type returned by the underlying model.
     type Response: WasmCompatSend + WasmCompatSync;
@@ -118,7 +118,7 @@ pub struct TranscriptionRequest {
 /// ```
 ///
 /// Note: It is usually unnecessary to create a completion request builder directly.
-/// Instead, use the [TranscriptionModel::transcription_request] method.
+/// Instead, use the [`TranscriptionModel::transcription_request`] method.
 pub struct TranscriptionRequestBuilder<M>
 where
     M: TranscriptionModel,
@@ -217,9 +217,7 @@ where
     /// Builds the transcription request
     /// Panics if data is empty.
     pub fn build(self) -> TranscriptionRequest {
-        if self.data.is_empty() {
-            panic!("Data cannot be empty!")
-        }
+        assert!(!self.data.is_empty(), "Data cannot be empty!");
 
         TranscriptionRequest {
             data: self.data,

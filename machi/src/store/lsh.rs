@@ -25,7 +25,7 @@ impl LSH {
             // before normalization. This guarantees that after normalization to unit vectors, the
             // hyperplanes are uniformly distributed across the unit sphere, which is essential for
             // LSH to maintain good locality-sensitive hashing properties.
-            for val in plane.iter_mut() {
+            for val in &mut plane {
                 *val = rng.f32() * 2.0 - 1.0;
             }
 
@@ -33,7 +33,7 @@ impl LSH {
             // the hash correctly identifies which side of the hyperplane each point lies on.
             let norm: f32 = plane.iter().map(|x| x * x).sum::<f32>().sqrt();
             if norm > 0.0 {
-                for val in plane.iter_mut() {
+                for val in &mut plane {
                     *val /= norm;
                 }
             }
@@ -84,7 +84,7 @@ pub struct LSHIndex {
 }
 
 impl LSHIndex {
-    /// Create a new LSHIndex.
+    /// Create a new `LSHIndex`.
     pub fn new(dim: usize, num_tables: usize, num_hyperplanes: usize) -> Self {
         let lsh = LSH::new(dim, num_tables, num_hyperplanes);
         let tables = vec![HashMap::new(); num_tables];
@@ -123,7 +123,7 @@ impl LSHIndex {
 
     /// Clear all tables
     pub fn clear(&mut self) {
-        for table in self.tables.iter_mut() {
+        for table in &mut self.tables {
             table.clear();
         }
     }

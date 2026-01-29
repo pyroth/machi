@@ -14,7 +14,7 @@ impl Default for LineDecoder {
 }
 
 impl LineDecoder {
-    /// Create a new LineDecoder
+    /// Create a new `LineDecoder`
     pub fn new() -> Self {
         LineDecoder {
             buffer: Vec::new(),

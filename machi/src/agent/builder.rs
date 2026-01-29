@@ -14,7 +14,7 @@ use crate::{
 
 #[cfg(feature = "rmcp")]
 #[cfg_attr(docsrs, doc(cfg(feature = "rmcp")))]
-use crate::tool::rmcp::McpTool as RmcpTool;
+use crate::tool::mcp::McpTool as RmcpTool;
 
 use super::Agent;
 
@@ -47,7 +47,7 @@ where
     name: Option<String>,
     /// Agent description. Primarily useful when using sub-agents as part of an agent workflow and converting agents to other formats.
     description: Option<String>,
-    /// Completion model (e.g.: OpenAI's gpt-3.5-turbo-1106, Cohere's command-r)
+    /// Completion model (e.g.: `OpenAI`'s gpt-3.5-turbo-1106, Cohere's command-r)
     model: M,
     /// System prompt
     preamble: Option<String>,
@@ -116,11 +116,7 @@ where
 
     /// Append to the preamble of the agent
     pub fn append_preamble(mut self, doc: &str) -> Self {
-        self.preamble = Some(format!(
-            "{}\n{}",
-            self.preamble.unwrap_or_else(|| "".into()),
-            doc
-        ));
+        self.preamble = Some(format!("{}\n{}", self.preamble.unwrap_or_default(), doc));
         self
     }
 
@@ -380,7 +376,7 @@ where
     name: Option<String>,
     /// Agent description. Primarily useful when using sub-agents as part of an agent workflow and converting agents to other formats.
     description: Option<String>,
-    /// Completion model (e.g.: OpenAI's gpt-3.5-turbo-1106, Cohere's command-r)
+    /// Completion model (e.g.: `OpenAI`'s gpt-3.5-turbo-1106, Cohere's command-r)
     model: M,
     /// System prompt
     preamble: Option<String>,
@@ -455,11 +451,7 @@ where
 
     /// Append to the preamble of the agent
     pub fn append_preamble(mut self, doc: &str) -> Self {
-        self.preamble = Some(format!(
-            "{}\n{}",
-            self.preamble.unwrap_or_else(|| "".into()),
-            doc
-        ));
+        self.preamble = Some(format!("{}\n{}", self.preamble.unwrap_or_default(), doc));
         self
     }
 

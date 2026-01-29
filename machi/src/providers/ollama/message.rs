@@ -108,35 +108,7 @@ impl TryFrom<crate::completion::message::Message> for Vec<Message> {
                         )
                     });
 
-                if !tool_results.is_empty() {
-                    tool_results
-                        .into_iter()
-                        .map(|content| match content {
-                            crate::completion::message::UserContent::ToolResult(
-                                crate::completion::message::ToolResult { id, content, .. },
-                            ) => {
-                                let content_string = content
-                                    .into_iter()
-                                    .map(|content| match content {
-                                        crate::completion::message::ToolResultContent::Text(
-                                            text,
-                                        ) => text.text,
-                                        _ => "[Non-text content]".to_string(),
-                                    })
-                                    .collect::<Vec<_>>()
-                                    .join("\n");
-
-                                Ok::<_, crate::completion::message::MessageError>(
-                                    Message::ToolResult {
-                                        name: id,
-                                        content: content_string,
-                                    },
-                                )
-                            }
-                            _ => unreachable!(),
-                        })
-                        .collect::<Result<Vec<_>, _>>()
-                } else {
+                if tool_results.is_empty() {
                     let (texts, images) = other_content.into_iter().fold(
                         (Vec::new(), Vec::new()),
                         |(mut texts, mut images), content| {
@@ -169,15 +141,38 @@ impl TryFrom<crate::completion::message::Message> for Vec<Message> {
                         images: if images.is_empty() {
                             None
                         } else {
-                            Some(
-                                images
-                                    .into_iter()
-                                    .map(|x| x.to_string())
-                                    .collect::<Vec<String>>(),
-                            )
+                            Some(images.into_iter().collect::<Vec<String>>())
                         },
                         name: None,
                     }])
+                } else {
+                    tool_results
+                        .into_iter()
+                        .map(|content| match content {
+                            crate::completion::message::UserContent::ToolResult(
+                                crate::completion::message::ToolResult { id, content, .. },
+                            ) => {
+                                let content_string = content
+                                    .into_iter()
+                                    .map(|content| match content {
+                                        crate::completion::message::ToolResultContent::Text(
+                                            text,
+                                        ) => text.text,
+                                        _ => "[Non-text content]".to_string(),
+                                    })
+                                    .collect::<Vec<_>>()
+                                    .join("\n");
+
+                                Ok::<_, crate::completion::message::MessageError>(
+                                    Message::ToolResult {
+                                        name: id,
+                                        content: content_string,
+                                    },
+                                )
+                            }
+                            _ => unreachable!(),
+                        })
+                        .collect::<Result<Vec<_>, _>>()
                 }
             }
             InternalMessage::Assistant { content, .. } => {
@@ -185,13 +180,13 @@ impl TryFrom<crate::completion::message::Message> for Vec<Message> {
                 let mut text_content = Vec::new();
                 let mut tool_calls = Vec::new();
 
-                for content in content.into_iter() {
+                for content in content {
                     match content {
                         crate::completion::message::AssistantContent::Text(text) => {
-                            text_content.push(text.text)
+                            text_content.push(text.text);
                         }
                         crate::completion::message::AssistantContent::ToolCall(tool_call) => {
-                            tool_calls.push(tool_call)
+                            tool_calls.push(tool_call);
                         }
                         crate::completion::message::AssistantContent::Reasoning(
                             crate::completion::message::Reasoning { reasoning, .. },
@@ -213,7 +208,7 @@ impl TryFrom<crate::completion::message::Message> for Vec<Message> {
                     name: None,
                     tool_calls: tool_calls
                         .into_iter()
-                        .map(|tool_call| tool_call.into())
+                        .map(std::convert::Into::into)
                         .collect::<Vec<_>>(),
                 }])
             }

@@ -64,7 +64,7 @@ pub trait Provider: Sized {
             base_url.to_string() + "/"
         };
 
-        base_url.to_string() + path.trim_start_matches('/')
+        base_url.clone() + path.trim_start_matches('/')
     }
 
     fn with_custom(&self, req: Builder) -> http::Result<Builder> {

@@ -1,4 +1,4 @@
-//! The streaming module for the OpenAI Responses API.
+//! The streaming module for the `OpenAI` Responses API.
 //! Please see the `openai_streaming` or `openai_streaming_with_tools` example for more practical usage.
 use crate::completion::streaming;
 use crate::completion::streaming::RawStreamingChoice;
@@ -32,7 +32,7 @@ pub enum StreamingCompletionChunk {
     Delta(ItemChunk),
 }
 
-/// The final streaming response from the OpenAI Responses API.
+/// The final streaming response from the `OpenAI` Responses API.
 #[derive(Debug, Serialize, Deserialize, Clone)]
 pub struct StreamingCompletionResponse {
     /// Token usage
@@ -49,7 +49,7 @@ impl GetTokenUsage for StreamingCompletionResponse {
     }
 }
 
-/// A response chunk from OpenAI's response API.
+/// A response chunk from `OpenAI`'s response API.
 #[derive(Debug, Serialize, Deserialize, Clone)]
 pub struct ResponseChunk {
     /// The response chunk type
@@ -77,7 +77,7 @@ pub enum ResponseChunkKind {
     ResponseIncomplete,
 }
 
-/// An item message chunk from OpenAI's Responses API.
+/// An item message chunk from `OpenAI`'s Responses API.
 /// See
 #[derive(Debug, Serialize, Deserialize, Clone)]
 pub struct ItemChunk {
@@ -90,7 +90,7 @@ pub struct ItemChunk {
     pub data: ItemChunkKind,
 }
 
-/// The item chunk type from OpenAI's Responses API.
+/// The item chunk type from `OpenAI`'s Responses API.
 #[derive(Debug, Serialize, Deserialize, Clone)]
 #[serde(tag = "type")]
 pub enum ItemChunkKind {
@@ -313,7 +313,7 @@ where
                                                 .collect::<Vec<String>>()
                                                 .join("\n");
                                             yield Ok(streaming::RawStreamingChoice::Reasoning {
-                                                id: Some(id.to_string()),
+                                                id: Some(id.clone()),
                                                 reasoning,
                                                 signature: None,
                                             })

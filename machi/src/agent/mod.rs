@@ -2,17 +2,17 @@
 //!
 //! The [Agent] struct represents an LLM agent, which combines an LLM model with a preamble (system prompt),
 //! a set of context documents, and a set of tools. Note: both context documents and tools can be either
-//! static (i.e.: they are always provided) or dynamic (i.e.: they are RAGged at prompt-time).
+//! static (i.e.: they are always provided) or dynamic (i.e.: they are `RAGged` at prompt-time).
 //!
 //! The [Agent] struct is highly configurable, allowing the user to define anything from
 //! a simple bot with a specific system prompt to a complex RAG system with a set of dynamic
 //! context documents and tools.
 //!
-//! The [Agent] struct implements the [crate::completion::Completion] and [crate::completion::Prompt] traits,
+//! The [Agent] struct implements the [`crate::completion::Completion`] and [`crate::completion::Prompt`] traits,
 //! allowing it to be used for generating completions responses and prompts. The [Agent] struct also
-//! implements the [crate::completion::Chat] trait, which allows it to be used for generating chat completions.
+//! implements the [`crate::completion::Chat`] trait, which allows it to be used for generating chat completions.
 //!
-//! The [AgentBuilder] implements the builder pattern for creating instances of [Agent].
+//! The [`AgentBuilder`] implements the builder pattern for creating instances of [Agent].
 //! It allows configuring the model, preamble, context documents, tools, temperature, and additional parameters
 //! before building the agent.
 //!

@@ -23,7 +23,7 @@ pub use traits::{HttpClientExt, RetryPolicy};
 
 use std::pin::Pin;
 
-use crate::core::wasm_compat::*;
+use crate::core::wasm_compat::{WasmBoxedFuture, WasmCompatSend, WasmCompatSendStream};
 
 pub use reqwest::Client as ReqwestClient;
 

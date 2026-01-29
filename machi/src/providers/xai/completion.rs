@@ -59,7 +59,7 @@ impl TryFrom<(&str, CompletionRequest)> for XAICompletionRequest {
             .chat_history
             .clone()
             .into_iter()
-            .map(|message| message.try_into())
+            .map(std::convert::TryInto::try_into)
             .collect::<Result<Vec<Vec<Message>>, _>>()?
             .into_iter()
             .flatten()
@@ -141,7 +141,7 @@ where
         span.record("gen_ai.system_instructions", &completion_request.preamble);
 
         let request =
-            XAICompletionRequest::try_from((self.model.to_string().as_ref(), completion_request))?;
+            XAICompletionRequest::try_from((self.model.clone().as_ref(), completion_request))?;
 
         if enabled!(Level::TRACE) {
             tracing::trace!(target: "crate::completions",

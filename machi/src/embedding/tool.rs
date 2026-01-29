@@ -1,4 +1,4 @@
-//! The module defines the [ToolSchema] struct, which is used to embed an object that implements [crate::tool::ToolEmbedding]
+//! The module defines the [`ToolSchema`] struct, which is used to embed an object that implements [`crate::tool::ToolEmbedding`]
 
 use crate::{embedding::Embed, tool::ToolEmbeddingDyn};
 use serde::Serialize;
@@ -6,7 +6,7 @@ use serde::Serialize;
 use super::embed::EmbedError;
 
 /// Embeddable document that is used as an intermediate representation of a tool when
-/// RAGging tools.
+/// `RAGging` tools.
 #[derive(Clone, Serialize, Default, Eq, PartialEq)]
 pub struct ToolSchema {
     pub name: String,
@@ -24,7 +24,7 @@ impl Embed for ToolSchema {
 }
 
 impl ToolSchema {
-    /// Convert item that implements [ToolEmbeddingDyn] to an [ToolSchema].
+    /// Convert item that implements [`ToolEmbeddingDyn`] to an [`ToolSchema`].
     ///
     /// # Example
     /// ```rust

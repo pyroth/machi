@@ -37,7 +37,7 @@ where
     T: DeserializeOwned + Unpin,
     S: Stream<Item = Result<Vec<u8>, std::io::Error>> + Unpin,
 {
-    /// Create a new JSONLDecoder from a byte stream
+    /// Create a new `JSONLDecoder` from a byte stream
     pub fn new(stream: S) -> Self {
         Self {
             stream,
@@ -107,13 +107,13 @@ where
                 match this.process_chunk(&chunk) {
                     Ok(mut parsed) => {
                         // If we got any items, buffer them and return the first one
-                        if !parsed.is_empty() {
+                        if parsed.is_empty() {
+                            // No items yet, try again
+                            Pin::new(this).poll_next(cx)
+                        } else {
                             let item = parsed.remove(0);
                             this.buffer.append(&mut parsed);
                             Poll::Ready(Some(Ok(item)))
-                        } else {
-                            // No items yet, try again
-                            Pin::new(this).poll_next(cx)
                         }
                     }
                     Err(e) => Poll::Ready(Some(Err(e))),
@@ -129,13 +129,13 @@ where
                 // Stream is done, flush any remaining data
                 match this.flush() {
                     Ok(mut parsed) => {
-                        if !parsed.is_empty() {
+                        if parsed.is_empty() {
+                            // Nothing left
+                            Poll::Ready(None)
+                        } else {
                             let item = parsed.remove(0);
                             this.buffer.append(&mut parsed);
                             Poll::Ready(Some(Ok(item)))
-                        } else {
-                            // Nothing left
-                            Poll::Ready(None)
                         }
                     }
                     Err(e) => Poll::Ready(Some(Err(e))),

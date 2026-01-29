@@ -204,8 +204,8 @@ if_wasm! {
 }
 
 if_not_wasm! {
-    pub fn from_response<'a, E>(
-        stream: BoxStream<'a, Result<Bytes, E>>,
+    pub fn from_response<E>(
+        stream: BoxStream<'_, Result<Bytes, E>>,
     ) -> impl Stream<Item = Result<ServerSentEvent, SSEDecoderError>>
     where
         E: Into<Box<dyn std::error::Error + Send + Sync>>

@@ -1,4 +1,4 @@
-//! OpenAI API client and Rig integration
+//! `OpenAI` API client and Rig integration
 //!
 //! # Example
 //! ```
@@ -29,7 +29,7 @@ pub use client::*;
 pub use completion::*;
 pub use embedding::*;
 
-/// Recursively ensures all object schemas in a JSON schema respect OpenAI structured output restrictions.
+/// Recursively ensures all object schemas in a JSON schema respect `OpenAI` structured output restrictions.
 /// Nested arrays, schema $defs, object properties and enums should be handled through this method
 pub(crate) fn sanitize_schema(schema: &mut serde_json::Value) {
     use serde_json::Value;

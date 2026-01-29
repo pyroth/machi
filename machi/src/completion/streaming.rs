@@ -3,9 +3,9 @@
 //! handling streaming completion responses.
 //!
 //! The main traits defined in this module are:
-//! - [StreamingPrompt]: Defines a high-level streaming LLM one-shot prompt interface
-//! - [StreamingChat]: Defines a high-level streaming LLM chat interface with history
-//! - [StreamingCompletion]: Defines a low-level streaming LLM completion interface
+//! - [`StreamingPrompt`]: Defines a high-level streaming LLM one-shot prompt interface
+//! - [`StreamingChat`]: Defines a high-level streaming LLM chat interface with history
+//! - [`StreamingCompletion`]: Defines a low-level streaming LLM completion interface
 //!
 
 use super::message::{AssistantContent, Reasoning, Text, ToolCall, ToolFunction, ToolResult};
@@ -209,7 +209,7 @@ where
             abort_handle,
             pause_control,
             reasoning: String::new(),
-            text: "".to_string(),
+            text: String::new(),
             tool_calls: vec![],
             choice: OneOrMany::one(AssistantContent::text("")),
             response: None,
@@ -283,7 +283,7 @@ where
                 Poll::Ready(None)
             }
             Poll::Ready(Some(Err(err))) => {
-                if matches!(err, CompletionError::ProviderError(ref e) if e.to_string().contains("aborted"))
+                if matches!(err, CompletionError::ProviderError(ref e) if e.clone().contains("aborted"))
                 {
                     return Poll::Ready(None); // Treat cancellation as stream termination
                 }
@@ -480,7 +480,7 @@ where
                     println!();
                     println!("Thinking: ");
                 }
-                let reasoning = reasoning.into_iter().collect::<Vec<String>>().join("");
+                let reasoning = reasoning.into_iter().collect::<String>();
 
                 print!("{reasoning}");
                 std::io::Write::flush(&mut std::io::stdout())?;
@@ -615,7 +615,7 @@ mod tests {
                     println!("\nFinal response: {res:?}");
                 }
                 Ok(StreamedAssistantContent::Reasoning(Reasoning { reasoning, .. })) => {
-                    let reasoning = reasoning.into_iter().collect::<Vec<String>>().join("");
+                    let reasoning = reasoning.into_iter().collect::<String>();
                     print!("{reasoning}");
                     std::io::Write::flush(&mut std::io::stdout()).unwrap();
                 }

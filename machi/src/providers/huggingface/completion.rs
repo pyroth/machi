@@ -297,30 +297,7 @@ impl TryFrom<message::Message> for Vec<Message> {
                     .into_iter()
                     .partition(|content| matches!(content, message::UserContent::ToolResult(_)));
 
-                if !tool_results.is_empty() {
-                    tool_results
-                        .into_iter()
-                        .map(|content| match content {
-                            message::UserContent::ToolResult(message::ToolResult {
-                                id,
-                                content,
-                                ..
-                            }) => Ok::<_, message::MessageError>(Message::ToolResult {
-                                name: id,
-                                arguments: None,
-                                content: content.try_map(|content| match content {
-                                    message::ToolResultContent::Text(message::Text { text }) => {
-                                        Ok(text)
-                                    }
-                                    _ => Err(message::MessageError::ConversionError(
-                                        "Tool result content does not support non-text".into(),
-                                    )),
-                                })?,
-                            }),
-                            _ => unreachable!(),
-                        })
-                        .collect::<Result<Vec<_>, _>>()
-                } else {
+                if tool_results.is_empty() {
                     let other_content = OneOrMany::many(other_content).expect(
                         "There must be other content here if there were no tool result content",
                     );
@@ -353,6 +330,29 @@ impl TryFrom<message::Message> for Vec<Message> {
                             )),
                         })?,
                     }])
+                } else {
+                    tool_results
+                        .into_iter()
+                        .map(|content| match content {
+                            message::UserContent::ToolResult(message::ToolResult {
+                                id,
+                                content,
+                                ..
+                            }) => Ok::<_, message::MessageError>(Message::ToolResult {
+                                name: id,
+                                arguments: None,
+                                content: content.try_map(|content| match content {
+                                    message::ToolResultContent::Text(message::Text { text }) => {
+                                        Ok(text)
+                                    }
+                                    _ => Err(message::MessageError::ConversionError(
+                                        "Tool result content does not support non-text".into(),
+                                    )),
+                                })?,
+                            }),
+                            _ => unreachable!(),
+                        })
+                        .collect::<Result<Vec<_>, _>>()
                 }
             }
             message::Message::Assistant { content, .. } => {
@@ -382,7 +382,7 @@ impl TryFrom<message::Message> for Vec<Message> {
                         .collect::<Vec<_>>(),
                     tool_calls: tool_calls
                         .into_iter()
-                        .map(|tool_call| tool_call.into())
+                        .map(std::convert::Into::into)
                         .collect::<Vec<_>>(),
                 }])
             }
@@ -396,7 +396,7 @@ impl TryFrom<Message> for message::Message {
     fn try_from(message: Message) -> Result<Self, Self::Error> {
         Ok(match message {
             Message::User { content, .. } => message::Message::User {
-                content: content.map(|content| content.into()),
+                content: content.map(std::convert::Into::into),
             },
             Message::Assistant {
                 content,
@@ -642,7 +642,7 @@ impl TryFrom<(&str, CompletionRequest)> for HuggingfaceCompletionRequest {
             .chat_history
             .clone()
             .into_iter()
-            .map(|message| message.try_into())
+            .map(std::convert::TryInto::try_into)
             .collect::<Result<Vec<Vec<Message>>, _>>()?
             .into_iter()
             .flatten()
@@ -775,10 +775,7 @@ where
                 let text: Vec<u8> = response.into_body().await?;
                 let text: String = String::from_utf8_lossy(&text).into();
 
-                Err(CompletionError::ProviderError(format!(
-                    "{}: {}",
-                    status, text
-                )))
+                Err(CompletionError::ProviderError(format!("{status}: {text}")))
             }
         }
         .instrument(span)

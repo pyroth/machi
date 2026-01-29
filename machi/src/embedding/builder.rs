@@ -1,6 +1,6 @@
-//! The module defines the [EmbeddingsBuilder] struct which accumulates objects to be embedded
+//! The module defines the [`EmbeddingsBuilder`] struct which accumulates objects to be embedded
 //! and batch generates the embeddings for each object when built.
-//! Only types that implement the [Embed] trait can be added to the [EmbeddingsBuilder].
+//! Only types that implement the [Embed] trait can be added to the [`EmbeddingsBuilder`].
 
 use std::{cmp::max, collections::HashMap};
 
@@ -16,7 +16,7 @@ use crate::{
 /// Builder for creating embeddings from one or more documents of type `T`.
 /// Note: `T` can be any type that implements the [Embed] trait.
 ///
-/// Using the builder is preferred over using [EmbeddingModel::embed_text] directly as
+/// Using the builder is preferred over using [`EmbeddingModel::embed_text`] directly as
 /// it will batch the documents in a single request to the model provider.
 ///
 /// # Example
@@ -85,7 +85,7 @@ where
     pub fn documents(self, documents: impl IntoIterator<Item = T>) -> Result<Self, EmbedError> {
         let builder = documents
             .into_iter()
-            .try_fold(self, |builder, doc| builder.document(doc))?;
+            .try_fold(self, EmbeddingsBuilder::document)?;
 
         Ok(builder)
     }
@@ -190,7 +190,7 @@ mod tests {
             Ok(documents
                 .into_iter()
                 .map(|doc| Embedding {
-                    document: doc.to_string(),
+                    document: doc.clone(),
                     vec: vec![0.0, 0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8, 0.9],
                 })
                 .collect())
@@ -301,7 +301,7 @@ mod tests {
         assert_eq!(second_definition.1.len(), 2);
         assert_eq!(
             second_definition.1.rest()[0].document, "A fictional creature found in the distant, swampy marshlands of the planet Glibbo in the Andromeda galaxy.".to_string()
-        )
+        );
     }
 
     #[tokio::test]
@@ -335,7 +335,7 @@ mod tests {
         assert_eq!(second_definition.1.len(), 1);
         assert_eq!(
             second_definition.1.first().document, "An ancient tool used by the ancestors of the inhabitants of planet Jiro to farm the land.".to_string()
-        )
+        );
     }
 
     #[tokio::test]
@@ -372,7 +372,7 @@ mod tests {
         assert_eq!(
             third_definition.1.first().document,
             "Another fake definitions".to_string()
-        )
+        );
     }
 
     #[tokio::test]
@@ -405,6 +405,6 @@ mod tests {
         assert_eq!(second_definition.1.len(), 2);
         assert_eq!(
             second_definition.1.rest()[0].document, "A fictional creature found in the distant, swampy marshlands of the planet Glibbo in the Andromeda galaxy.".to_string()
-        )
+        );
     }
 }

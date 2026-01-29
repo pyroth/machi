@@ -1,7 +1,6 @@
-use crate::audio_generation::{
-    self, AudioGenerationError, AudioGenerationRequest, AudioGenerationResponse,
-};
-use crate::http::{self, HttpClientExt};
+use crate::audio_generation::{self, AudioGenerationRequest, AudioGenerationResponse};
+use crate::http::{self as http_client, HttpClientExt};
+use crate::modalities::audio::errors::AudioGenerationError;
 use crate::providers::openai::Client;
 use bytes::{Buf, Bytes};
 use serde_json::json;
@@ -64,8 +63,7 @@ where
             let text: String = String::from_utf8_lossy(&as_slice).into();
 
             return Err(AudioGenerationError::ProviderError(format!(
-                "{}: {}",
-                status, text
+                "{status}: {text}"
             )));
         }
 

@@ -4,7 +4,7 @@ use crate::embedding::{EmbeddingModel, EmbeddingsBuilder};
 /// A provider client with embedding capabilities.
 /// Clone is required for conversions between client types.
 pub trait EmbeddingsClient {
-    /// The type of EmbeddingModel used by the Client
+    /// The type of `EmbeddingModel` used by the Client
     type EmbeddingModel: EmbeddingModel;
 
     /// Create an embedding model with the given model.

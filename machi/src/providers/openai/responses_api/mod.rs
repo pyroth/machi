@@ -1,4 +1,4 @@
-//! The OpenAI Responses API.
+//! The `OpenAI` Responses API.
 //!
 //! By default when creating a completion client, this is the API that gets used.
 //!
@@ -32,7 +32,7 @@ use std::str::FromStr;
 
 pub mod streaming;
 
-/// The completion request type for OpenAI's Response API: <https://platform.openai.com/docs/api-reference/responses/create>
+/// The completion request type for `OpenAI`'s Response API: <https://platform.openai.com/docs/api-reference/responses/create>
 /// Intended to be derived from [`crate::completion::request::CompletionRequest`].
 #[derive(Debug, Deserialize, Serialize, Clone)]
 pub struct CompletionRequest {
@@ -85,7 +85,7 @@ impl CompletionRequest {
 #[derive(Debug, Deserialize, Serialize, Clone)]
 pub struct InputItem {
     /// The role of an input item/message.
-    /// Input messages should be Some(Role::User), and output messages should be Some(Role::Assistant).
+    /// Input messages should be `Some(Role::User)`, and output messages should be `Some(Role::Assistant)`.
     /// Everything else should be None.
     #[serde(skip_serializing_if = "Option::is_none")]
     role: Option<Role>,
@@ -94,7 +94,7 @@ pub struct InputItem {
     input: InputContent,
 }
 
-/// Message roles. Used by OpenAI Responses API to determine who created a given message.
+/// Message roles. Used by `OpenAI` Responses API to determine who created a given message.
 #[derive(Debug, Deserialize, Serialize, Clone)]
 #[serde(rename_all = "lowercase")]
 pub enum Role {
@@ -274,7 +274,7 @@ impl TryFrom<crate::completion::Message> for Vec<InputItem> {
                                     }),
                                     name: None,
                                 }),
-                            })
+                            });
                         }
                         // todo: should we ensure this takes into account file size?
                         crate::completion::message::UserContent::Document(Document {
@@ -421,12 +421,12 @@ impl From<OneOrMany<String>> for Vec<ReasoningSummary> {
     }
 }
 
-/// The definition of a tool response, repurposed for OpenAI's Responses API.
+/// The definition of a tool response, repurposed for `OpenAI`'s Responses API.
 #[derive(Debug, Deserialize, Serialize, Clone)]
 pub struct ResponsesToolDefinition {
     /// Tool name
     pub name: String,
-    /// Parameters - this should be a JSON schema. Tools should additionally ensure an "additionalParameters" field has been added with the value set to false, as this is required if using OpenAI's strict mode (enabled by default).
+    /// Parameters - this should be a JSON schema. Tools should additionally ensure an "additionalParameters" field has been added with the value set to false, as this is required if using `OpenAI`'s strict mode (enabled by default).
     pub parameters: serde_json::Value,
     /// Whether to use strict mode. Enabled by default as it allows for improved efficiency.
     pub strict: bool,
@@ -458,7 +458,7 @@ impl From<completion::ToolDefinition> for ResponsesToolDefinition {
 }
 
 /// Token usage.
-/// Token usage from the OpenAI Responses API generally shows the input tokens and output tokens (both with more in-depth details) as well as a total tokens field.
+/// Token usage from the `OpenAI` Responses API generally shows the input tokens and output tokens (both with more in-depth details) as well as a total tokens field.
 #[derive(Clone, Debug, Serialize, Deserialize)]
 pub struct ResponsesUsage {
     /// Input tokens
@@ -475,7 +475,7 @@ pub struct ResponsesUsage {
 }
 
 impl ResponsesUsage {
-    /// Create a new ResponsesUsage instance
+    /// Create a new `ResponsesUsage` instance
     pub(crate) fn new() -> Self {
         Self {
             input_tokens: 0,
@@ -515,7 +515,7 @@ impl Add for ResponsesUsage {
 /// In-depth details on input tokens.
 #[derive(Clone, Debug, Serialize, Deserialize)]
 pub struct InputTokensDetails {
-    /// Cached tokens from OpenAI
+    /// Cached tokens from `OpenAI`
     pub cached_tokens: u64,
 }
 
@@ -558,14 +558,14 @@ impl Add for OutputTokensDetails {
     }
 }
 
-/// Occasionally, when using OpenAI's Responses API you may get an incomplete response. This struct holds the reason as to why it happened.
+/// Occasionally, when using `OpenAI`'s Responses API you may get an incomplete response. This struct holds the reason as to why it happened.
 #[derive(Clone, Debug, Default, Serialize, Deserialize)]
 pub struct IncompleteDetailsReason {
     /// The reason for an incomplete [`CompletionResponse`].
     pub reason: String,
 }
 
-/// A response error from OpenAI's Response API.
+/// A response error from `OpenAI`'s Response API.
 #[derive(Clone, Debug, Default, Serialize, Deserialize)]
 pub struct ResponseError {
     /// Error code
@@ -659,10 +659,10 @@ impl TryFrom<(String, crate::completion::CompletionRequest)> for CompletionReque
     }
 }
 
-/// The completion model struct for OpenAI's response API.
+/// The completion model struct for `OpenAI`'s response API.
 #[derive(Clone)]
 pub struct ResponsesCompletionModel<T = reqwest::Client> {
-    /// The OpenAI client
+    /// The `OpenAI` client
     pub(crate) client: Client<T>,
     /// Name of the model (e.g.: gpt-3.5-turbo-1106)
     pub model: String,
@@ -703,7 +703,7 @@ where
     }
 }
 
-/// The standard response format from OpenAI's Responses API.
+/// The standard response format from `OpenAI`'s Responses API.
 #[derive(Clone, Debug, Serialize, Deserialize)]
 pub struct CompletionResponse {
     /// The ID of a completion response.
@@ -736,7 +736,7 @@ pub struct CompletionResponse {
     pub additional_parameters: AdditionalParameters,
 }
 
-/// Additional parameters for the completion request type for OpenAI's Response API: <https://platform.openai.com/docs/api-reference/responses/create>
+/// Additional parameters for the completion request type for `OpenAI`'s Response API: <https://platform.openai.com/docs/api-reference/responses/create>
 /// Intended to be derived from [`crate::completion::request::CompletionRequest`].
 #[derive(Clone, Debug, Deserialize, Serialize, Default)]
 pub struct AdditionalParameters {
@@ -833,7 +833,7 @@ pub enum TextFormat {
 pub struct StructuredOutputsInput {
     /// The name of your schema.
     pub name: String,
-    /// Your required output schema. It is recommended that you use the JsonSchema macro, which you can check out at <https://docs.rs/schemars/latest/schemars/trait.JsonSchema.html>.
+    /// Your required output schema. It is recommended that you use the `JsonSchema` macro, which you can check out at <https://docs.rs/schemars/latest/schemars/trait.JsonSchema.html>.
     pub schema: serde_json::Value,
     /// Enable strict output. If you are using your AI agent in a data pipeline or another scenario that requires the data to be absolutely fixed to a given schema, it is recommended to set this to true.
     pub strict: bool,
@@ -905,7 +905,7 @@ pub enum ReasoningSummaryLevel {
     Detailed,
 }
 
-/// Results to additionally include in the OpenAI Responses API.
+/// Results to additionally include in the `OpenAI` Responses API.
 /// Note that most of these are currently unsupported, but have been added for completeness.
 #[derive(Clone, Debug, Deserialize, Serialize)]
 pub enum Include {
@@ -971,7 +971,7 @@ pub struct OutputReasoning {
     status: ToolStatus,
 }
 
-/// An OpenAI Responses API tool call. A call ID will be returned that must be used when creating a tool result to send back to OpenAI as a message input, otherwise an error will be received.
+/// An `OpenAI` Responses API tool call. A call ID will be returned that must be used when creating a tool result to send back to `OpenAI` as a message input, otherwise an error will be received.
 #[derive(Clone, Debug, Deserialize, Serialize, PartialEq)]
 pub struct OutputFunctionCall {
     pub id: String,
@@ -991,10 +991,10 @@ pub enum ToolStatus {
     Incomplete,
 }
 
-/// An output message from OpenAI's Responses API.
+/// An output message from `OpenAI`'s Responses API.
 #[derive(Clone, Debug, Deserialize, Serialize, PartialEq)]
 pub struct OutputMessage {
-    /// The message ID. Must be included when sending the message back to OpenAI
+    /// The message ID. Must be included when sending the message back to `OpenAI`
     pub id: String,
     /// The role (currently only Assistant is available as this struct is only created when receiving an LLM message as a response)
     pub role: OutputRole,
@@ -1153,7 +1153,7 @@ impl TryFrom<CompletionResponse> for completion::CompletionResponse<CompletionRe
     }
 }
 
-/// An OpenAI Responses API message.
+/// An `OpenAI` Responses API message.
 #[derive(Debug, Serialize, Deserialize, PartialEq, Clone)]
 #[serde(tag = "role", rename_all = "lowercase")]
 pub enum Message {
@@ -1275,30 +1275,7 @@ impl TryFrom<message::Message> for Vec<Message> {
 
                 // If there are messages with both tool results and user content, openai will only
                 //  handle tool results. It's unlikely that there will be both.
-                if !tool_results.is_empty() {
-                    tool_results
-                        .into_iter()
-                        .map(|content| match content {
-                            message::UserContent::ToolResult(message::ToolResult {
-                                call_id,
-                                content,
-                                ..
-                            }) => Ok::<_, message::MessageError>(Message::ToolResult {
-                                tool_call_id: call_id.expect("The tool call ID should exist"),
-                                output: {
-                                    let res = content.first();
-                                    match res {
-                                        completion::message::ToolResultContent::Text(Text {
-                                            text,
-                                        }) => text,
-                                        _ => return  Err(MessageError::ConversionError("This API only currently supports text tool results".into()))
-                                    }
-                                },
-                            }),
-                            _ => unreachable!(),
-                        })
-                        .collect::<Result<Vec<_>, _>>()
-                } else {
+                if tool_results.is_empty() {
                     let other_content = other_content
                         .into_iter()
                         .map(|content| match content {
@@ -1400,6 +1377,29 @@ impl TryFrom<message::Message> for Vec<Message> {
                         content: other_content,
                         name: None,
                     }])
+                } else {
+                    tool_results
+                        .into_iter()
+                        .map(|content| match content {
+                            message::UserContent::ToolResult(message::ToolResult {
+                                call_id,
+                                content,
+                                ..
+                            }) => Ok::<_, message::MessageError>(Message::ToolResult {
+                                tool_call_id: call_id.expect("The tool call ID should exist"),
+                                output: {
+                                    let res = content.first();
+                                    match res {
+                                        completion::message::ToolResultContent::Text(Text {
+                                            text,
+                                        }) => text,
+                                        _ => return  Err(MessageError::ConversionError("This API only currently supports text tool results".into()))
+                                    }
+                                },
+                            }),
+                            _ => unreachable!(),
+                        })
+                        .collect::<Result<Vec<_>, _>>()
                 }
             }
             message::Message::Assistant { content, id } => {

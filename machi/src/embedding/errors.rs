@@ -2,7 +2,7 @@
 
 use crate::http;
 
-/// Error type used for when the [Embed::embed] method of the [Embed] trait fails.
+/// Error type used for when the [`Embed::embed`] method of the [Embed] trait fails.
 /// Used by default implementations of [Embed] for common types.
 #[derive(Debug, thiserror::Error)]
 #[error("{0}")]

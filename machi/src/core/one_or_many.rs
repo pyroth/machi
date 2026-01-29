@@ -10,7 +10,7 @@ use std::str::FromStr;
 /// If a single item is present, `first` will contain it and `rest` will be empty.
 /// If multiple items are present, `first` will contain the first item and `rest` will contain the rest.
 /// IMPORTANT: this struct cannot be created with an empty vector.
-/// OneOrMany objects can only be created using OneOrMany::from() or OneOrMany::try_from().
+/// `OneOrMany` objects can only be created using `OneOrMany::from()` or `OneOrMany::try_from()`.
 #[derive(PartialEq, Eq, Debug, Clone)]
 pub struct OneOrMany<T> {
     /// First item in the list.
@@ -109,22 +109,22 @@ impl<T: Clone> OneOrMany<T> {
         })
     }
 
-    /// Merge a list of OneOrMany items into a single OneOrMany item.
+    /// Merge a list of `OneOrMany` items into a single `OneOrMany` item.
     pub fn merge<I>(one_or_many_items: I) -> Result<Self, EmptyListError>
     where
         I: IntoIterator<Item = OneOrMany<T>>,
     {
         let items = one_or_many_items
             .into_iter()
-            .flat_map(|one_or_many| one_or_many.into_iter())
+            .flat_map(std::iter::IntoIterator::into_iter)
             .collect::<Vec<_>>();
 
         OneOrMany::many(items)
     }
 
-    /// Specialized map function for OneOrMany objects.
+    /// Specialized map function for `OneOrMany` objects.
     ///
-    /// Since OneOrMany objects have *atleast* 1 item, using `.collect::<Vec<_>>()` and
+    /// Since `OneOrMany` objects have *atleast* 1 item, using `.collect::<Vec<_>>()` and
     /// `OneOrMany::many()` is fallible resulting in unergonomic uses of `.expect` or `.unwrap`.
     /// This function bypasses those hurdles by directly constructing the `OneOrMany` struct.
     pub(crate) fn map<U, F: FnMut(T) -> U>(self, mut op: F) -> OneOrMany<U> {
@@ -134,7 +134,7 @@ impl<T: Clone> OneOrMany<T> {
         }
     }
 
-    /// Specialized try map function for OneOrMany objects.
+    /// Specialized try map function for `OneOrMany` objects.
     ///
     /// Same as `OneOrMany::map` but fallible.
     pub(crate) fn try_map<U, E, F>(self, mut op: F) -> Result<OneOrMany<U>, E>
@@ -194,7 +194,7 @@ impl<'a, T> Iterator for Iter<'a, T> {
     }
 
     fn size_hint(&self) -> (usize, Option<usize>) {
-        let first = if self.first.is_some() { 1 } else { 0 };
+        let first = usize::from(self.first.is_some());
         let max = self.rest.size_hint().1.unwrap_or(0) + first;
         if max > 0 {
             (1, Some(max))
@@ -243,7 +243,7 @@ where
     }
 
     fn size_hint(&self) -> (usize, Option<usize>) {
-        let first = if self.first.is_some() { 1 } else { 0 };
+        let first = usize::from(self.first.is_some());
         let max = self.rest.size_hint().1.unwrap_or(0) + first;
         if max > 0 {
             (1, Some(max))
@@ -274,7 +274,7 @@ impl<'a, T> Iterator for IterMut<'a, T> {
     }
 
     fn size_hint(&self) -> (usize, Option<usize>) {
-        let first = if self.first.is_some() { 1 } else { 0 };
+        let first = usize::from(self.first.is_some());
         let max = self.rest.size_hint().1.unwrap_or(0) + first;
         if max > 0 {
             (1, Some(max))
@@ -596,7 +596,7 @@ mod test {
 
     #[test]
     fn test_one_or_many_error() {
-        assert!(OneOrMany::<String>::many(vec![]).is_err())
+        assert!(OneOrMany::<String>::many(vec![]).is_err());
     }
 
     #[test]

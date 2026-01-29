@@ -1,4 +1,4 @@
-//! ToolSet implementation for managing collections of tools.
+//! `ToolSet` implementation for managing collections of tools.
 //!
 //! This module provides:
 //! - [`ToolType`] - Enum wrapper for different tool types
@@ -50,7 +50,7 @@ pub struct ToolSet {
 }
 
 impl ToolSet {
-    /// Create a new ToolSet from a list of tools
+    /// Create a new `ToolSet` from a list of tools
     pub fn from_tools(tools: Vec<impl ToolDyn + 'static>) -> Self {
         let mut toolset = Self::default();
         tools.into_iter().for_each(|tool| {
@@ -138,7 +138,7 @@ impl ToolSet {
                             {}\
                         ",
                             tool.name(),
-                            serde_json::to_string_pretty(&tool.definition("".to_string()).await)?
+                            serde_json::to_string_pretty(&tool.definition(String::new()).await)?
                         ),
                         additional_props: HashMap::new(),
                     });
@@ -153,7 +153,7 @@ impl ToolSet {
                             {}\
                         ",
                             tool.name(),
-                            serde_json::to_string_pretty(&tool.definition("".to_string()).await)?
+                            serde_json::to_string_pretty(&tool.definition(String::new()).await)?
                         ),
                         additional_props: HashMap::new(),
                     });
@@ -163,8 +163,8 @@ impl ToolSet {
         Ok(docs)
     }
 
-    /// Convert tools in self to objects of type ToolSchema.
-    /// This is necessary because when adding tools to the EmbeddingBuilder because all
+    /// Convert tools in self to objects of type `ToolSchema`.
+    /// This is necessary because when adding tools to the `EmbeddingBuilder` because all
     /// documents added to the builder must all be of the same type.
     pub fn schemas(&self) -> Result<Vec<ToolSchema>, EmbedError> {
         self.tools

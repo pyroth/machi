@@ -336,7 +336,7 @@ impl From<completion::ToolDefinition> for ToolDefinition {
 
 impl ToolDefinition {
     /// Apply strict mode to this tool definition.
-    /// This sets `strict: true` and sanitizes the schema to meet OpenAI requirements.
+    /// This sets `strict: true` and sanitizes the schema to meet `OpenAI` requirements.
     pub fn with_strict(mut self) -> Self {
         self.function.strict = Some(true);
         super::sanitize_schema(&mut self.function.parameters);
@@ -502,18 +502,10 @@ impl TryFrom<OneOrMany<message::UserContent>> for Vec<Message> {
 
         // If there are messages with both tool results and user content, openai will only
         //  handle tool results. It's unlikely that there will be both.
-        if !tool_results.is_empty() {
-            tool_results
-                .into_iter()
-                .map(|content| match content {
-                    message::UserContent::ToolResult(tool_result) => tool_result.try_into(),
-                    _ => unreachable!(),
-                })
-                .collect::<Result<Vec<_>, _>>()
-        } else {
+        if tool_results.is_empty() {
             let other_content: Vec<UserContent> = other_content
                 .into_iter()
-                .map(|content| content.try_into())
+                .map(std::convert::TryInto::try_into)
                 .collect::<Result<Vec<_>, _>>()?;
 
             let other_content = OneOrMany::many(other_content)
@@ -523,6 +515,14 @@ impl TryFrom<OneOrMany<message::UserContent>> for Vec<Message> {
                 content: other_content,
                 name: None,
             }])
+        } else {
+            tool_results
+                .into_iter()
+                .map(|content| match content {
+                    message::UserContent::ToolResult(tool_result) => tool_result.try_into(),
+                    _ => unreachable!(),
+                })
+                .collect::<Result<Vec<_>, _>>()
         }
     }
 }
@@ -562,7 +562,7 @@ impl TryFrom<OneOrMany<message::AssistantContent>> for Vec<Message> {
             name: None,
             tool_calls: tool_calls
                 .into_iter()
-                .map(|tool_call| tool_call.into())
+                .map(std::convert::Into::into)
                 .collect::<Vec<_>>(),
         }])
     }
@@ -613,7 +613,7 @@ impl TryFrom<Message> for message::Message {
     fn try_from(message: Message) -> Result<Self, Self::Error> {
         Ok(match message {
             Message::User { content, .. } => message::Message::User {
-                content: content.map(|content| content.into()),
+                content: content.map(std::convert::Into::into),
             },
             Message::Assistant {
                 content,
@@ -823,11 +823,11 @@ impl ProviderResponseExt for CompletionResponse {
     type Usage = Usage;
 
     fn get_response_id(&self) -> Option<String> {
-        Some(self.id.to_owned())
+        Some(self.id.clone())
     }
 
     fn get_response_model_name(&self) -> Option<String> {
-        Some(self.model.to_owned())
+        Some(self.model.clone())
     }
 
     fn get_output_messages(&self) -> Vec<Self::OutputMessage> {
@@ -936,12 +936,12 @@ where
 
     /// Enable strict mode for tool schemas.
     ///
-    /// When enabled, tool schemas are automatically sanitized to meet OpenAI's strict mode requirements:
+    /// When enabled, tool schemas are automatically sanitized to meet `OpenAI`'s strict mode requirements:
     /// - `additionalProperties: false` is added to all objects
     /// - All properties are marked as required
     /// - `strict: true` is set on each function definition
     ///
-    /// This allows OpenAI to guarantee that the model's tool calls will match the schema exactly.
+    /// This allows `OpenAI` to guarantee that the model's tool calls will match the schema exactly.
     pub fn with_strict_tools(mut self) -> Self {
         self.strict_tools = true;
         self
@@ -1143,7 +1143,7 @@ where
         };
 
         let request = CompletionRequest::try_from(OpenAIRequestParams {
-            model: self.model.to_owned(),
+            model: self.model.clone(),
             request: completion_request,
             strict_tools: self.strict_tools,
             tool_result_array_content: self.tool_result_array_content,

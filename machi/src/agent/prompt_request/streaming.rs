@@ -114,7 +114,7 @@ where
     <M as CompletionModel>::StreamingResponse: WasmCompatSend + GetTokenUsage,
     P: StreamingPromptHook<M>,
 {
-    /// Create a new PromptRequest with the given prompt and model
+    /// Create a new `PromptRequest` with the given prompt and model
     pub fn new(agent: Arc<Agent<M>>, prompt: impl Into<Message>) -> Self {
         Self {
             prompt: prompt.into(),
@@ -339,7 +339,7 @@ where
                                 tool_span.record("gen_ai.tool.call.result", &tool_result);
 
                                 if let Some(ref hook) = self.hook {
-                                    hook.on_tool_result(&tool_call.function.name, tool_call.call_id.clone(), &tool_args, &tool_result.to_string(), cancel_sig.clone())
+                                    hook.on_tool_result(&tool_call.function.name, tool_call.call_id.clone(), &tool_args, &tool_result.clone(), cancel_sig.clone())
                                     .await;
 
                                     if cancel_sig.is_cancelled() {
@@ -385,7 +385,7 @@ where
                             }
                         }
                         Ok(StreamedAssistantContent::Reasoning(crate::completion::message::Reasoning { reasoning, id, signature })) => {
-                            yield Ok(MultiTurnStreamItem::stream_item(StreamedAssistantContent::Reasoning(crate::completion::message::Reasoning { reasoning, id, signature })));
+                            yield Ok(MultiTurnStreamItem::stream_item(StreamedAssistantContent::Reasoning(crate::completion::message::Reasoning { id, reasoning, signature })));
                             did_call_tool = false;
                         },
                         Ok(StreamedAssistantContent::ReasoningDelta { reasoning, id }) => {
@@ -393,7 +393,7 @@ where
                             did_call_tool = false;
                         },
                         Ok(StreamedAssistantContent::Final(final_resp)) => {
-                            if let Some(usage) = final_resp.token_usage() { aggregated_usage += usage; };
+                            if let Some(usage) = final_resp.token_usage() { aggregated_usage += usage; }
                             if is_text_response {
                                 if let Some(ref hook) = self.hook {
                                     hook.on_stream_completion_response_finish(&prompt, &final_resp, cancel_sig.clone()).await;
@@ -649,7 +649,7 @@ mod tests {
     /// Test that span context doesn't leak to concurrent tasks during streaming.
     ///
     /// This test verifies that using `.instrument()` instead of `span.enter()` in
-    /// async_stream prevents thread-local span context from leaking to other tasks.
+    /// `async_stream` prevents thread-local span context from leaking to other tasks.
     ///
     /// Uses single-threaded runtime to force all tasks onto the same thread,
     /// making the span leak deterministic (it only occurs when tasks share a thread).

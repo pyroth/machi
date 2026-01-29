@@ -1,8 +1,8 @@
 use super::{Client, client::ApiResponse};
 use crate::core::json_utils::merge_inplace;
-use crate::http::HttpClientExt;
-use crate::image_generation::{ImageGenerationError, ImageGenerationRequest};
-use crate::{http_client, image_generation};
+use crate::http::{self as http_client, HttpClientExt};
+use crate::image_generation::{self as image_generation, ImageGenerationRequest};
+use crate::modalities::image::errors::ImageGenerationError;
 use base64::Engine;
 use base64::prelude::BASE64_STANDARD;
 use serde::Deserialize;
@@ -108,8 +108,7 @@ where
             let text = http_client::text(response).await?;
 
             return Err(ImageGenerationError::ProviderError(format!(
-                "{}: {}",
-                status, text,
+                "{status}: {text}",
             )));
         }
 

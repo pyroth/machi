@@ -9,7 +9,7 @@ use std::time::Duration;
 use bytes::Bytes;
 
 use super::{Error, LazyBody, MultipartForm, Result, StreamingResponse};
-use crate::core::wasm_compat::*;
+use crate::core::wasm_compat::{WasmCompatSend, WasmCompatSync};
 pub use http::Request;
 
 /// A helper trait to make generic requests (both regular and SSE) possible.

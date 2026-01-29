@@ -18,11 +18,11 @@ use super::lsh::LSHIndex;
 
 pub use super::builder::InMemoryVectorStoreBuilder;
 
-/// [InMemoryVectorStore] is a simple in-memory vector store that stores embeddings
-/// in-memory using a HashMap.
+/// [`InMemoryVectorStore`] is a simple in-memory vector store that stores embeddings
+/// in-memory using a `HashMap`.
 #[derive(Clone, Default)]
 pub struct InMemoryVectorStore<D: Serialize> {
-    /// The embeddings are stored in a HashMap.
+    /// The embeddings are stored in a `HashMap`.
     /// Hashmap key is the document id.
     /// Hashmap value is a tuple of the serializable document and its corresponding embeddings.
     embeddings: HashMap<String, (D, OneOrMany<Embedding>)>,
@@ -33,7 +33,7 @@ pub struct InMemoryVectorStore<D: Serialize> {
 }
 
 impl<D: Serialize + Eq> InMemoryVectorStore<D> {
-    /// Create a new builder for configuring an [InMemoryVectorStore].
+    /// Create a new builder for configuring an [`InMemoryVectorStore`].
     ///
     /// # Examples
     ///
@@ -72,11 +72,11 @@ impl<D: Serialize + Eq> InMemoryVectorStore<D> {
         vector_store
     }
 
-    /// Create a new [InMemoryVectorStore] from documents and their corresponding embeddings.
+    /// Create a new [`InMemoryVectorStore`] from documents and their corresponding embeddings.
     /// Ids are automatically generated have will have the form `"doc{n}"` where `n`
     /// is the index of the document.
     ///
-    /// Uses BruteForce index strategy by default. For custom index strategies, use [InMemoryVectorStore::builder].
+    /// Uses `BruteForce` index strategy by default. For custom index strategies, use [`InMemoryVectorStore::builder`].
     pub fn from_documents(documents: impl IntoIterator<Item = (D, OneOrMany<Embedding>)>) -> Self {
         let mut store = HashMap::new();
         documents
@@ -93,9 +93,9 @@ impl<D: Serialize + Eq> InMemoryVectorStore<D> {
         }
     }
 
-    /// Create a new [InMemoryVectorStore] from documents and their corresponding embeddings with ids.
+    /// Create a new [`InMemoryVectorStore`] from documents and their corresponding embeddings with ids.
     ///
-    /// Uses BruteForce index strategy by default. For custom index strategies, use [InMemoryVectorStore::builder].
+    /// Uses `BruteForce` index strategy by default. For custom index strategies, use [`InMemoryVectorStore::builder`].
     pub fn from_documents_with_ids(
         documents: impl IntoIterator<Item = (impl ToString, D, OneOrMany<Embedding>)>,
     ) -> Self {
@@ -111,10 +111,10 @@ impl<D: Serialize + Eq> InMemoryVectorStore<D> {
         }
     }
 
-    /// Create a new [InMemoryVectorStore] from documents and their corresponding embeddings.
+    /// Create a new [`InMemoryVectorStore`] from documents and their corresponding embeddings.
     /// Document ids are generated using the provided function.
     ///
-    /// Uses BruteForce index strategy by default. For custom index strategies, use [InMemoryVectorStore::builder].
+    /// Uses `BruteForce` index strategy by default. For custom index strategies, use [`InMemoryVectorStore::builder`].
     pub fn from_documents_with_id_f(
         documents: impl IntoIterator<Item = (D, OneOrMany<Embedding>)>,
         f: fn(&D) -> String,
@@ -131,8 +131,8 @@ impl<D: Serialize + Eq> InMemoryVectorStore<D> {
         }
     }
 
-    /// Implement vector search on [InMemoryVectorStore].
-    /// To be used by implementations of [VectorStoreIndex::top_n] and [VectorStoreIndex::top_n_ids] methods.
+    /// Implement vector search on [`InMemoryVectorStore`].
+    /// To be used by implementations of [`VectorStoreIndex::top_n`] and [`VectorStoreIndex::top_n_ids`] methods.
     fn vector_search(&self, prompt_embedding: &Embedding, n: usize) -> EmbeddingRanking<'_, D> {
         match &self.index_strategy {
             IndexStrategy::BruteForce => self.vector_search_brute_force(prompt_embedding, n),
@@ -152,7 +152,7 @@ impl<D: Serialize + Eq> InMemoryVectorStore<D> {
         // Sort documents by best embedding distance
         let mut docs = BinaryHeap::new();
 
-        for (id, (doc, embedding)) in self.embeddings.iter() {
+        for (id, (doc, embedding)) in &self.embeddings {
             // Get the best context for the document given the prompt
             if let Some((distance, embed_doc)) = embedding
                 .iter()
@@ -165,7 +165,7 @@ impl<D: Serialize + Eq> InMemoryVectorStore<D> {
                 .max_by(|a, b| a.0.cmp(&b.0))
             {
                 docs.push(Reverse(RankingItem(distance, id, doc, embed_doc)));
-            };
+            }
 
             // If the heap size exceeds n, pop the least old element.
             if docs.len() > n {
@@ -261,8 +261,7 @@ impl<D: Serialize + Eq> InMemoryVectorStore<D> {
             .values()
             .next()
             .and_then(|(_, embedding)| embedding.iter().next())
-            .map(|e| e.vec.len())
-            .unwrap_or(0);
+            .map_or(0, |e| e.vec.len());
 
         if first_embedding == 0 {
             return;
@@ -271,7 +270,7 @@ impl<D: Serialize + Eq> InMemoryVectorStore<D> {
         let mut lsh_index = LSHIndex::new(first_embedding, num_tables, num_hyperplanes);
 
         // Insert all existing embeddings into the LSH index
-        for (id, (_, embeddings)) in self.embeddings.iter() {
+        for (id, (_, embeddings)) in &self.embeddings {
             for embedding in embeddings.iter() {
                 lsh_index.insert(id.clone(), &embedding.vec);
             }
@@ -358,7 +357,7 @@ impl<D: Serialize + Eq> InMemoryVectorStore<D> {
     }
 }
 
-/// RankingItem(distance, document_id, serializable document, embedding document)
+/// RankingItem(distance, `document_id`, serializable document, embedding document)
 #[derive(Eq, PartialEq)]
 struct RankingItem<'a, D: Serialize>(OrderedFloat<f64>, &'a String, &'a D, &'a String);
 
@@ -636,11 +635,11 @@ mod tests {
                 })
                 .collect::<Vec<(_, _, String)>>(),
             vec![(
-                0.9807965956109156,
+                0.980_796_595_610_915_6,
                 "doc1".to_string(),
                 "glarb-garb".to_string()
             )]
-        )
+        );
     }
 
     #[test]
@@ -719,10 +718,10 @@ mod tests {
                 })
                 .collect::<Vec<(_, _, String)>>(),
             vec![(
-                0.9807965956109156,
+                0.980_796_595_610_915_6,
                 "doc1".to_string(),
                 "glarb-garb".to_string()
             )]
-        )
+        );
     }
 }

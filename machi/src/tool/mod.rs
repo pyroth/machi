@@ -3,11 +3,11 @@
 //! The [Tool] trait defines a simple interface for creating tools that can be used
 //! by [Agents](crate::agent::Agent).
 //!
-//! The [ToolEmbedding] trait extends the [Tool] trait to allow for tools that can be
-//! stored in a vector store and RAGged.
+//! The [`ToolEmbedding`] trait extends the [Tool] trait to allow for tools that can be
+//! stored in a vector store and `RAGged`.
 //!
-//! The [ToolSet] struct is a collection of tools that can be used by an [Agent](crate::agent::Agent)
-//! and optionally RAGged.
+//! The [`ToolSet`] struct is a collection of tools that can be used by an [Agent](crate::agent::Agent)
+//! and optionally `RAGged`.
 
 pub mod errors;
 #[cfg(feature = "rmcp")]

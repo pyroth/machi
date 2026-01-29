@@ -29,9 +29,9 @@ use crate::image_generation::ImageGenerationModel;
 use image_generation::ImageGenerationClient;
 
 #[cfg(feature = "audio")]
-use crate::audio_generation::*;
+use crate::audio_generation::AudioGenerationModel;
 #[cfg(feature = "audio")]
-use audio_generation::*;
+use audio_generation::AudioGenerationClient;
 
 use crate::{
     completion::CompletionModel,

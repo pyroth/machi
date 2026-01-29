@@ -103,7 +103,7 @@ pub trait Tool: Sized + WasmCompatSend + WasmCompatSync {
     ) -> impl Future<Output = Result<Self::Output, Self::Error>> + WasmCompatSend;
 }
 
-/// Trait that represents an LLM tool that can be stored in a vector store and RAGged
+/// Trait that represents an LLM tool that can be stored in a vector store and `RAGged`
 pub trait ToolEmbedding: Tool {
     type InitError: std::error::Error + WasmCompatSend + WasmCompatSync + 'static;
 
@@ -120,7 +120,7 @@ pub trait ToolEmbedding: Tool {
 
     /// A method returning the documents that will be used as embeddings for the tool.
     /// This allows for a tool to be retrieved from multiple embedding "directions".
-    /// If the tool will not be RAGged, this method should return an empty vector.
+    /// If the tool will not be `RAGged`, this method should return an empty vector.
     fn embedding_docs(&self) -> Vec<String>;
 
     /// A method returning the context of the tool.
@@ -134,9 +134,9 @@ pub trait ToolEmbedding: Tool {
 pub trait ToolDyn: WasmCompatSend + WasmCompatSync {
     fn name(&self) -> String;
 
-    fn definition<'a>(&'a self, prompt: String) -> WasmBoxedFuture<'a, ToolDefinition>;
+    fn definition(&self, prompt: String) -> WasmBoxedFuture<'_, ToolDefinition>;
 
-    fn call<'a>(&'a self, args: String) -> WasmBoxedFuture<'a, Result<String, ToolError>>;
+    fn call(&self, args: String) -> WasmBoxedFuture<'_, Result<String, ToolError>>;
 }
 
 impl<T: Tool> ToolDyn for T {
@@ -144,11 +144,11 @@ impl<T: Tool> ToolDyn for T {
         self.name()
     }
 
-    fn definition<'a>(&'a self, prompt: String) -> WasmBoxedFuture<'a, ToolDefinition> {
+    fn definition(&self, prompt: String) -> WasmBoxedFuture<'_, ToolDefinition> {
         Box::pin(<Self as Tool>::definition(self, prompt))
     }
 
-    fn call<'a>(&'a self, args: String) -> WasmBoxedFuture<'a, Result<String, ToolError>> {
+    fn call(&self, args: String) -> WasmBoxedFuture<'_, Result<String, ToolError>> {
         Box::pin(async move {
             match serde_json::from_str(&args) {
                 Ok(args) => <Self as Tool>::call(self, args)

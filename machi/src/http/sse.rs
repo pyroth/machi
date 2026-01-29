@@ -1,4 +1,4 @@
-//! An SSE implementation that leverages [`crate::http::HttpClientExt`] to allow streaming with automatic retry handling for any implementor of HttpClientExt.
+//! An SSE implementation that leverages [`crate::http::HttpClientExt`] to allow streaming with automatic retry handling for any implementor of `HttpClientExt`.
 //!
 //! Primarily intended for internal usage. However if you also wish to implement generic HTTP streaming for your custom completion model,
 //! you may find this helpful.
@@ -47,11 +47,11 @@ type BoxedRetry = Box<dyn RetryPolicy + Send + Unpin + 'static>;
 #[derive(Debug, Clone, Copy, Eq, PartialEq, Ord, PartialOrd)]
 #[repr(u8)]
 pub enum ReadyState {
-    /// The EventSource is waiting on a response from the endpoint
+    /// The `EventSource` is waiting on a response from the endpoint
     Connecting = 0,
-    /// The EventSource is connected
+    /// The `EventSource` is connected
     Open = 1,
-    /// The EventSource is closed and no longer emitting Events
+    /// The `EventSource` is closed and no longer emitting Events
     Closed = 2,
 }
 
@@ -109,7 +109,7 @@ where
         }
     }
 
-    /// Close the EventSource stream and stop trying to reconnect
+    /// Close the `EventSource` stream and stop trying to reconnect
     pub fn close(&mut self) {
         self.is_closed = true;
     }
@@ -131,8 +131,7 @@ where
     }
 }
 
-impl<'a, HttpClient, RequestBody>
-    GenericEventSourceProjection<'a, HttpClient, RequestBody, BoxedStream>
+impl<HttpClient, RequestBody> GenericEventSourceProjection<'_, HttpClient, RequestBody, BoxedStream>
 where
     HttpClient: HttpClientExt + Clone + 'static,
     RequestBody: Into<Bytes> + Clone + WasmCompatSend + 'static,
@@ -168,7 +167,7 @@ where
     fn handle_event(&mut self, event: &eventsource_stream::Event) {
         *self.last_event_id = event.id.clone();
         if let Some(duration) = event.retry {
-            self.retry_policy.set_reconnection_time(duration)
+            self.retry_policy.set_reconnection_time(duration);
         }
     }
 
@@ -218,7 +217,7 @@ where
 
         if let Some(delay) = this.delay.as_mut().as_pin_mut() {
             match delay.poll(cx) {
-                Poll::Ready(_) => {
+                Poll::Ready(()) => {
                     this.delay.take();
                     if let Err(err) = this.retry_fetch() {
                         *this.is_closed = true;

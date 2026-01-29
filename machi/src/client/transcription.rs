@@ -2,7 +2,7 @@ use crate::modalities::audio::transcription::TranscriptionModel;
 
 /// A provider client with transcription capabilities.
 pub trait TranscriptionClient {
-    /// The type of TranscriptionModel used by the Client
+    /// The type of `TranscriptionModel` used by the Client
     type TranscriptionModel: TranscriptionModel;
 
     /// Create a transcription model with the given name.

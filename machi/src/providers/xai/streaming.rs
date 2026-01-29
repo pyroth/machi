@@ -18,7 +18,7 @@ where
     {
         let preamble = completion_request.preamble.clone();
         let mut request =
-            XAICompletionRequest::try_from((self.model.to_string().as_ref(), completion_request))?;
+            XAICompletionRequest::try_from((self.model.clone().as_ref(), completion_request))?;
 
         let params = json_utils::merge(
             request.additional_params.unwrap_or(serde_json::json!({})),

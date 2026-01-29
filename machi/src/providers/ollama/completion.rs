@@ -62,7 +62,7 @@ impl TryFrom<CompletionResponse> for completion::CompletionResponse<CompletionRe
                 if !content.is_empty() {
                     assistant_contents.push(completion::AssistantContent::text(&content));
                 }
-                for tc in tool_calls.iter() {
+                for tc in &tool_calls {
                     assistant_contents.push(completion::AssistantContent::tool_call(
                         tc.function.name.clone(),
                         tc.function.name.clone(),

@@ -6,7 +6,7 @@
 //! - [Prompt]: Defines a high-level LLM one-shot prompt interface.
 //! - [Chat]: Defines a high-level LLM chat interface with chat history.
 //! - [Completion]: Defines a low-level LLM completion interface for generating completion requests.
-//! - [CompletionModel]: Defines a completion model that can be used to generate completion
+//! - [`CompletionModel`]: Defines a completion model that can be used to generate completion
 //!   responses from requests.
 //!
 //! The [Prompt] and [Chat] traits are high level traits that users are expected to use
@@ -16,7 +16,7 @@
 //! The [Completion] trait defines a lower level interface that is useful when the user want
 //! to further customize the request before sending it to the completion model provider.
 //!
-//! The [CompletionModel] trait is meant to act as the interface between providers and
+//! The [`CompletionModel`] trait is meant to act as the interface between providers and
 //! the library. It defines the methods that need to be implemented by the user to define
 //! a custom base completion model (i.e.: a private or third party LLM provider).
 //!
@@ -276,7 +276,7 @@ impl CompletionRequest {
 /// ```
 ///
 /// Note: It is usually unnecessary to create a completion request builder directly.
-/// Instead, use the [CompletionModel::completion_request] method.
+/// Instead, use the [`CompletionModel::completion_request`] method.
 pub struct CompletionRequestBuilder<M: CompletionModel> {
     model: M,
     prompt: Message,
@@ -327,7 +327,7 @@ impl<M: CompletionModel> CompletionRequestBuilder<M> {
     pub fn messages(self, messages: Vec<Message>) -> Self {
         messages
             .into_iter()
-            .fold(self, |builder, msg| builder.message(msg))
+            .fold(self, CompletionRequestBuilder::message)
     }
 
     /// Adds a document to the completion request.
@@ -340,7 +340,7 @@ impl<M: CompletionModel> CompletionRequestBuilder<M> {
     pub fn documents(self, documents: Vec<Document>) -> Self {
         documents
             .into_iter()
-            .fold(self, |builder, doc| builder.document(doc))
+            .fold(self, CompletionRequestBuilder::document)
     }
 
     /// Adds a tool to the completion request.
@@ -351,9 +351,7 @@ impl<M: CompletionModel> CompletionRequestBuilder<M> {
 
     /// Adds a list of tools to the completion request.
     pub fn tools(self, tools: Vec<ToolDefinition>) -> Self {
-        tools
-            .into_iter()
-            .fold(self, |builder, tool| builder.tool(tool))
+        tools.into_iter().fold(self, CompletionRequestBuilder::tool)
     }
 
     /// Adds additional parameters to the completion request.

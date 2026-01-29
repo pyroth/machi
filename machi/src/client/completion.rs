@@ -7,12 +7,12 @@ use serde::{Deserialize, Serialize};
 /// A provider client with completion capabilities.
 /// Clone is required for conversions between client types.
 pub trait CompletionClient {
-    /// The type of CompletionModel used by the client.
+    /// The type of `CompletionModel` used by the client.
     type CompletionModel: CompletionModel<Client = Self>;
 
     /// Create a completion model with the given model.
     ///
-    /// # Example with OpenAI
+    /// # Example with `OpenAI`
     /// ```
     /// use crate::prelude::*;
     /// use crate::providers::openai::{Client, self};
@@ -28,7 +28,7 @@ pub trait CompletionClient {
 
     /// Create an agent builder with the given completion model.
     ///
-    /// # Example with OpenAI
+    /// # Example with `OpenAI`
     /// ```
     /// use crate::prelude::*;
     /// use crate::providers::openai::{Client, self};

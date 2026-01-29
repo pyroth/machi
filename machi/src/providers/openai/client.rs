@@ -120,7 +120,7 @@ where
         + 'static,
 {
     /// Create an extractor builder with the given completion model.
-    /// Uses the OpenAI Responses API (default behavior).
+    /// Uses the `OpenAI` Responses API (default behavior).
     pub fn extractor<U>(
         &self,
         model: impl Into<String>,
@@ -149,7 +149,7 @@ where
         + 'static,
 {
     /// Create an extractor builder with the given completion model.
-    /// Uses the OpenAI Chat Completions API.
+    /// Uses the `OpenAI` Chat Completions API.
     pub fn extractor<U>(
         &self,
         model: impl Into<String>,
@@ -170,7 +170,7 @@ where
 impl ProviderClient for Client {
     type Input = OpenAIApiKey;
 
-    /// Create a new OpenAI Responses API client from the `OPENAI_API_KEY` environment variable.
+    /// Create a new `OpenAI` Responses API client from the `OPENAI_API_KEY` environment variable.
     /// Panics if the environment variable is not set.
     fn from_env() -> Self {
         let base_url: Option<String> = std::env::var("OPENAI_BASE_URL").ok();
@@ -193,7 +193,7 @@ impl ProviderClient for Client {
 impl ProviderClient for CompletionsClient {
     type Input = OpenAIApiKey;
 
-    /// Create a new OpenAI Completions API client from the `OPENAI_API_KEY` environment variable.
+    /// Create a new `OpenAI` Completions API client from the `OPENAI_API_KEY` environment variable.
     /// Panics if the environment variable is not set.
     fn from_env() -> Self {
         let base_url: Option<String> = std::env::var("OPENAI_BASE_URL").ok();

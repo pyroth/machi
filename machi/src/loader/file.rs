@@ -15,12 +15,12 @@ pub(crate) trait Readable {
 impl<'a> FileLoader<'a, PathBuf> {
     pub fn read(self) -> FileLoader<'a, Result<String, FileLoaderError>> {
         FileLoader {
-            iterator: Box::new(self.iterator.map(|res| res.read())),
+            iterator: Box::new(self.iterator.map(Readable::read)),
         }
     }
     pub fn read_with_path(self) -> FileLoader<'a, Result<(PathBuf, String), FileLoaderError>> {
         FileLoader {
-            iterator: Box::new(self.iterator.map(|res| res.read_with_path())),
+            iterator: Box::new(self.iterator.map(Readable::read_with_path)),
         }
     }
 }
@@ -49,10 +49,10 @@ impl Readable for Vec<u8> {
 
 impl<T: Readable> Readable for Result<T, FileLoaderError> {
     fn read(self) -> Result<String, FileLoaderError> {
-        self.map(|t| t.read())?
+        self.map(Readable::read)?
     }
     fn read_with_path(self) -> Result<(PathBuf, String), FileLoaderError> {
-        self.map(|t| t.read_with_path())?
+        self.map(Readable::read_with_path)?
     }
 }
 
@@ -60,12 +60,12 @@ impl<T: Readable> Readable for Result<T, FileLoaderError> {
 // FileLoader definitions and implementations
 // ================================================================
 
-/// [FileLoader] is a utility for loading files from the filesystem using glob patterns or directory
+/// [`FileLoader`] is a utility for loading files from the filesystem using glob patterns or directory
 ///  paths. It provides methods to read file contents and handle errors gracefully.
 ///
 /// # Errors
 ///
-/// This module defines a custom error type [FileLoaderError] which can represent various errors
+/// This module defines a custom error type [`FileLoaderError`] which can represent various errors
 ///  that might occur during file loading operations, such as invalid glob patterns, IO errors, and
 ///  glob errors.
 ///
@@ -91,15 +91,15 @@ impl<T: Readable> Readable for Result<T, FileLoaderError> {
 /// }
 /// ```
 ///
-/// [FileLoader] uses strict typing between the iterator methods to ensure that transitions between
+/// [`FileLoader`] uses strict typing between the iterator methods to ensure that transitions between
 ///   different implementations of the loaders and it's methods are handled properly by the compiler.
 pub struct FileLoader<'a, T> {
     iterator: Box<dyn Iterator<Item = T> + 'a>,
 }
 
 impl<'a> FileLoader<'a, Result<PathBuf, FileLoaderError>> {
-    /// Reads the contents of the files within the iterator returned by [FileLoader::with_glob] or
-    ///  [FileLoader::with_dir].
+    /// Reads the contents of the files within the iterator returned by [`FileLoader::with_glob`] or
+    ///  [`FileLoader::with_dir`].
     ///
     /// # Example
     /// Read files in directory "files/*.txt" and print the content for each file
@@ -115,11 +115,11 @@ impl<'a> FileLoader<'a, Result<PathBuf, FileLoaderError>> {
     /// ```
     pub fn read(self) -> FileLoader<'a, Result<String, FileLoaderError>> {
         FileLoader {
-            iterator: Box::new(self.iterator.map(|res| res.read())),
+            iterator: Box::new(self.iterator.map(Readable::read)),
         }
     }
-    /// Reads the contents of the files within the iterator returned by [FileLoader::with_glob] or
-    ///  [FileLoader::with_dir] and returns the path along with the content.
+    /// Reads the contents of the files within the iterator returned by [`FileLoader::with_glob`] or
+    ///  [`FileLoader::with_dir`] and returns the path along with the content.
     ///
     /// # Example
     /// Read files in directory "files/*.txt" and print the content for corresponding path for each
@@ -136,7 +136,7 @@ impl<'a> FileLoader<'a, Result<PathBuf, FileLoaderError>> {
     /// ```
     pub fn read_with_path(self) -> FileLoader<'a, Result<(PathBuf, String), FileLoaderError>> {
         FileLoader {
-            iterator: Box::new(self.iterator.map(|res| res.read_with_path())),
+            iterator: Box::new(self.iterator.map(Readable::read_with_path)),
         }
     }
 }
@@ -146,7 +146,7 @@ where
     T: 'a,
 {
     /// Ignores errors in the iterator, returning only successful results. This can be used on any
-    ///  [FileLoader] state of iterator whose items are results.
+    ///  [`FileLoader`] state of iterator whose items are results.
     ///
     /// # Example
     /// Read files in directory "files/*.txt" and ignore errors from unreadable files.
@@ -159,16 +159,16 @@ where
     /// ```
     pub fn ignore_errors(self) -> FileLoader<'a, T> {
         FileLoader {
-            iterator: Box::new(self.iterator.filter_map(|res| res.ok())),
+            iterator: Box::new(self.iterator.filter_map(std::result::Result::ok)),
         }
     }
 }
 
 impl FileLoader<'_, Result<PathBuf, FileLoaderError>> {
-    /// Creates a new [FileLoader] using a glob pattern to match files.
+    /// Creates a new [`FileLoader`] using a glob pattern to match files.
     ///
     /// # Example
-    /// Create a [FileLoader] for all `.txt` files that match the glob "files/*.txt".
+    /// Create a [`FileLoader`] for all `.txt` files that match the glob "files/*.txt".
     ///
     /// ```rust
     /// let loader = FileLoader::with_glob("files/*.txt")?;
@@ -186,10 +186,10 @@ impl FileLoader<'_, Result<PathBuf, FileLoaderError>> {
         })
     }
 
-    /// Creates a new [FileLoader] on all files within a directory.
+    /// Creates a new [`FileLoader`] on all files within a directory.
     ///
     /// # Example
-    /// Create a [FileLoader] for all files that are in the directory "files" (ignores subdirectories).
+    /// Create a [`FileLoader`] for all files that are in the directory "files" (ignores subdirectories).
     ///
     /// ```rust
     /// let loader = FileLoader::with_dir("files")?;
@@ -224,14 +224,14 @@ impl<'a> FileLoader<'a, Vec<u8>> {
     /// Use this once you've created the loader to load the document in.
     pub fn read(self) -> FileLoader<'a, Result<String, FileLoaderError>> {
         FileLoader {
-            iterator: Box::new(self.iterator.map(|res| res.read())),
+            iterator: Box::new(self.iterator.map(Readable::read)),
         }
     }
 
     /// Use this once you've created the reader to load the document in (and get the path).
     pub fn read_with_path(self) -> FileLoader<'a, Result<(PathBuf, String), FileLoaderError>> {
         FileLoader {
-            iterator: Box::new(self.iterator.map(|res| res.read_with_path())),
+            iterator: Box::new(self.iterator.map(Readable::read_with_path)),
         }
     }
 }
@@ -296,7 +296,7 @@ mod tests {
         expected.sort();
 
         assert!(!actual.is_empty());
-        assert!(expected == actual)
+        assert!(expected == actual);
     }
 
     #[test]
@@ -326,6 +326,6 @@ mod tests {
         expected.sort();
 
         assert!(!actual.is_empty());
-        assert!(expected == actual)
+        assert!(expected == actual);
     }
 }

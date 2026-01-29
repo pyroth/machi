@@ -1,5 +1,5 @@
 //! Everything related to audio generation (ie, Text To Speech).
-//! Rig abstracts over a number of different providers using the [AudioGenerationModel] trait.
+//! Rig abstracts over a number of different providers using the [`AudioGenerationModel`] trait.
 
 use crate::core::wasm_compat::{WasmCompatSend, WasmCompatSync};
 use serde_json::Value;
@@ -78,8 +78,8 @@ where
     pub fn new(model: M) -> Self {
         Self {
             model,
-            text: "".to_string(),
-            voice: "".to_string(),
+            text: String::new(),
+            voice: String::new(),
             speed: 1.0,
             additional_params: None,
         }

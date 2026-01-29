@@ -194,8 +194,12 @@ where
 impl Filter<serde_json::Value> {
     /// Tests whether a JSON value satisfies this filter.
     pub fn satisfies(&self, value: &serde_json::Value) -> bool {
-        use Filter::*;
-        use serde_json::{Value, Value::*, json};
+        use Filter::{And, Eq, Gt, Lt, Or};
+        use serde_json::{
+            Value,
+            Value::{Bool, Null, Number, String},
+            json,
+        };
         use std::cmp::Ordering;
 
         fn compare_pair(l: &Value, r: &Value) -> Option<std::cmp::Ordering> {

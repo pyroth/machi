@@ -2,7 +2,7 @@ use std::error::Error;
 
 use epub::doc::DocError;
 
-use crate::loaders::file::FileLoaderError;
+use crate::loader::errors::FileLoaderError;
 
 #[derive(thiserror::Error, Debug)]
 pub enum EpubLoaderError {

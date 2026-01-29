@@ -25,9 +25,9 @@ impl fmt::Display for ToolError {
                 // This is required due to being able to use agents as tools
                 // which means it is possible to get recursive tool call errors
                 if error_str.starts_with("ToolCallError: ") {
-                    write!(f, "{}", error_str)
+                    write!(f, "{error_str}")
                 } else {
-                    write!(f, "ToolCallError: {}", error_str)
+                    write!(f, "ToolCallError: {error_str}")
                 }
             }
             ToolError::JsonError(e) => write!(f, "JsonError: {e}"),

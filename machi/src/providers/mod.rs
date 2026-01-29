@@ -1,7 +1,7 @@
 //! This module contains clients for the different LLM providers that Machi supports.
 //!
 //! Currently, the following providers are supported:
-//! - OpenAI
+//! - `OpenAI`
 //! - Anthropic
 //! - Ollama
 //! - Huggingface
