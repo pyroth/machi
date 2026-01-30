@@ -1,13 +1,15 @@
+//! Audio generation client trait.
+
 #[cfg(feature = "audio")]
-mod audio {
+mod inner {
     use crate::modalities::audio::generation::AudioGenerationModel;
 
     /// A provider client with audio generation capabilities.
     pub trait AudioGenerationClient {
-        /// The `AudioGenerationModel` used by the Client
+        /// The audio generation model type used by this client.
         type AudioGenerationModel: AudioGenerationModel<Client = Self>;
 
-        /// Create an audio generation model with the given name.
+        /// Creates an audio generation model with the given model identifier.
         fn audio_generation_model(&self, model: impl Into<String>) -> Self::AudioGenerationModel {
             Self::AudioGenerationModel::make(self, model)
         }
@@ -15,4 +17,4 @@ mod audio {
 }
 
 #[cfg(feature = "audio")]
-pub use audio::*;
+pub use inner::*;

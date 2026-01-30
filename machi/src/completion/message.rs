@@ -3,7 +3,7 @@ use std::{convert::Infallible, str::FromStr};
 use crate::core::OneOrMany;
 use serde::{Deserialize, Serialize};
 
-pub use super::errors::MessageError;
+pub use super::error::MessageError;
 
 /// A useful trait to help convert `crate::completion::Message` to your own message type.
 ///

@@ -91,22 +91,23 @@ where
     M: CompletionModel,
 {
     /// Creates a new builder with the given completion model.
+    #[inline]
     pub fn new(model: M) -> Self {
         Self {
             name: None,
             description: None,
             model,
             preamble: None,
-            static_context: vec![],
+            static_context: Vec::new(),
             temperature: None,
             max_tokens: None,
             additional_params: None,
-            dynamic_context: vec![],
+            dynamic_context: Vec::new(),
             tool_server_handle: None,
             tool_choice: None,
             default_max_depth: None,
-            static_tools: vec![],
-            dynamic_tools: vec![],
+            static_tools: Vec::new(),
+            dynamic_tools: Vec::new(),
             tools: ToolSet::default(),
             _marker: PhantomData,
         }

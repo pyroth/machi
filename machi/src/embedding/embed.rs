@@ -9,7 +9,7 @@
 //!
 //! Finally, the module implements [Embed] for many common primitive types.
 
-pub use super::errors::EmbedError;
+pub use super::error::EmbedError;
 
 /// Derive this trait for objects that need to be converted to vector embeddings.
 /// The [`Embed::embed`] method accumulates string values that need to be embedded by adding them to the [`TextEmbedder`].
@@ -26,16 +26,36 @@ pub struct TextEmbedder {
 }
 
 impl TextEmbedder {
+    /// Creates a new empty `TextEmbedder`.
+    #[inline]
+    pub fn new() -> Self {
+        Self::default()
+    }
+
     /// Adds input `text` string to the list of texts in the [`TextEmbedder`] that need to be embedded.
+    #[inline]
     pub fn embed(&mut self, text: String) {
         self.texts.push(text);
+    }
+
+    /// Returns the number of texts accumulated.
+    #[inline]
+    pub fn len(&self) -> usize {
+        self.texts.len()
+    }
+
+    /// Returns `true` if no texts have been accumulated.
+    #[inline]
+    pub fn is_empty(&self) -> bool {
+        self.texts.is_empty()
     }
 }
 
 /// Utility function that returns a vector of strings that need to be embedded for a
 /// given object that implements the [Embed] trait.
+#[inline]
 pub fn to_texts(item: impl Embed) -> Result<Vec<String>, EmbedError> {
-    let mut embedder = TextEmbedder::default();
+    let mut embedder = TextEmbedder::new();
     item.embed(&mut embedder)?;
     Ok(embedder.texts)
 }

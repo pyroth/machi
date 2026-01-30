@@ -9,8 +9,10 @@ use crate::http;
 pub struct EmbedError(#[from] Box<dyn std::error::Error + Send + Sync>);
 
 impl EmbedError {
+    /// Creates a new `EmbedError` from any error type.
+    #[inline]
     pub fn new<E: std::error::Error + Send + Sync + 'static>(error: E) -> Self {
-        EmbedError(Box::new(error))
+        Self(Box::new(error))
     }
 }
 

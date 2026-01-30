@@ -2,6 +2,7 @@ pub use super::traits::VectorDistance;
 
 #[cfg(not(feature = "rayon"))]
 impl VectorDistance for crate::embedding::Embedding {
+    #[inline]
     fn dot_product(&self, other: &Self) -> f64 {
         self.vec
             .iter()
@@ -10,6 +11,7 @@ impl VectorDistance for crate::embedding::Embedding {
             .sum()
     }
 
+    #[inline]
     fn cosine_similarity(&self, other: &Self, normalized: bool) -> f64 {
         let dot_product = self.dot_product(other);
 
@@ -23,11 +25,13 @@ impl VectorDistance for crate::embedding::Embedding {
         }
     }
 
+    #[inline]
     fn angular_distance(&self, other: &Self, normalized: bool) -> f64 {
         let cosine_sim = self.cosine_similarity(other, normalized);
         cosine_sim.acos() / std::f64::consts::PI
     }
 
+    #[inline]
     fn euclidean_distance(&self, other: &Self) -> f64 {
         self.vec
             .iter()
@@ -37,6 +41,7 @@ impl VectorDistance for crate::embedding::Embedding {
             .sqrt()
     }
 
+    #[inline]
     fn manhattan_distance(&self, other: &Self) -> f64 {
         self.vec
             .iter()
@@ -45,6 +50,7 @@ impl VectorDistance for crate::embedding::Embedding {
             .sum()
     }
 
+    #[inline]
     fn chebyshev_distance(&self, other: &Self) -> f64 {
         self.vec
             .iter()
@@ -60,6 +66,7 @@ mod rayon {
     use rayon::prelude::*;
 
     impl VectorDistance for Embedding {
+        #[inline]
         fn dot_product(&self, other: &Self) -> f64 {
             self.vec
                 .par_iter()
@@ -68,6 +75,7 @@ mod rayon {
                 .sum()
         }
 
+        #[inline]
         fn cosine_similarity(&self, other: &Self, normalized: bool) -> f64 {
             let dot_product = self.dot_product(other);
 
@@ -81,11 +89,13 @@ mod rayon {
             }
         }
 
+        #[inline]
         fn angular_distance(&self, other: &Self, normalized: bool) -> f64 {
             let cosine_sim = self.cosine_similarity(other, normalized);
             cosine_sim.acos() / std::f64::consts::PI
         }
 
+        #[inline]
         fn euclidean_distance(&self, other: &Self) -> f64 {
             self.vec
                 .par_iter()
@@ -95,6 +105,7 @@ mod rayon {
                 .sqrt()
         }
 
+        #[inline]
         fn manhattan_distance(&self, other: &Self) -> f64 {
             self.vec
                 .par_iter()
@@ -103,6 +114,7 @@ mod rayon {
                 .sum()
         }
 
+        #[inline]
         fn chebyshev_distance(&self, other: &Self) -> f64 {
             self.vec
                 .iter()

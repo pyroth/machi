@@ -96,6 +96,7 @@ where
     M: CompletionModel,
 {
     /// Returns the name of the agent, or a default if not set.
+    #[inline]
     pub(crate) fn name(&self) -> &str {
         self.name.as_deref().unwrap_or(UNKNOWN_AGENT_NAME)
     }

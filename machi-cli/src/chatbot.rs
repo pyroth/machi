@@ -53,6 +53,7 @@ where
     M::StreamingResponse: GetTokenUsage,
 {
     /// Create a new chatbot with the given agent and configuration.
+    #[inline]
     pub fn new(agent: Agent<M>, config: ChatBotConfig) -> Self {
         Self {
             agent,
@@ -152,11 +153,13 @@ where
     }
 
     /// Clear the conversation history.
+    #[inline]
     pub fn clear_history(&mut self) {
         self.history.clear();
     }
 
     /// Get the last token usage.
+    #[inline]
     pub fn last_usage(&self) -> Option<&Usage> {
         self.last_usage.as_ref()
     }

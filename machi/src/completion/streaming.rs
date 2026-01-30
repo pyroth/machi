@@ -34,6 +34,8 @@ pub struct PauseControl {
 }
 
 impl PauseControl {
+    /// Creates a new pause control in the resumed state.
+    #[inline]
     pub fn new() -> Self {
         let (paused_tx, paused_rx) = watch::channel(false);
         Self {
@@ -42,14 +44,20 @@ impl PauseControl {
         }
     }
 
+    /// Pauses the stream.
+    #[inline]
     pub fn pause(&self) {
-        self.paused_tx.send(true).unwrap();
+        let _ = self.paused_tx.send(true);
     }
 
+    /// Resumes the stream.
+    #[inline]
     pub fn resume(&self) {
-        self.paused_tx.send(false).unwrap();
+        let _ = self.paused_tx.send(false);
     }
 
+    /// Returns `true` if the stream is currently paused.
+    #[inline]
     pub fn is_paused(&self) -> bool {
         *self.paused_rx.borrow()
     }
@@ -113,6 +121,8 @@ pub struct RawStreamingToolCall {
 }
 
 impl RawStreamingToolCall {
+    /// Creates an empty tool call.
+    #[inline]
     pub fn empty() -> Self {
         Self {
             id: String::new(),
@@ -124,6 +134,8 @@ impl RawStreamingToolCall {
         }
     }
 
+    /// Creates a new tool call with the given id, name, and arguments.
+    #[inline]
     pub fn new(id: String, name: String, arguments: serde_json::Value) -> Self {
         Self {
             id,
@@ -135,16 +147,22 @@ impl RawStreamingToolCall {
         }
     }
 
+    /// Sets the call id for this tool call.
+    #[inline]
     pub fn with_call_id(mut self, call_id: String) -> Self {
         self.call_id = Some(call_id);
         self
     }
 
+    /// Sets the signature for this tool call.
+    #[inline]
     pub fn with_signature(mut self, signature: Option<String>) -> Self {
         self.signature = signature;
         self
     }
 
+    /// Sets additional parameters for this tool call.
+    #[inline]
     pub fn with_additional_params(mut self, additional_params: Option<serde_json::Value>) -> Self {
         self.additional_params = additional_params;
         self

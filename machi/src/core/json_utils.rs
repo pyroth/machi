@@ -5,33 +5,38 @@ use std::fmt;
 use std::marker::PhantomData;
 use std::str::FromStr;
 
+/// Returns `true` if the value is `None` or contains an empty string.
+#[inline]
 pub fn empty_or_none(value: &Option<String>) -> bool {
-    value.as_ref().is_none_or(std::string::String::is_empty)
+    value.as_ref().is_none_or(String::is_empty)
 }
 
+/// Merges two JSON values, returning the merged result.
+/// If both values are objects, merges `b` into `a`. Otherwise returns `a`.
+#[inline]
 pub fn merge(a: serde_json::Value, b: serde_json::Value) -> serde_json::Value {
     match (a, b) {
         (serde_json::Value::Object(mut a_map), serde_json::Value::Object(b_map)) => {
-            b_map.into_iter().for_each(|(key, value)| {
-                a_map.insert(key, value);
-            });
+            a_map.extend(b_map);
             serde_json::Value::Object(a_map)
         }
         (a, _) => a,
     }
 }
 
+/// Merges JSON value `b` into `a` in place.
+/// Only performs merge if both values are objects.
+#[inline]
 pub fn merge_inplace(a: &mut serde_json::Value, b: serde_json::Value) {
     if let (serde_json::Value::Object(a_map), serde_json::Value::Object(b_map)) = (a, b) {
-        b_map.into_iter().for_each(|(key, value)| {
-            a_map.insert(key, value);
-        });
+        a_map.extend(b_map);
     }
 }
 
 /// Convert a `serde_json::Value` to a JSON string for tool arguments.
 /// Handles the case where vLLM returns arguments as a JSON string (`Value::String`)
 /// instead of a JSON object (`Value::Object`) like `OpenAI` does.
+#[inline]
 pub fn value_to_json_string(value: &serde_json::Value) -> String {
     match value {
         serde_json::Value::String(s) => s.clone(),

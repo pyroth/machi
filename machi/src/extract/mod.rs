@@ -28,7 +28,7 @@
 //!     .expect("Failed to extract data from text");
 //! ```
 
-pub mod errors;
+pub mod error;
 
 use std::marker::PhantomData;
 
@@ -36,7 +36,7 @@ use schemars::{JsonSchema, schema_for};
 use serde::{Deserialize, Serialize};
 use serde_json::json;
 
-pub use errors::ExtractionError;
+pub use error::ExtractionError;
 
 use crate::{
     agent::{Agent, AgentBuilder, AgentBuilderSimple},

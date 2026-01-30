@@ -73,7 +73,7 @@ use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
 use std::ops::{Add, AddAssign};
 
-use super::errors::CompletionError;
+use super::error::CompletionError;
 use super::message::{AssistantContent, DocumentMediaType};
 use super::streaming::StreamingCompletionResponse;
 use super::traits::CompletionModel;
@@ -141,17 +141,25 @@ pub struct Usage {
 }
 
 impl Usage {
-    /// Creates a new instance of `Usage`.
-    pub fn new() -> Self {
+    /// Creates a new instance of `Usage` with zero tokens.
+    #[inline]
+    pub const fn new() -> Self {
         Self {
             input_tokens: 0,
             output_tokens: 0,
             total_tokens: 0,
         }
     }
+
+    /// Returns `true` if no tokens were used.
+    #[inline]
+    pub const fn is_empty(&self) -> bool {
+        self.total_tokens == 0
+    }
 }
 
 impl Default for Usage {
+    #[inline]
     fn default() -> Self {
         Self::new()
     }
@@ -160,6 +168,7 @@ impl Default for Usage {
 impl Add for Usage {
     type Output = Self;
 
+    #[inline]
     fn add(self, other: Self) -> Self::Output {
         Self {
             input_tokens: self.input_tokens + other.input_tokens,
@@ -170,6 +179,7 @@ impl Add for Usage {
 }
 
 impl AddAssign for Usage {
+    #[inline]
     fn add_assign(&mut self, other: Self) {
         self.input_tokens += other.input_tokens;
         self.output_tokens += other.output_tokens;
@@ -287,6 +297,8 @@ pub struct CompletionRequestBuilder<M: CompletionModel> {
 }
 
 impl<M: CompletionModel> CompletionRequestBuilder<M> {
+    /// Creates a new completion request builder with the given model and prompt.
+    #[inline]
     pub fn new(model: M, prompt: impl Into<Message>) -> Self {
         Self {
             model,

@@ -19,20 +19,23 @@ pub struct OneOrMany<T> {
     rest: Vec<T>,
 }
 
-pub use super::errors::EmptyListError;
+pub use super::error::EmptyListError;
 
 impl<T: Clone> OneOrMany<T> {
     /// Get the first item in the list.
+    #[inline]
     pub fn first(&self) -> T {
         self.first.clone()
     }
 
     /// Get a reference to the first item in the list.
+    #[inline]
     pub fn first_ref(&self) -> &T {
         &self.first
     }
 
     /// Get a mutable reference to the first item in the list.
+    #[inline]
     pub fn first_mut(&mut self) -> &mut T {
         &mut self.first
     }
@@ -76,21 +79,24 @@ impl<T: Clone> OneOrMany<T> {
     }
 
     /// Length of all items in `OneOrMany<T>`.
+    #[inline]
     pub fn len(&self) -> usize {
         1 + self.rest.len()
     }
 
     /// If `OneOrMany<T>` is empty. This will always be false because you cannot create an empty `OneOrMany<T>`.
     /// This method is required when the method `len` exists.
-    pub fn is_empty(&self) -> bool {
+    #[inline]
+    pub const fn is_empty(&self) -> bool {
         false
     }
 
     /// Create a `OneOrMany` object with a single item of any type.
+    #[inline]
     pub fn one(item: T) -> Self {
-        OneOrMany {
+        Self {
             first: item,
-            rest: vec![],
+            rest: Vec::new(),
         }
     }
 
@@ -151,6 +157,8 @@ impl<T: Clone> OneOrMany<T> {
         })
     }
 
+    /// Returns an iterator over references to all items.
+    #[inline]
     pub fn iter(&self) -> Iter<'_, T> {
         Iter {
             first: Some(&self.first),
@@ -158,6 +166,8 @@ impl<T: Clone> OneOrMany<T> {
         }
     }
 
+    /// Returns an iterator over mutable references to all items.
+    #[inline]
     pub fn iter_mut(&mut self) -> IterMut<'_, T> {
         IterMut {
             first: Some(&mut self.first),
@@ -178,6 +188,7 @@ pub struct Iter<'a, T> {
 impl<'a, T> Iterator for Iter<'a, T> {
     type Item = &'a T;
 
+    #[inline]
     fn next(&mut self) -> Option<Self::Item> {
         if let Some(first) = self.first.take() {
             Some(first)
@@ -186,14 +197,18 @@ impl<'a, T> Iterator for Iter<'a, T> {
         }
     }
 
+    #[inline]
     fn size_hint(&self) -> (usize, Option<usize>) {
-        let first = usize::from(self.first.is_some());
-        let max = self.rest.size_hint().1.unwrap_or(0) + first;
-        if max > 0 {
-            (1, Some(max))
-        } else {
-            (0, Some(0))
-        }
+        let first_count = usize::from(self.first.is_some());
+        let len = first_count + self.rest.len();
+        (len, Some(len))
+    }
+}
+
+impl<T> ExactSizeIterator for Iter<'_, T> {
+    #[inline]
+    fn len(&self) -> usize {
+        usize::from(self.first.is_some()) + self.rest.len()
     }
 }
 
@@ -228,21 +243,23 @@ where
 {
     type Item = T;
 
+    #[inline]
     fn next(&mut self) -> Option<Self::Item> {
-        match self.first.take() {
-            Some(first) => Some(first),
-            _ => self.rest.next(),
-        }
+        self.first.take().or_else(|| self.rest.next())
     }
 
+    #[inline]
     fn size_hint(&self) -> (usize, Option<usize>) {
-        let first = usize::from(self.first.is_some());
-        let max = self.rest.size_hint().1.unwrap_or(0) + first;
-        if max > 0 {
-            (1, Some(max))
-        } else {
-            (0, Some(0))
-        }
+        let first_count = usize::from(self.first.is_some());
+        let len = first_count + self.rest.len();
+        (len, Some(len))
+    }
+}
+
+impl<T: Clone> ExactSizeIterator for IntoIter<T> {
+    #[inline]
+    fn len(&self) -> usize {
+        usize::from(self.first.is_some()) + self.rest.len()
     }
 }
 
@@ -253,11 +270,12 @@ pub struct IterMut<'a, T> {
     rest: std::slice::IterMut<'a, T>,
 }
 
-// Implement `Iterator` for `IterMut<T>`.
-// The Item type of the `Iterator` trait is a mutable reference of `OneOrMany<T>`.
+/// Implement `Iterator` for `IterMut<T>`.
+/// The Item type of the `Iterator` trait is a mutable reference of `T`.
 impl<'a, T> Iterator for IterMut<'a, T> {
     type Item = &'a mut T;
 
+    #[inline]
     fn next(&mut self) -> Option<Self::Item> {
         if let Some(first) = self.first.take() {
             Some(first)
@@ -266,14 +284,18 @@ impl<'a, T> Iterator for IterMut<'a, T> {
         }
     }
 
+    #[inline]
     fn size_hint(&self) -> (usize, Option<usize>) {
-        let first = usize::from(self.first.is_some());
-        let max = self.rest.size_hint().1.unwrap_or(0) + first;
-        if max > 0 {
-            (1, Some(max))
-        } else {
-            (0, Some(0))
-        }
+        let first_count = usize::from(self.first.is_some());
+        let len = first_count + self.rest.len();
+        (len, Some(len))
+    }
+}
+
+impl<T> ExactSizeIterator for IterMut<'_, T> {
+    #[inline]
+    fn len(&self) -> usize {
+        usize::from(self.first.is_some()) + self.rest.len()
     }
 }
 
@@ -496,15 +518,16 @@ mod test {
         let vec = vec!["foo".to_string(), "bar".to_string(), "baz".to_string()];
         let mut one_or_many = OneOrMany::many(vec).expect("this should never fail");
         let size_hint = one_or_many.iter().size_hint();
-        assert_eq!(size_hint.0, 1);
+        // ExactSizeIterator now provides accurate lower bound
+        assert_eq!(size_hint.0, 3);
         assert_eq!(size_hint.1, Some(3));
 
         let size_hint = one_or_many.clone().into_iter().size_hint();
-        assert_eq!(size_hint.0, 1);
+        assert_eq!(size_hint.0, 3);
         assert_eq!(size_hint.1, Some(3));
 
         let size_hint = one_or_many.iter_mut().size_hint();
-        assert_eq!(size_hint.0, 1);
+        assert_eq!(size_hint.0, 3);
         assert_eq!(size_hint.1, Some(3));
     }
 

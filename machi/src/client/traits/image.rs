@@ -1,16 +1,18 @@
+//! Image generation client trait.
+
 #[cfg(feature = "image")]
-mod image {
+mod inner {
     use crate::modalities::image::generation::ImageGenerationModel;
 
     /// A provider client with image generation capabilities.
     pub trait ImageGenerationClient {
-        /// The `ImageGenerationModel` used by the Client
+        /// The image generation model type used by this client.
         type ImageGenerationModel: ImageGenerationModel<Client = Self>;
 
-        /// Create an image generation model with the given name.
+        /// Creates an image generation model with the given model identifier.
         fn image_generation_model(&self, model: impl Into<String>) -> Self::ImageGenerationModel;
 
-        /// Create a custom image generation model with the given name.
+        /// Creates a custom image generation model with the given model identifier.
         fn custom_image_generation_model(
             &self,
             model: impl Into<String>,
@@ -21,4 +23,4 @@ mod image {
 }
 
 #[cfg(feature = "image")]
-pub use image::*;
+pub use inner::*;

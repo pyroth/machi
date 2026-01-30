@@ -525,8 +525,7 @@ pub async fn stream_to_stdout<R>(
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::client::ProviderClient;
-    use crate::client::completion::CompletionClient;
+    use crate::client::{CompletionClient, ProviderClient};
     use crate::completion::streaming::StreamingPrompt;
     use crate::providers::anthropic;
     use futures::StreamExt;

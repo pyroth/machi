@@ -1,23 +1,23 @@
-use crate::embedding::Embed;
-use crate::embedding::{EmbeddingModel, EmbeddingsBuilder};
+//! Embeddings client trait.
+
+use crate::embedding::{Embed, EmbeddingModel, EmbeddingsBuilder};
 
 /// A provider client with embedding capabilities.
-/// Clone is required for conversions between client types.
 pub trait EmbeddingsClient {
-    /// The type of `EmbeddingModel` used by the Client
+    /// The embedding model type used by this client.
     type EmbeddingModel: EmbeddingModel;
 
-    /// Create an embedding model with the given model.
+    /// Creates an embedding model with the given model identifier.
     fn embedding_model(&self, model: impl Into<String>) -> Self::EmbeddingModel;
 
-    /// Create an embedding model with the given model identifier string and the number of dimensions.
+    /// Creates an embedding model with the given model identifier and dimensions.
     fn embedding_model_with_ndims(
         &self,
         model: impl Into<String>,
         ndims: usize,
     ) -> Self::EmbeddingModel;
 
-    /// Create an embedding builder with the given embedding model.
+    /// Creates an embedding builder with the given model.
     fn embeddings<D: Embed>(
         &self,
         model: impl Into<String>,
@@ -25,7 +25,7 @@ pub trait EmbeddingsClient {
         EmbeddingsBuilder::new(self.embedding_model(model))
     }
 
-    /// Create an embedding builder with the given name and dimensions.
+    /// Creates an embedding builder with the given model and dimensions.
     fn embeddings_with_ndims<D: Embed>(
         &self,
         model: &str,

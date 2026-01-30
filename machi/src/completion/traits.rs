@@ -13,7 +13,7 @@ use serde::de::DeserializeOwned;
 use super::message::Message;
 use crate::core::wasm_compat::{WasmCompatSend, WasmCompatSync};
 
-use super::errors::{CompletionError, PromptError};
+use super::error::{CompletionError, PromptError};
 use super::request::{CompletionRequest, CompletionRequestBuilder, CompletionResponse, Usage};
 use super::streaming::StreamingCompletionResponse;
 

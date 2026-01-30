@@ -21,6 +21,7 @@ struct BotState<M: CompletionModel> {
 }
 
 impl<M: CompletionModel> BotState<M> {
+    #[inline]
     fn new(agent: Agent<M>) -> Self {
         Self {
             agent,

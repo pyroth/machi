@@ -3,9 +3,10 @@
 //! This module provides traits and types for cross-platform compatibility
 //! between native and WASM targets.
 
-use bytes::Bytes;
+use std::future::Future;
 use std::pin::Pin;
 
+use bytes::Bytes;
 use futures::Stream;
 
 #[cfg(not(all(feature = "wasm", target_arch = "wasm32")))]

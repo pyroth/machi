@@ -8,14 +8,14 @@ use serde::{Deserialize, Serialize};
 pub mod builder;
 pub mod distance;
 pub mod embed;
-pub mod errors;
+pub mod error;
 pub mod tool;
 pub mod traits;
 
 pub use builder::EmbeddingsBuilder;
 pub use distance::VectorDistance;
 pub use embed::{Embed, EmbedError, TextEmbedder, to_texts};
-pub use errors::EmbeddingError;
+pub use error::EmbeddingError;
 pub use tool::ToolSchema;
 pub use traits::{EmbeddingModel, ImageEmbeddingModel};
 
@@ -26,6 +26,29 @@ pub struct Embedding {
     pub document: String,
     /// The embedding vector
     pub vec: Vec<f64>,
+}
+
+impl Embedding {
+    /// Creates a new embedding with the given document and vector.
+    #[inline]
+    pub fn new(document: impl Into<String>, vec: Vec<f64>) -> Self {
+        Self {
+            document: document.into(),
+            vec,
+        }
+    }
+
+    /// Returns the dimensionality of the embedding vector.
+    #[inline]
+    pub fn ndims(&self) -> usize {
+        self.vec.len()
+    }
+
+    /// Returns `true` if the embedding vector is empty.
+    #[inline]
+    pub fn is_empty(&self) -> bool {
+        self.vec.is_empty()
+    }
 }
 
 impl PartialEq for Embedding {
