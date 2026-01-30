@@ -13,7 +13,6 @@ categories = ["asynchronous", "web-programming"]
 machi = { workspace = true }
 serenity = { workspace = true, optional = true }
 tokio.workspace = true
-tracing.workspace = true
 
 [features]
 default = []
