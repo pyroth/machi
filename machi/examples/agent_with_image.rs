@@ -22,12 +22,6 @@ const VISION_MODEL: &str = "qwen3-vl";
 
 #[tokio::main]
 async fn main() -> Result<(), anyhow::Error> {
-    // Tracing
-    tracing_subscriber::fmt()
-        .with_max_level(tracing::Level::DEBUG)
-        .with_target(false)
-        .init();
-
     // Create Ollama client with vision model
     let client = ollama::Client::from_val(Nothing);
 

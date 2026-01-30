@@ -1,11 +1,14 @@
 //! MCP client for connecting to local and remote servers.
 
+use std::sync::Arc;
+
 use rmcp::{
     ServiceExt,
     model::{ClientCapabilities, Implementation, InitializeRequestParams, Tool},
     service::ServerSink,
     transport::{StreamableHttpClientTransport, child_process::TokioChildProcess},
 };
+use tokio::task::JoinHandle;
 
 use super::error::McpError;
 use super::transport::TransportConfig;
@@ -49,6 +52,10 @@ impl Default for McpClientConfig {
 pub struct McpClient {
     sink: ServerSink,
     tools: Vec<Tool>,
+    /// Background task keeping the service alive.
+    /// Wrapped in Arc to allow Clone.
+    #[allow(dead_code)]
+    _service_handle: Arc<JoinHandle<()>>,
 }
 
 impl McpClient {
@@ -125,7 +132,16 @@ impl McpClient {
                     .map_err(|e| McpError::ListToolsFailed(e.to_string()))?
                     .tools;
 
-                Ok(Self { sink, tools })
+                // Spawn the service to keep it running in the background
+                let handle = tokio::spawn(async move {
+                    let _ = service.waiting().await;
+                });
+
+                Ok(Self {
+                    sink,
+                    tools,
+                    _service_handle: Arc::new(handle),
+                })
             }
 
             TransportConfig::Stdio {
@@ -168,7 +184,16 @@ impl McpClient {
                     .map_err(|e| McpError::ListToolsFailed(e.to_string()))?
                     .tools;
 
-                Ok(Self { sink, tools })
+                // Spawn the service to keep it running in the background
+                let handle = tokio::spawn(async move {
+                    let _ = service.waiting().await;
+                });
+
+                Ok(Self {
+                    sink,
+                    tools,
+                    _service_handle: Arc::new(handle),
+                })
             }
         }
     }

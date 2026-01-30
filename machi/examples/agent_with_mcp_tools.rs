@@ -13,7 +13,10 @@ const SERVER_URL: &str = "http://localhost:8080";
 
 #[tokio::main]
 async fn main() -> anyhow::Result<()> {
-    tracing_subscriber::fmt::init();
+    tracing_subscriber::fmt()
+        .with_max_level(tracing::Level::DEBUG)
+        .with_target(false)
+        .init();
 
     // Connect to MCP server - supports both HTTP and stdio transports
     // HTTP (remote server):
