@@ -1,7 +1,24 @@
-//! Implementation of the `#[machi_tool]` attribute macro.
+//! Implementation of the `#[tool]` attribute macro.
 //!
 //! This module transforms functions into tool implementations that can be used
 //! with Machi agents.
+//!
+//! # Generated Items
+//!
+//! For a function `my_func`, the macro generates:
+//! - `MyFuncTool` - The tool struct implementing `Tool` trait
+//! - `MyFuncArgs` - The arguments struct for deserialization
+//! - `MY_FUNC_TOOL` - A static instance of the tool
+//!
+//! # Customization
+//!
+//! You can customize the tool name for LLM using the `name` attribute:
+//! ```ignore
+//! #[tool(name = "calculator_add")]
+//! fn add(...) { }
+//! // Tool name for LLM: "calculator_add"
+//! // Generates: AddTool, AddArgs, ADD_TOOL
+//! ```
 
 use convert_case::{Case, Casing};
 use proc_macro2::TokenStream;
@@ -13,11 +30,16 @@ use syn::{
     punctuated::Punctuated,
 };
 
-/// Parsed arguments from the `#[machi_tool(...)]` attribute.
+/// Parsed arguments from the `#[tool(...)]` attribute.
 #[derive(Default)]
 pub(crate) struct ToolMacroArgs {
+    /// Custom name for the tool (used in LLM interactions).
+    pub name: Option<String>,
+    /// Description of the tool for LLM context.
     pub description: Option<String>,
+    /// Parameter descriptions for each argument.
     pub param_descriptions: HashMap<String, String>,
+    /// List of required parameters.
     pub required: Vec<String>,
 }
 
@@ -49,10 +71,11 @@ impl ToolMacroArgs {
                     .get_ident()
                     .ok_or_else(|| syn::Error::new_spanned(&nv.path, "expected identifier"))?;
 
-                if ident == "description" {
-                    self.description = Some(extract_string_lit(&nv.value)?);
+                match ident.to_string().as_str() {
+                    "name" => self.name = Some(extract_string_lit(&nv.value)?),
+                    "description" => self.description = Some(extract_string_lit(&nv.value)?),
+                    _ => {} // Silently ignore unknown for forward compatibility
                 }
-                // Silently ignore unknown name-value pairs for forward compatibility
             }
             Meta::List(list) if list.path.is_ident("params") => {
                 self.parse_params_list(&list)?;
@@ -255,8 +278,8 @@ fn rust_type_to_json_schema(ty: &Type) -> TokenStream {
     }
 }
 
-/// Main entry point for the `#[machi_tool]` macro expansion.
-pub(crate) fn expand_machi_tool(args: ToolMacroArgs, input_fn: ItemFn) -> syn::Result<TokenStream> {
+/// Main entry point for the `#[tool]` macro expansion.
+pub(crate) fn expand_tool(args: ToolMacroArgs, input_fn: ItemFn) -> syn::Result<TokenStream> {
     let fn_name = &input_fn.sig.ident;
     let fn_name_str = fn_name.to_string();
     let fn_span = input_fn.sig.ident.span();
@@ -265,10 +288,19 @@ pub(crate) fn expand_machi_tool(args: ToolMacroArgs, input_fn: ItemFn) -> syn::R
     // Extract return type information
     let return_info = extract_result_types(&input_fn.sig.output)?;
 
-    // Generate struct names
-    let struct_name = format_ident!("{}", fn_name_str.to_case(Case::Pascal));
-    let params_struct_name = format_ident!("{}Parameters", struct_name);
-    let static_name = format_ident!("{}", fn_name_str.to_uppercase());
+    // Derive base name from function name (PascalCase)
+    let base_name = fn_name_str.to_case(Case::Pascal);
+
+    // Generate struct names with clear, predictable suffixes:
+    // - {Base}Tool: The tool struct
+    // - {Base}Args: The arguments struct
+    // - {BASE}_TOOL: The static instance
+    let struct_name = format_ident!("{}Tool", base_name);
+    let args_struct_name = format_ident!("{}Args", base_name);
+    let static_name = format_ident!("{}_TOOL", base_name.to_case(Case::UpperSnake));
+
+    // Tool name for LLM (defaults to function name if not specified)
+    let tool_name_str = args.name.clone().unwrap_or_else(|| fn_name_str.clone());
 
     // Extract parameter information
     let params = extract_params(input_fn.sig.inputs.iter(), &args.param_descriptions);
@@ -305,25 +337,27 @@ pub(crate) fn expand_machi_tool(args: ToolMacroArgs, input_fn: ItemFn) -> syn::R
 
     // Generate the expanded code with proper spans for error messages
     let expanded = quote_spanned! {fn_span=>
+        /// Arguments struct for the tool.
         #[derive(::serde::Deserialize)]
-        pub(crate) struct #params_struct_name {
-            #(#param_names: #param_types,)*
+        pub struct #args_struct_name {
+            #(pub #param_names: #param_types,)*
         }
 
         #input_fn
 
+        /// Tool struct implementing the `Tool` trait.
         #[derive(Default)]
-        pub(crate) struct #struct_name;
+        pub struct #struct_name;
 
         impl ::machi::tool::Tool for #struct_name {
-            const NAME: &'static str = #fn_name_str;
+            const NAME: &'static str = #tool_name_str;
 
-            type Args = #params_struct_name;
+            type Args = #args_struct_name;
             type Output = #output_type;
             type Error = #error_type;
 
             fn name(&self) -> ::std::string::String {
-                #fn_name_str.to_string()
+                #tool_name_str.to_string()
             }
 
             async fn definition(&self, _prompt: ::std::string::String) -> ::machi::completion::ToolDefinition {
@@ -341,7 +375,7 @@ pub(crate) fn expand_machi_tool(args: ToolMacroArgs, input_fn: ItemFn) -> syn::R
                 });
 
                 ::machi::completion::ToolDefinition {
-                    name: #fn_name_str.to_string(),
+                    name: #tool_name_str.to_string(),
                     description: #tool_description,
                     parameters,
                 }
@@ -350,7 +384,8 @@ pub(crate) fn expand_machi_tool(args: ToolMacroArgs, input_fn: ItemFn) -> syn::R
             #call_impl
         }
 
-        pub(crate) static #static_name: #struct_name = #struct_name;
+        /// Static instance of the tool.
+        pub static #static_name: #struct_name = #struct_name;
     };
 
     Ok(expanded)

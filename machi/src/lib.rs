@@ -28,4 +28,4 @@ pub use modalities::image::generation as image_generation;
 
 #[cfg(feature = "derive")]
 #[cfg_attr(docsrs, doc(cfg(feature = "derive")))]
-pub use machi_derive::{Embed, machi_tool as tool_macro};
+pub use machi_derive::Embed;

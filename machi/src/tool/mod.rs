@@ -23,6 +23,25 @@ pub use mcp::{McpTool, McpToolError};
 pub use toolset::{ToolSet, ToolSetBuilder};
 pub use traits::{Tool, ToolDyn, ToolEmbedding, ToolEmbeddingDyn};
 
+/// Re-export the `#[tool]` attribute macro for convenient access.
+///
+/// This macro transforms a function into a tool that implements the `Tool` trait.
+///
+/// # Usage
+///
+/// ```rust,ignore
+/// use machi::tool::tool;
+///
+/// #[tool(description = "Add two numbers")]
+/// fn add(a: i32, b: i32) -> Result<i32, machi::tool::ToolError> {
+///     Ok(a + b)
+/// }
+/// // Generates: AddTool, AddArgs, ADD_TOOL
+/// ```
+#[cfg(feature = "derive")]
+#[cfg_attr(docsrs, doc(cfg(feature = "derive")))]
+pub use machi_derive::tool;
+
 #[cfg(test)]
 mod tests {
     use serde::{Deserialize, Serialize};

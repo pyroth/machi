@@ -4,7 +4,7 @@
 //! working with the Machi framework:
 //!
 //! - [`Embed`] - Derive macro for implementing the `Embed` trait
-//! - [`machi_tool`] - Attribute macro for converting functions into tools
+//! - [`tool`] - Attribute macro for converting functions into tools
 //! - [`ProviderClient`] - Derive macro for provider client implementations
 
 extern crate proc_macro;
@@ -73,37 +73,47 @@ pub fn derive_embedding_trait(item: TokenStream) -> TokenStream {
 ///
 /// # Arguments
 ///
+/// - `name` - Optional custom tool name (for LLM interactions, defaults to function name)
 /// - `description` - Optional description of the tool for LLM context
 /// - `params(...)` - Optional parameter descriptions for each argument
 /// - `required(...)` - List of required parameters
+///
+/// # Generated Items
+///
+/// For a function `my_func`, this macro generates:
+/// - `MyFuncTool` - The tool struct implementing `machi::tool::Tool`
+/// - `MyFuncArgs` - The arguments struct for deserialization  
+/// - `MY_FUNC_TOOL` - A static instance of the tool
 ///
 /// # Examples
 ///
 /// ## Basic Usage
 /// ```rust,ignore
-/// use machi_derive::machi_tool;
+/// use machi::tool::tool;
 ///
-/// #[machi_tool]
+/// #[tool]
 /// fn add(a: i32, b: i32) -> Result<i32, machi::tool::ToolError> {
 ///     Ok(a + b)
 /// }
+/// // Generates: AddTool, AddArgs, ADD_TOOL
 /// ```
 ///
-/// ## With Description
+/// ## With Custom Name
 /// ```rust,ignore
-/// #[machi_tool(description = "Perform basic arithmetic operations")]
-/// fn calculator(x: i32, y: i32, op: String) -> Result<i32, machi::tool::ToolError> {
-///     match op.as_str() {
-///         "add" => Ok(x + y),
-///         "sub" => Ok(x - y),
-///         _ => Err(machi::tool::ToolError::ToolCallError("Unknown op".into())),
-///     }
+/// #[tool(
+///     name = "calculator_add",
+///     description = "Add two numbers"
+/// )]
+/// fn add(a: i32, b: i32) -> Result<i32, machi::tool::ToolError> {
+///     Ok(a + b)
 /// }
+/// // Tool name for LLM: "calculator_add"
+/// // Generates: AddTool, AddArgs, ADD_TOOL
 /// ```
 ///
 /// ## With Parameter Descriptions
 /// ```rust,ignore
-/// #[machi_tool(
+/// #[tool(
 ///     description = "Process text with various operations",
 ///     params(
 ///         text = "The input text to process",
@@ -120,19 +130,12 @@ pub fn derive_embedding_trait(item: TokenStream) -> TokenStream {
 ///     }
 /// }
 /// ```
-///
-/// # Generated Code
-///
-/// For a function `my_tool`, this macro generates:
-/// - `MyToolParameters` - A struct for deserializing arguments
-/// - `MyTool` - A struct implementing `machi::tool::Tool`
-/// - `MY_TOOL` - A static instance of the tool
 #[proc_macro_attribute]
-pub fn machi_tool(args: TokenStream, input: TokenStream) -> TokenStream {
+pub fn tool(args: TokenStream, input: TokenStream) -> TokenStream {
     let args = parse_macro_input!(args as tool::ToolMacroArgs);
     let input_fn = parse_macro_input!(input as ItemFn);
 
-    tool::expand_machi_tool(args, input_fn)
+    tool::expand_tool(args, input_fn)
         .unwrap_or_else(syn::Error::into_compile_error)
         .into()
 }
