@@ -126,6 +126,7 @@ mod rayon {
 }
 
 #[cfg(test)]
+#[allow(clippy::float_cmp, clippy::unreadable_literal)]
 mod tests {
     use super::VectorDistance;
     use crate::embedding::Embedding;

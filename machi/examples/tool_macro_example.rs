@@ -8,6 +8,7 @@
 use machi::tool::{Tool, tool};
 
 /// An addition tool.
+#[allow(clippy::unnecessary_wraps)]
 #[tool(
     description = "Add two numbers together",
     params(a = "The first number to add", b = "The second number to add"),
@@ -18,6 +19,7 @@ const fn add(a: i32, b: i32) -> Result<i32, machi::tool::ToolError> {
 }
 
 /// A subtraction tool.
+#[allow(clippy::unnecessary_wraps)]
 #[tool(
     description = "Sub one number from another",
     params(a = "The number to subtract from", b = "The number to subtract"),

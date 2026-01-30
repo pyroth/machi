@@ -243,26 +243,26 @@ fn rust_type_to_json_schema(ty: &Type) -> TokenStream {
 
     // Handle Vec<T> types
     if type_name == "Vec" {
-        if let PathArguments::AngleBracketed(args) = &segment.arguments {
-            if let Some(syn::GenericArgument::Type(inner_type)) = args.args.first() {
-                let inner_json_type = rust_type_to_json_schema(inner_type);
-                return quote! {
-                    "type": "array",
-                    "items": { #inner_json_type }
-                };
-            }
+        if let PathArguments::AngleBracketed(args) = &segment.arguments
+            && let Some(syn::GenericArgument::Type(inner_type)) = args.args.first()
+        {
+            let inner_json_type = rust_type_to_json_schema(inner_type);
+            return quote! {
+                "type": "array",
+                "items": { #inner_json_type }
+            };
         }
         return quote! { "type": "array" };
     }
 
     // Handle Option<T> types
     if type_name == "Option" {
-        if let PathArguments::AngleBracketed(args) = &segment.arguments {
-            if let Some(syn::GenericArgument::Type(inner_type)) = args.args.first() {
-                let inner_json_type = rust_type_to_json_schema(inner_type);
-                // For Option, we return the inner type (nullable is handled separately)
-                return inner_json_type;
-            }
+        if let PathArguments::AngleBracketed(args) = &segment.arguments
+            && let Some(syn::GenericArgument::Type(inner_type)) = args.args.first()
+        {
+            let inner_json_type = rust_type_to_json_schema(inner_type);
+            // For Option, we return the inner type (nullable is handled separately)
+            return inner_json_type;
         }
         return quote! { "type": "object" };
     }

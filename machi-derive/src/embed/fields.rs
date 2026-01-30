@@ -19,6 +19,7 @@ pub(crate) fn simple_embed_fields(data_struct: &DataStruct) -> impl Iterator<Ite
 }
 
 /// Check if a field has a simple `#[embed]` attribute (not `#[embed(...)]`).
+#[allow(clippy::trivially_copy_pass_by_ref)]
 fn has_simple_embed_attr(field: &&syn::Field) -> bool {
     field.attrs.iter().any(|attr| {
         matches!(
