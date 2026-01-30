@@ -38,7 +38,7 @@ where
     S: Stream<Item = Result<Vec<u8>, std::io::Error>> + Unpin,
 {
     /// Create a new `JSONLDecoder` from a byte stream
-    pub fn new(stream: S) -> Self {
+    pub const fn new(stream: S) -> Self {
         Self {
             stream,
             line_decoder: LineDecoder::new(),

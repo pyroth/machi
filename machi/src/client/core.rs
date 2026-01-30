@@ -32,7 +32,7 @@ pub enum Transport {
 /// The main client structure for interacting with LLM providers.
 ///
 /// `Client` is generic over:
-/// - `Ext`: Provider extension type (e.g., OpenAI, Anthropic specifics)
+/// - `Ext`: Provider extension type (e.g., `OpenAI`, Anthropic specifics)
 /// - `H`: HTTP client backend (defaults to reqwest)
 #[derive(Clone)]
 pub struct Client<Ext = Nothing, H = reqwest::Client> {
@@ -104,7 +104,7 @@ impl<Ext, H> Client<Ext, H> {
 
     /// Returns a reference to the provider extension.
     #[inline]
-    pub fn ext(&self) -> &Ext {
+    pub const fn ext(&self) -> &Ext {
         &self.ext
     }
 
@@ -118,8 +118,8 @@ impl<Ext, H> Client<Ext, H> {
         }
     }
 
-    /// Internal constructor used by ClientBuilder.
-    pub(crate) fn from_parts(
+    /// Internal constructor used by `ClientBuilder`.
+    pub(crate) const fn from_parts(
         base_url: Arc<str>,
         headers: Arc<HeaderMap>,
         http_client: H,
@@ -190,6 +190,7 @@ where
     Builder: Default + ProviderBuilder,
 {
     /// Returns a builder for constructing a new client.
+    #[must_use] 
     pub fn builder() -> ClientBuilder<Builder, NeedsApiKey, H> {
         ClientBuilder::default()
     }

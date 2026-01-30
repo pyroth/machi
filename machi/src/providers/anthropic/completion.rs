@@ -130,14 +130,14 @@ pub struct ToolDefinition {
 }
 
 /// Cache control directive for Anthropic prompt caching
-#[derive(Debug, Deserialize, Serialize, Clone, PartialEq)]
+#[derive(Debug, Deserialize, Serialize, Clone, PartialEq, Eq)]
 #[serde(tag = "type", rename_all = "snake_case")]
 pub enum CacheControl {
     Ephemeral,
 }
 
 /// System message content block with optional cache control
-#[derive(Debug, Deserialize, Serialize, Clone, PartialEq)]
+#[derive(Debug, Deserialize, Serialize, Clone, PartialEq, Eq)]
 #[serde(tag = "type", rename_all = "snake_case")]
 pub enum SystemContent {
     Text {
@@ -169,7 +169,7 @@ impl TryFrom<CompletionResponse> for completion::CompletionResponse<CompletionRe
             total_tokens: response.usage.input_tokens + response.usage.output_tokens,
         };
 
-        Ok(completion::CompletionResponse {
+        Ok(Self {
             choice,
             usage,
             raw_response: response,
@@ -184,7 +184,7 @@ pub struct Message {
     pub content: OneOrMany<Content>,
 }
 
-#[derive(Debug, Deserialize, Serialize, Clone, PartialEq)]
+#[derive(Debug, Deserialize, Serialize, Clone, PartialEq, Eq)]
 #[serde(rename_all = "lowercase")]
 pub enum Role {
     User,
@@ -234,7 +234,7 @@ impl FromStr for Content {
     type Err = Infallible;
 
     fn from_str(s: &str) -> Result<Self, Self::Err> {
-        Ok(Content::Text {
+        Ok(Self::Text {
             text: s.to_owned(),
             cache_control: None,
         })
@@ -252,11 +252,11 @@ impl FromStr for ToolResultContent {
     type Err = Infallible;
 
     fn from_str(s: &str) -> Result<Self, Self::Err> {
-        Ok(ToolResultContent::Text { text: s.to_owned() })
+        Ok(Self::Text { text: s.to_owned() })
     }
 }
 
-#[derive(Debug, Deserialize, Serialize, Clone, PartialEq)]
+#[derive(Debug, Deserialize, Serialize, Clone, PartialEq, Eq)]
 #[serde(untagged)]
 pub enum ImageSourceData {
     Base64(String),
@@ -266,8 +266,8 @@ pub enum ImageSourceData {
 impl From<ImageSourceData> for DocumentSourceKind {
     fn from(value: ImageSourceData) -> Self {
         match value {
-            ImageSourceData::Base64(data) => DocumentSourceKind::Base64(data),
-            ImageSourceData::Url(url) => DocumentSourceKind::Url(url),
+            ImageSourceData::Base64(data) => Self::Base64(data),
+            ImageSourceData::Url(url) => Self::Url(url),
         }
     }
 }
@@ -277,8 +277,8 @@ impl TryFrom<DocumentSourceKind> for ImageSourceData {
 
     fn try_from(value: DocumentSourceKind) -> Result<Self, Self::Error> {
         match value {
-            DocumentSourceKind::Base64(data) => Ok(ImageSourceData::Base64(data)),
-            DocumentSourceKind::Url(url) => Ok(ImageSourceData::Url(url)),
+            DocumentSourceKind::Base64(data) => Ok(Self::Base64(data)),
+            DocumentSourceKind::Url(url) => Ok(Self::Url(url)),
             _ => Err(MessageError::ConversionError("Content has no body".into())),
         }
     }
@@ -292,21 +292,21 @@ impl From<ImageSourceData> for String {
     }
 }
 
-#[derive(Debug, Deserialize, Serialize, Clone, PartialEq)]
+#[derive(Debug, Deserialize, Serialize, Clone, PartialEq, Eq)]
 pub struct ImageSource {
     pub data: ImageSourceData,
     pub media_type: ImageFormat,
     pub r#type: SourceType,
 }
 
-#[derive(Debug, Deserialize, Serialize, Clone, PartialEq)]
+#[derive(Debug, Deserialize, Serialize, Clone, PartialEq, Eq)]
 pub struct DocumentSource {
     pub data: String,
     pub media_type: DocumentFormat,
     pub r#type: SourceType,
 }
 
-#[derive(Debug, Deserialize, Serialize, Clone, PartialEq)]
+#[derive(Debug, Deserialize, Serialize, Clone, PartialEq, Eq)]
 #[serde(rename_all = "lowercase")]
 pub enum ImageFormat {
     #[serde(rename = "image/jpeg")]
@@ -322,14 +322,14 @@ pub enum ImageFormat {
 /// The document format to be used.
 ///
 /// Currently, Anthropic only supports PDF for text documents over the API (within a message). You can find more information about this here: <https://docs.anthropic.com/en/docs/build-with-claude/pdf-support>
-#[derive(Debug, Deserialize, Serialize, Clone, PartialEq)]
+#[derive(Debug, Deserialize, Serialize, Clone, PartialEq, Eq)]
 #[serde(rename_all = "lowercase")]
 pub enum DocumentFormat {
     #[serde(rename = "application/pdf")]
     PDF,
 }
 
-#[derive(Debug, Deserialize, Serialize, Clone, PartialEq)]
+#[derive(Debug, Deserialize, Serialize, Clone, PartialEq, Eq)]
 #[serde(rename_all = "lowercase")]
 pub enum SourceType {
     BASE64,
@@ -338,7 +338,7 @@ pub enum SourceType {
 
 impl From<String> for Content {
     fn from(text: String) -> Self {
-        Content::Text {
+        Self::Text {
             text,
             cache_control: None,
         }
@@ -347,7 +347,7 @@ impl From<String> for Content {
 
 impl From<String> for ToolResultContent {
     fn from(text: String) -> Self {
-        ToolResultContent::Text { text }
+        Self::Text { text }
     }
 }
 
@@ -356,8 +356,8 @@ impl TryFrom<message::ContentFormat> for SourceType {
 
     fn try_from(format: message::ContentFormat) -> Result<Self, Self::Error> {
         match format {
-            message::ContentFormat::Base64 => Ok(SourceType::BASE64),
-            message::ContentFormat::Url => Ok(SourceType::URL),
+            message::ContentFormat::Base64 => Ok(Self::BASE64),
+            message::ContentFormat::Url => Ok(Self::URL),
             message::ContentFormat::String => Err(MessageError::ConversionError(
                 "ContentFormat::String is deprecated, use ContentFormat::Url for URLs".into(),
             )),
@@ -368,8 +368,8 @@ impl TryFrom<message::ContentFormat> for SourceType {
 impl From<SourceType> for message::ContentFormat {
     fn from(source_type: SourceType) -> Self {
         match source_type {
-            SourceType::BASE64 => message::ContentFormat::Base64,
-            SourceType::URL => message::ContentFormat::Url,
+            SourceType::BASE64 => Self::Base64,
+            SourceType::URL => Self::Url,
         }
     }
 }
@@ -379,13 +379,13 @@ impl TryFrom<message::ImageMediaType> for ImageFormat {
 
     fn try_from(media_type: message::ImageMediaType) -> Result<Self, Self::Error> {
         Ok(match media_type {
-            message::ImageMediaType::JPEG => ImageFormat::JPEG,
-            message::ImageMediaType::PNG => ImageFormat::PNG,
-            message::ImageMediaType::GIF => ImageFormat::GIF,
-            message::ImageMediaType::WEBP => ImageFormat::WEBP,
+            message::ImageMediaType::JPEG => Self::JPEG,
+            message::ImageMediaType::PNG => Self::PNG,
+            message::ImageMediaType::GIF => Self::GIF,
+            message::ImageMediaType::WEBP => Self::WEBP,
             _ => {
                 return Err(MessageError::ConversionError(
-                    format!("Unsupported image media type: {media_type:?}").to_owned(),
+                    format!("Unsupported image media type: {media_type:?}"),
                 ));
             }
         })
@@ -395,10 +395,10 @@ impl TryFrom<message::ImageMediaType> for ImageFormat {
 impl From<ImageFormat> for message::ImageMediaType {
     fn from(format: ImageFormat) -> Self {
         match format {
-            ImageFormat::JPEG => message::ImageMediaType::JPEG,
-            ImageFormat::PNG => message::ImageMediaType::PNG,
-            ImageFormat::GIF => message::ImageMediaType::GIF,
-            ImageFormat::WEBP => message::ImageMediaType::WEBP,
+            ImageFormat::JPEG => Self::JPEG,
+            ImageFormat::PNG => Self::PNG,
+            ImageFormat::GIF => Self::GIF,
+            ImageFormat::WEBP => Self::WEBP,
         }
     }
 }
@@ -412,7 +412,7 @@ impl TryFrom<DocumentMediaType> for DocumentFormat {
             ));
         }
 
-        Ok(DocumentFormat::PDF)
+        Ok(Self::PDF)
     }
 }
 
@@ -420,7 +420,7 @@ impl TryFrom<message::AssistantContent> for Content {
     type Error = MessageError;
     fn try_from(text: message::AssistantContent) -> Result<Self, Self::Error> {
         match text {
-            message::AssistantContent::Text(message::Text { text }) => Ok(Content::Text {
+            message::AssistantContent::Text(message::Text { text }) => Ok(Self::Text {
                 text,
                 cache_control: None,
             }),
@@ -428,7 +428,7 @@ impl TryFrom<message::AssistantContent> for Content {
                 "Anthropic currently doesn't support images.".to_string(),
             )),
             message::AssistantContent::ToolCall(message::ToolCall { id, function, .. }) => {
-                Ok(Content::ToolUse {
+                Ok(Self::ToolUse {
                     id,
                     name: function.name,
                     input: function.arguments,
@@ -438,7 +438,7 @@ impl TryFrom<message::AssistantContent> for Content {
                 reasoning,
                 signature,
                 ..
-            }) => Ok(Content::Thinking {
+            }) => Ok(Self::Thinking {
                 thinking: reasoning.first().cloned().unwrap_or(String::new()),
                 signature,
             }),
@@ -451,7 +451,7 @@ impl TryFrom<message::Message> for Message {
 
     fn try_from(message: message::Message) -> Result<Self, Self::Error> {
         Ok(match message {
-            message::Message::User { content } => Message {
+            message::Message::User { content } => Self {
                 role: Role::User,
                 content: content.try_map(|content| match content {
                     message::UserContent::Text(message::Text { text }) => Ok(Content::Text {
@@ -559,7 +559,7 @@ impl TryFrom<message::Message> for Message {
                 })?,
             },
 
-            message::Message::Assistant { content, .. } => Message {
+            message::Message::Assistant { content, .. } => Self {
                 content: content.try_map(std::convert::TryInto::try_into)?,
                 role: Role::Assistant,
             },
@@ -572,14 +572,14 @@ impl TryFrom<Content> for message::AssistantContent {
 
     fn try_from(content: Content) -> Result<Self, Self::Error> {
         Ok(match content {
-            Content::Text { text, .. } => message::AssistantContent::text(text),
+            Content::Text { text, .. } => Self::text(text),
             Content::ToolUse { id, name, input } => {
-                message::AssistantContent::tool_call(id, name, input)
+                Self::tool_call(id, name, input)
             }
             Content::Thinking {
                 thinking,
                 signature,
-            } => message::AssistantContent::Reasoning(
+            } => Self::Reasoning(
                 Reasoning::new(&thinking).with_signature(signature),
             ),
             _ => {
@@ -594,12 +594,12 @@ impl TryFrom<Content> for message::AssistantContent {
 impl From<ToolResultContent> for message::ToolResultContent {
     fn from(content: ToolResultContent) -> Self {
         match content {
-            ToolResultContent::Text { text } => message::ToolResultContent::text(text),
+            ToolResultContent::Text { text } => Self::text(text),
             ToolResultContent::Image(ImageSource {
                 data,
                 media_type: format,
                 ..
-            }) => message::ToolResultContent::image_base64(data, Some(format.into()), None),
+            }) => Self::image_base64(data, Some(format.into()), None),
         }
     }
 }
@@ -609,7 +609,7 @@ impl TryFrom<Message> for message::Message {
 
     fn try_from(message: Message) -> Result<Self, Self::Error> {
         Ok(match message.role {
-            Role::User => message::Message::User {
+            Role::User => Self::User {
                 content: message.content.try_map(|content| {
                     Ok(match content {
                         Content::Text { text, .. } => message::UserContent::text(text),
@@ -643,7 +643,7 @@ impl TryFrom<Message> for message::Message {
             },
             Role::Assistant => match message.content.first() {
                 Content::Text { .. } | Content::ToolUse { .. } | Content::Thinking { .. } => {
-                    message::Message::Assistant {
+                    Self::Assistant {
                         id: None,
                         content: message.content.try_map(std::convert::TryInto::try_into)?,
                     }
@@ -651,7 +651,7 @@ impl TryFrom<Message> for message::Message {
 
                 _ => {
                     return Err(MessageError::ConversionError(
-                        format!("Unsupported message for Assistant role: {message:?}").to_owned(),
+                        format!("Unsupported message for Assistant role: {message:?}"),
                     ));
                 }
             },
@@ -700,7 +700,7 @@ where
     /// - The last content block of the last message (marked with ephemeral cache)
     ///
     /// This allows Anthropic to cache the conversation history for cost savings.
-    pub fn with_prompt_caching(mut self) -> Self {
+    pub const fn with_prompt_caching(mut self) -> Self {
         self.prompt_caching = true;
         self
     }
@@ -803,7 +803,7 @@ struct AnthropicCompletionRequest {
 }
 
 /// Helper to set `cache_control` on a Content block
-fn set_content_cache_control(content: &mut Content, value: Option<CacheControl>) {
+const fn set_content_cache_control(content: &mut Content, value: Option<CacheControl>) {
     match content {
         Content::Text { cache_control, .. } => *cache_control = value,
         Content::Image { cache_control, .. } => *cache_control = value,
@@ -814,6 +814,7 @@ fn set_content_cache_control(content: &mut Content, value: Option<CacheControl>)
 }
 
 /// Apply cache control breakpoints to system prompt and messages.
+///
 /// Strategy: cache the system prompt, and mark the last content block of the last message
 /// for caching. This allows the conversation history to be cached while new messages
 /// are added.
@@ -1034,7 +1035,7 @@ where
         crate::completion::streaming::StreamingCompletionResponse<Self::StreamingResponse>,
         CompletionError,
     > {
-        CompletionModel::stream(self, request).await
+        Self::stream(self, request).await
     }
 }
 

@@ -102,7 +102,7 @@ pub const GPT_4_1: &str = "gpt-4.1";
 
 impl From<ApiErrorResponse> for CompletionError {
     fn from(err: ApiErrorResponse) -> Self {
-        CompletionError::ProviderError(err.message)
+        Self::ProviderError(err.message)
     }
 }
 
@@ -146,34 +146,35 @@ pub enum Message {
 }
 
 impl Message {
+    #[must_use] 
     pub fn system(content: &str) -> Self {
-        Message::System {
+        Self::System {
             content: OneOrMany::one(content.to_owned().into()),
             name: None,
         }
     }
 }
 
-#[derive(Debug, Serialize, Deserialize, PartialEq, Clone)]
+#[derive(Debug, Serialize, Deserialize, PartialEq, Eq, Clone)]
 pub struct AudioAssistant {
     pub id: String,
 }
 
-#[derive(Debug, Serialize, Deserialize, PartialEq, Clone)]
+#[derive(Debug, Serialize, Deserialize, PartialEq, Eq, Clone)]
 pub struct SystemContent {
     #[serde(default)]
     pub r#type: SystemContentType,
     pub text: String,
 }
 
-#[derive(Default, Debug, Serialize, Deserialize, PartialEq, Clone)]
+#[derive(Default, Debug, Serialize, Deserialize, PartialEq, Eq, Clone)]
 #[serde(rename_all = "lowercase")]
 pub enum SystemContentType {
     #[default]
     Text,
 }
 
-#[derive(Debug, Serialize, Deserialize, PartialEq, Clone)]
+#[derive(Debug, Serialize, Deserialize, PartialEq, Eq, Clone)]
 #[serde(tag = "type", rename_all = "lowercase")]
 pub enum AssistantContent {
     Text { text: String },
@@ -183,8 +184,8 @@ pub enum AssistantContent {
 impl From<AssistantContent> for completion::AssistantContent {
     fn from(value: AssistantContent) -> Self {
         match value {
-            AssistantContent::Text { text } => completion::AssistantContent::text(text),
-            AssistantContent::Refusal { refusal } => completion::AssistantContent::text(refusal),
+            AssistantContent::Text { text } => Self::text(text),
+            AssistantContent::Refusal { refusal } => Self::text(refusal),
         }
     }
 }
@@ -204,27 +205,27 @@ pub enum UserContent {
     },
 }
 
-#[derive(Debug, Serialize, Deserialize, PartialEq, Clone)]
+#[derive(Debug, Serialize, Deserialize, PartialEq, Eq, Clone)]
 pub struct ImageUrl {
     pub url: String,
     #[serde(default)]
     pub detail: ImageDetail,
 }
 
-#[derive(Debug, Serialize, Deserialize, PartialEq, Clone)]
+#[derive(Debug, Serialize, Deserialize, PartialEq, Eq, Clone)]
 pub struct InputAudio {
     pub data: String,
     pub format: AudioMediaType,
 }
 
-#[derive(Debug, Serialize, Deserialize, PartialEq, Clone)]
+#[derive(Debug, Serialize, Deserialize, PartialEq, Eq, Clone)]
 pub struct ToolResultContent {
     #[serde(default)]
     r#type: ToolResultContentType,
     pub text: String,
 }
 
-#[derive(Default, Debug, Serialize, Deserialize, PartialEq, Clone)]
+#[derive(Default, Debug, Serialize, Deserialize, PartialEq, Eq, Clone)]
 #[serde(rename_all = "lowercase")]
 pub enum ToolResultContentType {
     #[default]
@@ -241,7 +242,7 @@ impl FromStr for ToolResultContent {
 
 impl From<String> for ToolResultContent {
     fn from(s: String) -> Self {
-        ToolResultContent {
+        Self {
             r#type: ToolResultContentType::default(),
             text: s,
         }
@@ -256,36 +257,39 @@ pub enum ToolResultContentValue {
 }
 
 impl ToolResultContentValue {
+    #[must_use] 
     pub fn from_string(s: String, use_array_format: bool) -> Self {
         if use_array_format {
-            ToolResultContentValue::Array(vec![ToolResultContent::from(s)])
+            Self::Array(vec![ToolResultContent::from(s)])
         } else {
-            ToolResultContentValue::String(s)
+            Self::String(s)
         }
     }
 
+    #[must_use] 
     pub fn as_text(&self) -> String {
         match self {
-            ToolResultContentValue::Array(arr) => arr
+            Self::Array(arr) => arr
                 .iter()
                 .map(|c| c.text.clone())
                 .collect::<Vec<_>>()
                 .join("\n"),
-            ToolResultContentValue::String(s) => s.clone(),
+            Self::String(s) => s.clone(),
         }
     }
 
+    #[must_use] 
     pub fn to_array(&self) -> Self {
         match self {
-            ToolResultContentValue::Array(_) => self.clone(),
-            ToolResultContentValue::String(s) => {
-                ToolResultContentValue::Array(vec![ToolResultContent::from(s.clone())])
+            Self::Array(_) => self.clone(),
+            Self::String(s) => {
+                Self::Array(vec![ToolResultContent::from(s.clone())])
             }
         }
     }
 }
 
-#[derive(Debug, Serialize, Deserialize, PartialEq, Clone)]
+#[derive(Debug, Serialize, Deserialize, PartialEq, Eq, Clone)]
 pub struct ToolCall {
     pub id: String,
     #[serde(default)]
@@ -293,7 +297,7 @@ pub struct ToolCall {
     pub function: Function,
 }
 
-#[derive(Default, Debug, Serialize, Deserialize, PartialEq, Clone)]
+#[derive(Default, Debug, Serialize, Deserialize, PartialEq, Eq, Clone)]
 #[serde(rename_all = "lowercase")]
 pub enum ToolType {
     #[default]
@@ -333,6 +337,7 @@ impl From<completion::ToolDefinition> for ToolDefinition {
 impl ToolDefinition {
     /// Apply strict mode to this tool definition.
     /// This sets `strict: true` and sanitizes the schema to meet `OpenAI` requirements.
+    #[must_use] 
     pub fn with_strict(mut self) -> Self {
         self.function.strict = Some(true);
         super::sanitize_schema(&mut self.function.parameters);
@@ -340,7 +345,7 @@ impl ToolDefinition {
     }
 }
 
-#[derive(Default, Clone, Debug, Deserialize, Serialize, PartialEq)]
+#[derive(Default, Clone, Debug, Deserialize, Serialize, PartialEq, Eq)]
 #[serde(rename_all = "snake_case")]
 pub enum ToolChoice {
     #[default]
@@ -367,7 +372,7 @@ impl TryFrom<crate::completion::message::ToolChoice> for ToolChoice {
     }
 }
 
-#[derive(Debug, Serialize, Deserialize, PartialEq, Clone)]
+#[derive(Debug, Serialize, Deserialize, PartialEq, Eq, Clone)]
 pub struct Function {
     pub name: String,
     #[serde(with = "json_utils::stringified_json")]
@@ -392,7 +397,7 @@ impl TryFrom<message::ToolResult> for Message {
             .collect::<Result<Vec<_>, _>>()?
             .join("\n");
 
-        Ok(Message::ToolResult {
+        Ok(Self::ToolResult {
             tool_call_id: value.id,
             content: ToolResultContentValue::String(text),
         })
@@ -404,14 +409,14 @@ impl TryFrom<message::UserContent> for UserContent {
 
     fn try_from(value: message::UserContent) -> Result<Self, Self::Error> {
         match value {
-            message::UserContent::Text(message::Text { text }) => Ok(UserContent::Text { text }),
+            message::UserContent::Text(message::Text { text }) => Ok(Self::Text { text }),
             message::UserContent::Image(message::Image {
                 data,
                 detail,
                 media_type,
                 ..
             }) => match data {
-                DocumentSourceKind::Url(url) => Ok(UserContent::Image {
+                DocumentSourceKind::Url(url) => Ok(Self::Image {
                     image_url: ImageUrl {
                         url,
                         detail: detail.unwrap_or_default(),
@@ -432,7 +437,7 @@ impl TryFrom<message::UserContent> for UserContent {
                         "OpenAI image URI must have image detail".into(),
                     ))?;
 
-                    Ok(UserContent::Image {
+                    Ok(Self::Image {
                         image_url: ImageUrl { url, detail },
                     })
                 }
@@ -448,7 +453,7 @@ impl TryFrom<message::UserContent> for UserContent {
             },
             message::UserContent::Document(message::Document { data, .. }) => {
                 if let DocumentSourceKind::Base64(text) | DocumentSourceKind::String(text) = data {
-                    Ok(UserContent::Text { text })
+                    Ok(Self::Text { text })
                 } else {
                     Err(message::MessageError::ConversionError(
                         "Documents must be base64 or a string".into(),
@@ -458,7 +463,7 @@ impl TryFrom<message::UserContent> for UserContent {
             message::UserContent::Audio(message::Audio {
                 data, media_type, ..
             }) => match data {
-                DocumentSourceKind::Base64(data) => Ok(UserContent::Audio {
+                DocumentSourceKind::Base64(data) => Ok(Self::Audio {
                     input_audio: InputAudio {
                         data,
                         format: match media_type {
@@ -520,7 +525,7 @@ impl TryFrom<OneOrMany<message::UserContent>> for Vec<Message> {
                     message::UserContent::ToolResult(tool_result) => tool_result.try_into(),
                     _ => unreachable!(),
                 })
-                .collect::<Result<Vec<_>, _>>()
+                .collect::<Result<Self, _>>()
         }
     }
 }
@@ -610,7 +615,7 @@ impl TryFrom<Message> for message::Message {
 
     fn try_from(message: Message) -> Result<Self, Self::Error> {
         Ok(match message {
-            Message::User { content, .. } => message::Message::User {
+            Message::User { content, .. } => Self::User {
                 content: content.map(std::convert::Into::into),
             },
             Message::Assistant {
@@ -638,7 +643,7 @@ impl TryFrom<Message> for message::Message {
                         .collect::<Result<Vec<_>, _>>()?,
                 );
 
-                message::Message::Assistant {
+                Self::Assistant {
                     id: None,
                     content: OneOrMany::many(content).map_err(|_| {
                         message::MessageError::ConversionError(
@@ -652,7 +657,7 @@ impl TryFrom<Message> for message::Message {
             Message::ToolResult {
                 tool_call_id,
                 content,
-            } => message::Message::User {
+            } => Self::User {
                 content: OneOrMany::one(message::UserContent::tool_result(
                     tool_call_id,
                     OneOrMany::one(message::ToolResultContent::text(content.as_text())),
@@ -661,7 +666,7 @@ impl TryFrom<Message> for message::Message {
 
             // System messages should get stripped out when converting messages, this is just a
             // stop gap to avoid obnoxious error handling or panic occurring.
-            Message::System { content, .. } => message::Message::User {
+            Message::System { content, .. } => Self::User {
                 content: content.map(|content| message::UserContent::text(content.text)),
             },
         })
@@ -671,12 +676,12 @@ impl TryFrom<Message> for message::Message {
 impl From<UserContent> for message::UserContent {
     fn from(content: UserContent) -> Self {
         match content {
-            UserContent::Text { text } => message::UserContent::text(text),
+            UserContent::Text { text } => Self::text(text),
             UserContent::Image { image_url } => {
-                message::UserContent::image_url(image_url.url, None, Some(image_url.detail))
+                Self::image_url(image_url.url, None, Some(image_url.detail))
             }
             UserContent::Audio { input_audio } => {
-                message::UserContent::audio(input_audio.data, Some(input_audio.format))
+                Self::audio(input_audio.data, Some(input_audio.format))
             }
         }
     }
@@ -684,7 +689,7 @@ impl From<UserContent> for message::UserContent {
 
 impl From<String> for UserContent {
     fn from(s: String) -> Self {
-        UserContent::Text { text: s }
+        Self::Text { text: s }
     }
 }
 
@@ -692,7 +697,7 @@ impl FromStr for UserContent {
     type Err = Infallible;
 
     fn from_str(s: &str) -> Result<Self, Self::Err> {
-        Ok(UserContent::Text {
+        Ok(Self::Text {
             text: s.to_string(),
         })
     }
@@ -700,7 +705,7 @@ impl FromStr for UserContent {
 
 impl From<String> for AssistantContent {
     fn from(s: String) -> Self {
-        AssistantContent::Text { text: s }
+        Self::Text { text: s }
     }
 }
 
@@ -708,14 +713,14 @@ impl FromStr for AssistantContent {
     type Err = Infallible;
 
     fn from_str(s: &str) -> Result<Self, Self::Err> {
-        Ok(AssistantContent::Text {
+        Ok(Self::Text {
             text: s.to_string(),
         })
     }
 }
 impl From<String> for SystemContent {
     fn from(s: String) -> Self {
-        SystemContent {
+        Self {
             r#type: SystemContentType::default(),
             text: s,
         }
@@ -726,7 +731,7 @@ impl FromStr for SystemContent {
     type Err = Infallible;
 
     fn from_str(s: &str) -> Result<Self, Self::Err> {
-        Ok(SystemContent {
+        Ok(Self {
             r#type: SystemContentType::default(),
             text: s.to_string(),
         })
@@ -782,8 +787,7 @@ impl TryFrom<CompletionResponse> for completion::CompletionResponse<CompletionRe
                                 &call.function.name,
                                 call.function.arguments.clone(),
                             )
-                        })
-                        .collect::<Vec<_>>(),
+                        }),
                 );
                 Ok(content)
             }
@@ -808,7 +812,7 @@ impl TryFrom<CompletionResponse> for completion::CompletionResponse<CompletionRe
             })
             .unwrap_or_default();
 
-        Ok(completion::CompletionResponse {
+        Ok(Self {
             choice,
             usage,
             raw_response: response,
@@ -864,7 +868,8 @@ pub struct Usage {
 }
 
 impl Usage {
-    pub fn new() -> Self {
+    #[must_use] 
+    pub const fn new() -> Self {
         Self {
             prompt_tokens: 0,
             total_tokens: 0,
@@ -880,7 +885,7 @@ impl Default for Usage {
 
 impl fmt::Display for Usage {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        let Usage {
+        let Self {
             prompt_tokens,
             total_tokens,
         } = self;
@@ -940,12 +945,12 @@ where
     /// - `strict: true` is set on each function definition
     ///
     /// This allows `OpenAI` to guarantee that the model's tool calls will match the schema exactly.
-    pub fn with_strict_tools(mut self) -> Self {
+    pub const fn with_strict_tools(mut self) -> Self {
         self.strict_tools = true;
         self
     }
 
-    pub fn with_tool_result_array_content(mut self) -> Self {
+    pub const fn with_tool_result_array_content(mut self) -> Self {
         self.tool_result_array_content = true;
         self
     }
@@ -1008,8 +1013,7 @@ impl TryFrom<OpenAIRequestParams> for CompletionRequest {
                 .map(message::Message::try_into)
                 .collect::<Result<Vec<Vec<Message>>, _>>()?
                 .into_iter()
-                .flatten()
-                .collect::<Vec<_>>(),
+                .flatten(),
         );
 
         if tool_result_array_content {
@@ -1047,7 +1051,7 @@ impl TryFrom<(String, CoreCompletionRequest)> for CompletionRequest {
     type Error = CompletionError;
 
     fn try_from((model, req): (String, CoreCompletionRequest)) -> Result<Self, Self::Error> {
-        CompletionRequest::try_from(OpenAIRequestParams {
+        Self::try_from(OpenAIRequestParams {
             model,
             request: req,
             strict_tools: false,
@@ -1095,6 +1099,7 @@ impl crate::telemetry::ProviderRequestExt for CompletionRequest {
 }
 
 impl CompletionModel<reqwest::Client> {
+    #[must_use] 
     pub fn into_agent_builder(self) -> crate::agent::AgentBuilder<Self> {
         crate::agent::AgentBuilder::new(self)
     }

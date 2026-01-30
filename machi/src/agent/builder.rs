@@ -25,7 +25,7 @@ use super::Agent;
 /// Marker type indicating no tools have been configured.
 pub struct NoTools;
 
-/// Marker type indicating tools have been configured via ToolSet.
+/// Marker type indicating tools have been configured via `ToolSet`.
 pub struct WithTools;
 
 /// A fluent builder for creating [`Agent`] instances.
@@ -70,17 +70,17 @@ where
     dynamic_context: Vec<(usize, Box<dyn VectorStoreIndexDyn + Send + Sync>)>,
     /// Model temperature.
     temperature: Option<f64>,
-    /// Tool server handle (for NoTools state).
+    /// Tool server handle (for `NoTools` state).
     tool_server_handle: Option<ToolServerHandle>,
     /// Tool choice configuration.
     tool_choice: Option<ToolChoice>,
     /// Default max depth for multi-turn.
     default_max_depth: Option<usize>,
-    /// Static tool names (for WithTools state).
+    /// Static tool names (for `WithTools` state).
     static_tools: Vec<String>,
-    /// Dynamic tools stores (for WithTools state).
+    /// Dynamic tools stores (for `WithTools` state).
     dynamic_tools: Vec<(usize, Box<dyn VectorStoreIndexDyn + Send + Sync>)>,
-    /// Tool implementations (for WithTools state).
+    /// Tool implementations (for `WithTools` state).
     tools: ToolSet,
     /// Marker for typestate.
     _marker: PhantomData<T>,
@@ -119,7 +119,7 @@ where
         self
     }
 
-    /// Adds a tool to the agent, transitioning to WithTools state.
+    /// Adds a tool to the agent, transitioning to `WithTools` state.
     pub fn tool(self, tool: impl Tool + 'static) -> AgentBuilder<M, WithTools> {
         let toolname = tool.name();
         let tools = ToolSet::from_tools(vec![tool]);
@@ -144,7 +144,7 @@ where
         }
     }
 
-    /// Adds multiple boxed tools, transitioning to WithTools state.
+    /// Adds multiple boxed tools, transitioning to `WithTools` state.
     pub fn tools(self, tools: Vec<Box<dyn ToolDyn>>) -> AgentBuilder<M, WithTools> {
         let static_tools = tools.iter().map(|t| t.name()).collect();
         let tools = ToolSet::from_tools_boxed(tools);
@@ -169,7 +169,7 @@ where
         }
     }
 
-    /// Adds an MCP tool from rmcp, transitioning to WithTools state.
+    /// Adds an MCP tool from rmcp, transitioning to `WithTools` state.
     #[cfg(feature = "rmcp")]
     #[cfg_attr(docsrs, doc(cfg(feature = "rmcp")))]
     pub fn rmcp_tool(
@@ -200,7 +200,7 @@ where
         }
     }
 
-    /// Adds multiple MCP tools from rmcp, transitioning to WithTools state.
+    /// Adds multiple MCP tools from rmcp, transitioning to `WithTools` state.
     #[cfg(feature = "rmcp")]
     #[cfg_attr(docsrs, doc(cfg(feature = "rmcp")))]
     pub fn rmcp_tools(
@@ -239,7 +239,7 @@ where
         }
     }
 
-    /// Adds dynamic tools, transitioning to WithTools state.
+    /// Adds dynamic tools, transitioning to `WithTools` state.
     pub fn dynamic_tools(
         self,
         sample: usize,
@@ -427,19 +427,19 @@ where
     }
 
     /// Sets the default max depth for multi-turn conversations.
-    pub fn default_max_depth(mut self, default_max_depth: usize) -> Self {
+    pub const fn default_max_depth(mut self, default_max_depth: usize) -> Self {
         self.default_max_depth = Some(default_max_depth);
         self
     }
 
     /// Sets the model temperature.
-    pub fn temperature(mut self, temperature: f64) -> Self {
+    pub const fn temperature(mut self, temperature: f64) -> Self {
         self.temperature = Some(temperature);
         self
     }
 
     /// Sets the maximum tokens for completion.
-    pub fn max_tokens(mut self, max_tokens: u64) -> Self {
+    pub const fn max_tokens(mut self, max_tokens: u64) -> Self {
         self.max_tokens = Some(max_tokens);
         self
     }

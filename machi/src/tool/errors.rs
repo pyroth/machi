@@ -20,7 +20,7 @@ pub enum ToolError {
 impl fmt::Display for ToolError {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self {
-            ToolError::ToolCallError(e) => {
+            Self::ToolCallError(e) => {
                 let error_str = e.to_string();
                 // This is required due to being able to use agents as tools
                 // which means it is possible to get recursive tool call errors
@@ -30,7 +30,7 @@ impl fmt::Display for ToolError {
                     write!(f, "ToolCallError: {error_str}")
                 }
             }
-            ToolError::JsonError(e) => write!(f, "JsonError: {e}"),
+            Self::JsonError(e) => write!(f, "JsonError: {e}"),
         }
     }
 }

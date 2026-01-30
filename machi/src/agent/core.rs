@@ -41,7 +41,7 @@ pub type DynamicContextStore = Arc<
 /// - A system prompt (preamble)
 /// - Static and dynamic context documents
 /// - Tools that the agent can use
-/// - Model parameters (temperature, max_tokens, etc.)
+/// - Model parameters (temperature, `max_tokens`, etc.)
 ///
 /// # Example
 /// ```rust,ignore

@@ -11,21 +11,21 @@ use std::str::FromStr;
 
 // ---------- Tool Types ----------
 
-#[derive(Debug, Serialize, Deserialize, PartialEq, Clone)]
+#[derive(Debug, Serialize, Deserialize, PartialEq, Eq, Clone)]
 pub struct ToolCall {
     #[serde(default, rename = "type")]
     pub r#type: ToolType,
     pub function: Function,
 }
 
-#[derive(Default, Debug, Serialize, Deserialize, PartialEq, Clone)]
+#[derive(Default, Debug, Serialize, Deserialize, PartialEq, Eq, Clone)]
 #[serde(rename_all = "lowercase")]
 pub enum ToolType {
     #[default]
     Function,
 }
 
-#[derive(Debug, Serialize, Deserialize, PartialEq, Clone)]
+#[derive(Debug, Serialize, Deserialize, PartialEq, Eq, Clone)]
 pub struct Function {
     pub name: String,
     pub arguments: Value,
@@ -83,8 +83,9 @@ pub enum Message {
 }
 
 impl Message {
+    #[must_use] 
     pub fn system(content: &str) -> Self {
-        Message::System {
+        Self::System {
             content: content.to_owned(),
             images: None,
             name: None,
@@ -172,7 +173,7 @@ impl TryFrom<crate::completion::message::Message> for Vec<Message> {
                             }
                             _ => unreachable!(),
                         })
-                        .collect::<Result<Vec<_>, _>>()
+                        .collect::<Result<Self, _>>()
                 }
             }
             InternalMessage::Assistant { content, .. } => {
@@ -219,7 +220,7 @@ impl TryFrom<crate::completion::message::Message> for Vec<Message> {
 impl From<Message> for crate::completion::Message {
     fn from(msg: Message) -> Self {
         match msg {
-            Message::User { content, .. } => crate::completion::Message::User {
+            Message::User { content, .. } => Self::User {
                 content: OneOrMany::one(message::UserContent::Text(Text { text: content })),
             },
             Message::Assistant {
@@ -236,15 +237,15 @@ impl From<Message> for crate::completion::Message {
                         tc.function.arguments,
                     ));
                 }
-                crate::completion::Message::Assistant {
+                Self::Assistant {
                     id: None,
                     content: OneOrMany::many(assistant_contents).unwrap(),
                 }
             }
-            Message::System { content, .. } => crate::completion::Message::User {
+            Message::System { content, .. } => Self::User {
                 content: OneOrMany::one(message::UserContent::Text(Text { text: content })),
             },
-            Message::ToolResult { name, content } => crate::completion::Message::User {
+            Message::ToolResult { name, content } => Self::User {
                 content: OneOrMany::one(message::UserContent::tool_result(
                     name,
                     OneOrMany::one(message::ToolResultContent::text(content)),
@@ -256,14 +257,14 @@ impl From<Message> for crate::completion::Message {
 
 // ---------- Content Types ----------
 
-#[derive(Debug, Serialize, Deserialize, PartialEq, Clone)]
+#[derive(Debug, Serialize, Deserialize, PartialEq, Eq, Clone)]
 pub struct SystemContent {
     #[serde(default)]
     r#type: SystemContentType,
     text: String,
 }
 
-#[derive(Default, Debug, Serialize, Deserialize, PartialEq, Clone)]
+#[derive(Default, Debug, Serialize, Deserialize, PartialEq, Eq, Clone)]
 #[serde(rename_all = "lowercase")]
 pub enum SystemContentType {
     #[default]
@@ -272,7 +273,7 @@ pub enum SystemContentType {
 
 impl From<String> for SystemContent {
     fn from(s: String) -> Self {
-        SystemContent {
+        Self {
             r#type: SystemContentType::default(),
             text: s,
         }
@@ -282,14 +283,14 @@ impl From<String> for SystemContent {
 impl FromStr for SystemContent {
     type Err = std::convert::Infallible;
     fn from_str(s: &str) -> Result<Self, Self::Err> {
-        Ok(SystemContent {
+        Ok(Self {
             r#type: SystemContentType::default(),
             text: s.to_string(),
         })
     }
 }
 
-#[derive(Debug, Serialize, Deserialize, PartialEq, Clone)]
+#[derive(Debug, Serialize, Deserialize, PartialEq, Eq, Clone)]
 pub struct AssistantContent {
     pub text: String,
 }
@@ -297,7 +298,7 @@ pub struct AssistantContent {
 impl FromStr for AssistantContent {
     type Err = std::convert::Infallible;
     fn from_str(s: &str) -> Result<Self, Self::Err> {
-        Ok(AssistantContent { text: s.to_owned() })
+        Ok(Self { text: s.to_owned() })
     }
 }
 
@@ -311,11 +312,11 @@ pub enum UserContent {
 impl FromStr for UserContent {
     type Err = std::convert::Infallible;
     fn from_str(s: &str) -> Result<Self, Self::Err> {
-        Ok(UserContent::Text { text: s.to_owned() })
+        Ok(Self::Text { text: s.to_owned() })
     }
 }
 
-#[derive(Debug, Serialize, Deserialize, PartialEq, Clone)]
+#[derive(Debug, Serialize, Deserialize, PartialEq, Eq, Clone)]
 pub struct ImageUrl {
     pub url: String,
     #[serde(default)]

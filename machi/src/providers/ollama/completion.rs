@@ -95,7 +95,7 @@ impl TryFrom<CompletionResponse> for completion::CompletionResponse<CompletionRe
                     },
                 };
 
-                Ok(completion::CompletionResponse {
+                Ok(Self {
                     choice,
                     usage: Usage {
                         input_tokens: prompt_tokens,
@@ -153,8 +153,7 @@ impl TryFrom<(&str, CompletionRequest)> for OllamaCompletionRequest {
                 .map(message::Message::try_into)
                 .collect::<Result<Vec<Vec<Message>>, _>>()?
                 .into_iter()
-                .flatten()
-                .collect::<Vec<_>>(),
+                .flatten(),
         );
 
         let mut think = false;
@@ -461,13 +460,9 @@ pub struct ToolDefinition {
 
 impl From<crate::completion::ToolDefinition> for ToolDefinition {
     fn from(tool: crate::completion::ToolDefinition) -> Self {
-        ToolDefinition {
+        Self {
             type_field: "function".to_owned(),
-            function: completion::ToolDefinition {
-                name: tool.name,
-                description: tool.description,
-                parameters: tool.parameters,
-            },
+            function: tool,
         }
     }
 }

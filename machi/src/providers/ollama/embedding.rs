@@ -28,7 +28,7 @@ pub struct EmbeddingResponse {
 
 impl From<super::client::ApiErrorResponse> for EmbeddingError {
     fn from(err: super::client::ApiErrorResponse) -> Self {
-        EmbeddingError::ProviderError(err.message)
+        Self::ProviderError(err.message)
     }
 }
 

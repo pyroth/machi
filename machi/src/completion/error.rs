@@ -92,6 +92,6 @@ pub enum MessageError {
 
 impl From<MessageError> for CompletionError {
     fn from(error: MessageError) -> Self {
-        CompletionError::RequestError(error.into())
+        Self::RequestError(error.into())
     }
 }

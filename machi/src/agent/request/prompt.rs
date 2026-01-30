@@ -50,7 +50,7 @@ impl PromptType for Extended {}
 /// - `'a`: Lifetime of the agent reference
 /// - `S`: State type (Standard or Extended)
 /// - `M`: Completion model type
-/// - `P`: Hook type implementing PromptHook
+/// - `P`: Hook type implementing `PromptHook`
 pub struct PromptRequest<'a, S, M, P>
 where
     S: PromptType,
@@ -115,7 +115,7 @@ where
     /// Sets the maximum depth for multi-turn conversations.
     ///
     /// If exceeded, returns [`PromptError::MaxDepthError`].
-    pub fn multi_turn(self, depth: usize) -> PromptRequest<'a, S, M, P> {
+    pub fn multi_turn(self, depth: usize) -> Self {
         PromptRequest {
             prompt: self.prompt,
             chat_history: self.chat_history,
@@ -128,13 +128,13 @@ where
     }
 
     /// Sets the tool execution concurrency level.
-    pub fn with_tool_concurrency(mut self, concurrency: usize) -> Self {
+    pub const fn with_tool_concurrency(mut self, concurrency: usize) -> Self {
         self.concurrency = concurrency;
         self
     }
 
     /// Adds chat history to the request.
-    pub fn with_history(self, history: &'a mut Vec<Message>) -> PromptRequest<'a, S, M, P> {
+    pub fn with_history(self, history: &'a mut Vec<Message>) -> Self {
         PromptRequest {
             prompt: self.prompt,
             chat_history: Some(history),

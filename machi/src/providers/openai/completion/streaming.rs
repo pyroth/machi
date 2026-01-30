@@ -37,7 +37,7 @@ struct StreamingDelta {
     tool_calls: Vec<StreamingToolCall>,
 }
 
-#[derive(Deserialize, Debug, PartialEq)]
+#[derive(Deserialize, Debug, PartialEq, Eq)]
 #[serde(rename_all = "snake_case")]
 pub enum FinishReason {
     ToolCalls,

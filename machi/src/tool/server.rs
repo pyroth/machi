@@ -24,6 +24,7 @@ impl Default for ToolServer {
 }
 
 impl ToolServer {
+    #[must_use] 
     pub fn new() -> Self {
         Self {
             static_tool_names: Vec::new(),
@@ -86,6 +87,7 @@ impl ToolServer {
         self
     }
 
+    #[must_use] 
     pub fn run(mut self) -> ToolServerHandle {
         let (tx, mut rx) = tokio::sync::mpsc::channel(1000);
 
@@ -332,7 +334,7 @@ pub enum ToolServerRequestMessageKind {
     GetToolDefs { prompt: Option<String> },
 }
 
-#[derive(PartialEq, Debug)]
+#[derive(PartialEq, Eq, Debug)]
 pub enum ToolServerResponse {
     ToolAdded,
     ToolDeleted,

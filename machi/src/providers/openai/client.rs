@@ -167,7 +167,7 @@ impl ProviderClient for Client {
         let base_url: Option<String> = std::env::var("OPENAI_BASE_URL").ok();
         let api_key = std::env::var("OPENAI_API_KEY").expect("OPENAI_API_KEY not set");
 
-        let mut builder = Client::builder().api_key(&api_key);
+        let mut builder = Self::builder().api_key(&api_key);
 
         if let Some(base) = base_url {
             builder = builder.base_url(&base);
@@ -190,7 +190,7 @@ impl ProviderClient for CompletionsClient {
         let base_url: Option<String> = std::env::var("OPENAI_BASE_URL").ok();
         let api_key = std::env::var("OPENAI_API_KEY").expect("OPENAI_API_KEY not set");
 
-        let mut builder = CompletionsClient::builder().api_key(&api_key);
+        let mut builder = Self::builder().api_key(&api_key);
 
         if let Some(base) = base_url {
             builder = builder.base_url(&base);

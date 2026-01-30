@@ -61,7 +61,7 @@ impl Part {
     }
 
     /// Get the content type if set
-    pub fn get_content_type(&self) -> Option<&Mime> {
+    pub const fn get_content_type(&self) -> Option<&Mime> {
         self.content_type.as_ref()
     }
 }
@@ -75,6 +75,7 @@ pub struct MultipartForm {
 
 impl MultipartForm {
     /// Create a new empty multipart form
+    #[must_use] 
     pub fn new() -> Self {
         Self::default()
     }
@@ -112,6 +113,7 @@ impl MultipartForm {
     }
 
     /// Get the parts
+    #[must_use] 
     pub fn parts(&self) -> &[Part] {
         &self.parts
     }
@@ -135,6 +137,7 @@ impl MultipartForm {
     }
 
     /// Encode the multipart form to bytes with the given boundary
+    #[must_use] 
     pub fn encode(&self) -> (String, Bytes) {
         let boundary = self.get_boundary();
         let mut body = Vec::new();
@@ -185,7 +188,7 @@ impl MultipartForm {
 
 impl From<MultipartForm> for reqwest::multipart::Form {
     fn from(value: MultipartForm) -> Self {
-        let mut form = reqwest::multipart::Form::new();
+        let mut form = Self::new();
 
         for part in value.parts {
             match part.content {

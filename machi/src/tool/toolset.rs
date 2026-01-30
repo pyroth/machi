@@ -24,22 +24,22 @@ impl ToolType {
     #[inline]
     pub fn name(&self) -> String {
         match self {
-            ToolType::Simple(tool) => tool.name(),
-            ToolType::Embedding(tool) => tool.name(),
+            Self::Simple(tool) => tool.name(),
+            Self::Embedding(tool) => tool.name(),
         }
     }
 
     pub async fn definition(&self, prompt: String) -> ToolDefinition {
         match self {
-            ToolType::Simple(tool) => tool.definition(prompt).await,
-            ToolType::Embedding(tool) => tool.definition(prompt).await,
+            Self::Simple(tool) => tool.definition(prompt).await,
+            Self::Embedding(tool) => tool.definition(prompt).await,
         }
     }
 
     pub async fn call(&self, args: String) -> Result<String, ToolError> {
         match self {
-            ToolType::Simple(tool) => tool.call(args).await,
-            ToolType::Embedding(tool) => tool.call(args).await,
+            Self::Simple(tool) => tool.call(args).await,
+            Self::Embedding(tool) => tool.call(args).await,
         }
     }
 }
@@ -52,6 +52,7 @@ pub struct ToolSet {
 
 impl ToolSet {
     /// Create a new `ToolSet` from a list of tools
+    #[must_use] 
     pub fn from_tools(tools: Vec<impl ToolDyn + 'static>) -> Self {
         let mut toolset = Self::default();
         for tool in tools {
@@ -60,6 +61,7 @@ impl ToolSet {
         toolset
     }
 
+    #[must_use] 
     pub fn from_tools_boxed(tools: Vec<Box<dyn ToolDyn + 'static>>) -> Self {
         let mut toolset = Self::default();
         for tool in tools {
@@ -70,12 +72,14 @@ impl ToolSet {
 
     /// Create a toolset builder
     #[inline]
+    #[must_use] 
     pub fn builder() -> ToolSetBuilder {
         ToolSetBuilder::default()
     }
 
     /// Check if the toolset contains a tool with the given name
     #[inline]
+    #[must_use] 
     pub fn contains(&self, toolname: &str) -> bool {
         self.tools.contains_key(toolname)
     }
@@ -99,7 +103,7 @@ impl ToolSet {
 
     /// Merge another toolset into this one.
     #[inline]
-    pub fn add_tools(&mut self, toolset: ToolSet) {
+    pub fn add_tools(&mut self, toolset: Self) {
         self.tools.extend(toolset.tools);
     }
 

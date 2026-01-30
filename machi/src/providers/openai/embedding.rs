@@ -26,7 +26,7 @@ pub struct EmbeddingResponse {
 
 impl From<ApiErrorResponse> for EmbeddingError {
     fn from(err: ApiErrorResponse) -> Self {
-        EmbeddingError::ProviderError(err.message)
+        Self::ProviderError(err.message)
     }
 }
 
@@ -196,7 +196,7 @@ impl<T> EmbeddingModel<T> {
         }
     }
 
-    pub fn encoding_format(mut self, encoding_format: EncodingFormat) -> Self {
+    pub const fn encoding_format(mut self, encoding_format: EncodingFormat) -> Self {
         self.encoding_format = Some(encoding_format);
         self
     }

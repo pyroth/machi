@@ -13,7 +13,7 @@ use machi::tool::{Tool, tool};
     params(a = "The first number to add", b = "The second number to add"),
     required(a, b)
 )]
-fn add(a: i32, b: i32) -> Result<i32, machi::tool::ToolError> {
+const fn add(a: i32, b: i32) -> Result<i32, machi::tool::ToolError> {
     Ok(a + b)
 }
 
@@ -23,7 +23,7 @@ fn add(a: i32, b: i32) -> Result<i32, machi::tool::ToolError> {
     params(a = "The number to subtract from", b = "The number to subtract"),
     required(a, b)
 )]
-fn sub(a: i32, b: i32) -> Result<i32, machi::tool::ToolError> {
+const fn sub(a: i32, b: i32) -> Result<i32, machi::tool::ToolError> {
     Ok(a - b)
 }
 
@@ -53,10 +53,10 @@ async fn main() -> Result<(), anyhow::Error> {
     );
 
     let result = Tool::call(&ADD_TOOL, AddArgs { a: 10, b: 20 }).await?;
-    println!("10 + 20 = {}", result);
+    println!("10 + 20 = {result}");
 
     let result = Tool::call(&SUB_TOOL, SubArgs { a: 100, b: 42 }).await?;
-    println!("100 - 42 = {}", result);
+    println!("100 - 42 = {result}");
 
     Ok(())
 }

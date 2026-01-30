@@ -1,4 +1,5 @@
 //! This module primarily concerns being able to orchestrate telemetry across a given pipeline or workflow.
+//!
 //! This includes tracing, being able to send traces to an OpenTelemetry collector, setting up your
 //! agents with the correct tracing style so you can emit the right traces for platforms like Langfuse,
 //! and more.

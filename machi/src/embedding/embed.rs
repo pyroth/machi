@@ -12,6 +12,7 @@
 pub use super::error::EmbedError;
 
 /// Derive this trait for objects that need to be converted to vector embeddings.
+///
 /// The [`Embed::embed`] method accumulates string values that need to be embedded by adding them to the [`TextEmbedder`].
 /// If an error occurs, the method should return [`EmbedError`].
 pub trait Embed {
@@ -28,6 +29,7 @@ pub struct TextEmbedder {
 impl TextEmbedder {
     /// Creates a new empty `TextEmbedder`.
     #[inline]
+    #[must_use] 
     pub fn new() -> Self {
         Self::default()
     }
@@ -40,13 +42,15 @@ impl TextEmbedder {
 
     /// Returns the number of texts accumulated.
     #[inline]
-    pub fn len(&self) -> usize {
+    #[must_use] 
+    pub const fn len(&self) -> usize {
         self.texts.len()
     }
 
     /// Returns `true` if no texts have been accumulated.
     #[inline]
-    pub fn is_empty(&self) -> bool {
+    #[must_use] 
+    pub const fn is_empty(&self) -> bool {
         self.texts.is_empty()
     }
 }

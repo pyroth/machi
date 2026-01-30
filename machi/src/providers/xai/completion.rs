@@ -191,7 +191,7 @@ where
         &self,
         request: CompletionRequest,
     ) -> Result<StreamingCompletionResponse<Self::StreamingResponse>, CompletionError> {
-        CompletionModel::stream(self, request).await
+        Self::stream(self, request).await
     }
 }
 
@@ -236,8 +236,7 @@ pub mod xai_api_types {
                                     &call.function.name,
                                     call.function.arguments.clone(),
                                 )
-                            })
-                            .collect::<Vec<_>>(),
+                            }),
                     );
                     Ok(content)
                 }
@@ -258,7 +257,7 @@ pub mod xai_api_types {
                 total_tokens: response.usage.total_tokens as u64,
             };
 
-            Ok(completion::CompletionResponse {
+            Ok(Self {
                 choice,
                 usage,
                 raw_response: response,

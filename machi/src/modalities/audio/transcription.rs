@@ -1,4 +1,5 @@
 //! This module provides functionality for working with audio transcription models.
+//!
 //! It provides traits, structs, and enums for generating audio transcription requests,
 //! handling transcription responses, and defining transcription models.
 
@@ -38,6 +39,7 @@ pub struct TranscriptionResponse<T> {
 }
 
 /// Trait defining a transcription model that can be used to generate transcription requests.
+///
 /// This trait is meant to be implemented by the user to define a custom transcription model,
 /// either from a third-party provider (e.g: `OpenAI`) or a local model.
 pub trait TranscriptionModel: Clone + WasmCompatSend + WasmCompatSync {
@@ -138,7 +140,7 @@ where
 {
     /// Creates a new transcription request builder.
     #[inline]
-    pub fn new(model: M) -> Self {
+    pub const fn new(model: M) -> Self {
         Self {
             model,
             data: Vec::new(),
@@ -192,7 +194,7 @@ where
     }
 
     /// Set the temperature to be sent in the transcription request
-    pub fn temperature(mut self, temperature: f64) -> Self {
+    pub const fn temperature(mut self, temperature: f64) -> Self {
         self.temperature = Some(temperature);
         self
     }

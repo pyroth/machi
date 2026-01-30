@@ -67,6 +67,7 @@ pub mod xai_api_types {
     use serde::Deserialize;
 
     impl ApiErrorResponse {
+        #[must_use] 
         pub fn message(&self) -> String {
             format!("Code `{}`: {}", self.code, self.error)
         }

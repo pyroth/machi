@@ -20,7 +20,8 @@ pub struct McpTool {
 }
 
 impl McpTool {
-    pub fn from_mcp_server(
+    #[must_use] 
+    pub const fn from_mcp_server(
         definition: rmcp::model::Tool,
         client: rmcp::service::ServerSink,
     ) -> Self {
@@ -55,7 +56,7 @@ pub struct McpToolError(String);
 
 impl From<McpToolError> for ToolError {
     fn from(e: McpToolError) -> Self {
-        ToolError::ToolCallError(Box::new(e))
+        Self::ToolCallError(Box::new(e))
     }
 }
 
@@ -95,12 +96,12 @@ impl ToolDyn for McpTool {
                 .await
                 .map_err(|e| McpToolError(format!("Tool returned an error: {e}")))?;
 
-            if let Some(true) = result.is_error {
+            if result.is_error == Some(true) {
                 let error_msg = result
                     .content
                     .into_iter()
                     .map(|x| x.raw.as_text().map(std::borrow::ToOwned::to_owned))
-                    .map(|x| x.map(|x| x.clone().text))
+                    .map(|x| x.map(|x| x.text))
                     .collect::<Option<Vec<String>>>();
 
                 let error_message = error_msg.map(|x| x.join("\n"));

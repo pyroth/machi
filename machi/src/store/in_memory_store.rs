@@ -46,6 +46,7 @@ impl<D: Serialize + Eq> InMemoryVectorStore<D> {
     ///     .build();
     /// ```
     #[inline]
+    #[must_use] 
     pub fn builder() -> InMemoryVectorStoreBuilder<D> {
         InMemoryVectorStoreBuilder::new()
     }
@@ -379,7 +380,7 @@ type EmbeddingRanking<'a, D> = BinaryHeap<Reverse<RankingItem<'a, D>>>;
 impl<D: Serialize> InMemoryVectorStore<D> {
     /// Creates an index from this store with the given embedding model.
     #[inline]
-    pub fn index<M: EmbeddingModel>(self, model: M) -> InMemoryVectorIndex<M, D> {
+    pub const fn index<M: EmbeddingModel>(self, model: M) -> InMemoryVectorIndex<M, D> {
         InMemoryVectorIndex::new(model, self)
     }
 
@@ -391,12 +392,14 @@ impl<D: Serialize> InMemoryVectorStore<D> {
 
     /// Returns the number of documents in the store.
     #[inline]
+    #[must_use] 
     pub fn len(&self) -> usize {
         self.embeddings.len()
     }
 
     /// Returns `true` if the store contains no documents.
     #[inline]
+    #[must_use] 
     pub fn is_empty(&self) -> bool {
         self.embeddings.is_empty()
     }
@@ -410,7 +413,7 @@ pub struct InMemoryVectorIndex<M: EmbeddingModel, D: Serialize> {
 impl<M: EmbeddingModel, D: Serialize> InMemoryVectorIndex<M, D> {
     /// Creates a new index with the given model and store.
     #[inline]
-    pub fn new(model: M, store: InMemoryVectorStore<D>) -> Self {
+    pub const fn new(model: M, store: InMemoryVectorStore<D>) -> Self {
         Self { model, store }
     }
 

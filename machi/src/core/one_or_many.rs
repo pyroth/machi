@@ -7,6 +7,7 @@ use std::marker::PhantomData;
 use std::str::FromStr;
 
 /// Struct containing either a single item or a list of items of type T.
+///
 /// If a single item is present, `first` will contain it and `rest` will be empty.
 /// If multiple items are present, `first` will contain the first item and `rest` will contain the rest.
 /// IMPORTANT: this struct cannot be created with an empty vector.
@@ -30,13 +31,13 @@ impl<T: Clone> OneOrMany<T> {
 
     /// Get a reference to the first item in the list.
     #[inline]
-    pub fn first_ref(&self) -> &T {
+    pub const fn first_ref(&self) -> &T {
         &self.first
     }
 
     /// Get a mutable reference to the first item in the list.
     #[inline]
-    pub fn first_mut(&mut self) -> &mut T {
+    pub const fn first_mut(&mut self) -> &mut T {
         &mut self.first
     }
 
@@ -80,7 +81,7 @@ impl<T: Clone> OneOrMany<T> {
 
     /// Length of all items in `OneOrMany<T>`.
     #[inline]
-    pub fn len(&self) -> usize {
+    pub const fn len(&self) -> usize {
         1 + self.rest.len()
     }
 
@@ -93,7 +94,7 @@ impl<T: Clone> OneOrMany<T> {
 
     /// Create a `OneOrMany` object with a single item of any type.
     #[inline]
-    pub fn one(item: T) -> Self {
+    pub const fn one(item: T) -> Self {
         Self {
             first: item,
             rest: Vec::new(),
@@ -106,7 +107,7 @@ impl<T: Clone> OneOrMany<T> {
         I: IntoIterator<Item = T>,
     {
         let mut iter = items.into_iter();
-        Ok(OneOrMany {
+        Ok(Self {
             first: match iter.next() {
                 Some(item) => item,
                 None => return Err(EmptyListError),
@@ -118,14 +119,14 @@ impl<T: Clone> OneOrMany<T> {
     /// Merge a list of `OneOrMany` items into a single `OneOrMany` item.
     pub fn merge<I>(one_or_many_items: I) -> Result<Self, EmptyListError>
     where
-        I: IntoIterator<Item = OneOrMany<T>>,
+        I: IntoIterator<Item = Self>,
     {
         let items = one_or_many_items
             .into_iter()
             .flat_map(std::iter::IntoIterator::into_iter)
             .collect::<Vec<_>>();
 
-        OneOrMany::many(items)
+        Self::many(items)
     }
 
     /// Specialized map function for `OneOrMany` objects.
@@ -673,7 +674,7 @@ mod test {
         type Err = Infallible;
 
         fn from_str(s: &str) -> Result<Self, Self::Err> {
-            Ok(DummyString {
+            Ok(Self {
                 string: s.to_string(),
             })
         }

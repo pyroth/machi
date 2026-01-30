@@ -19,7 +19,7 @@ impl TryFrom<TranscriptionResponse>
     type Error = TranscriptionError;
 
     fn try_from(value: TranscriptionResponse) -> Result<Self, Self::Error> {
-        Ok(transcription::TranscriptionResponse {
+        Ok(Self {
             text: value.text.clone(),
             response: value,
         })
@@ -68,7 +68,7 @@ where
         }
 
         if let Some(prompt) = request.prompt {
-            body = body.text("prompt", prompt.clone());
+            body = body.text("prompt", prompt);
         }
 
         if let Some(ref temperature) = request.temperature {

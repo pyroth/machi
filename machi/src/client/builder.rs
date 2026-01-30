@@ -68,7 +68,7 @@ where
     where
         F: FnOnce(Ext) -> NewExt,
     {
-        let ClientBuilder {
+        let Self {
             base_url,
             api_key,
             headers,
@@ -76,7 +76,7 @@ where
             ext,
         } = self;
 
-        let new_ext = f(ext.clone());
+        let new_ext = f(ext);
 
         ClientBuilder {
             base_url,
@@ -115,12 +115,12 @@ where
     }
 
     /// Returns a mutable reference to the headers.
-    pub(crate) fn headers_mut(&mut self) -> &mut HeaderMap {
+    pub(crate) const fn headers_mut(&mut self) -> &mut HeaderMap {
         &mut self.headers
     }
 
     /// Returns a mutable reference to the extension.
-    pub(crate) fn ext_mut(&mut self) -> &mut Ext {
+    pub(crate) const fn ext_mut(&mut self) -> &mut Ext {
         &mut self.ext
     }
 }
@@ -129,13 +129,13 @@ impl<Ext, Key, H> ClientBuilder<Ext, Key, H> {
     /// Returns a reference to the API key.
     #[allow(dead_code)]
     #[inline]
-    pub(crate) fn get_api_key(&self) -> &Key {
+    pub(crate) const fn get_api_key(&self) -> &Key {
         &self.api_key
     }
 
     /// Returns a reference to the extension.
     #[inline]
-    pub fn ext(&self) -> &Ext {
+    pub const fn ext(&self) -> &Ext {
         &self.ext
     }
 }
@@ -158,7 +158,7 @@ where
         self = ext.finish(self)?;
         let ext = Ext::build(&self)?;
 
-        let ClientBuilder {
+        let Self {
             http_client,
             base_url,
             mut headers,

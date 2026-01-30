@@ -35,7 +35,7 @@ impl TryFrom<ImageGenerationResponse>
             .decode(&b64_json)
             .expect("Failed to decode b64");
 
-        Ok(image_generation::ImageGenerationResponse {
+        Ok(Self {
             image: bytes,
             response: value,
         })

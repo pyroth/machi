@@ -9,7 +9,7 @@ use crate::modalities::image::errors::ImageGenerationError;
 use std::fmt::Debug;
 use std::fmt::Display;
 
-#[derive(Debug, Clone, PartialEq, Default)]
+#[derive(Debug, Clone, PartialEq, Eq, Default)]
 pub enum SubProvider {
     #[default]
     HFInference,
@@ -26,6 +26,7 @@ impl SubProvider {
     /// Get the chat completion endpoint for the `SubProvider`
     /// Required because Huggingface Inference requires the model
     /// in the url and in the request body.
+    #[must_use] 
     pub fn completion_endpoint(&self, _model: &str) -> String {
         "v1/chat/completions".to_string()
     }
@@ -35,7 +36,7 @@ impl SubProvider {
     /// in the url and in the request body.
     pub fn transcription_endpoint(&self, model: &str) -> Result<String, TranscriptionError> {
         match self {
-            SubProvider::HFInference => Ok(format!("/{model}")),
+            Self::HFInference => Ok(format!("/{model}")),
             _ => Err(TranscriptionError::ProviderError(format!(
                 "transcription endpoint is not supported yet for {self}"
             ))),
@@ -48,16 +49,17 @@ impl SubProvider {
     #[cfg(feature = "image")]
     pub fn image_generation_endpoint(&self, model: &str) -> Result<String, ImageGenerationError> {
         match self {
-            SubProvider::HFInference => Ok(format!("/{model}")),
+            Self::HFInference => Ok(format!("/{model}")),
             _ => Err(ImageGenerationError::ProviderError(format!(
                 "image generation endpoint is not supported yet for {self}"
             ))),
         }
     }
 
+    #[must_use] 
     pub fn model_identifier(&self, model: &str) -> String {
         match self {
-            SubProvider::Fireworks => format!("accounts/fireworks/models/{model}"),
+            Self::Fireworks => format!("accounts/fireworks/models/{model}"),
             _ => model.to_string(),
         }
     }
@@ -65,27 +67,27 @@ impl SubProvider {
 
 impl From<&str> for SubProvider {
     fn from(s: &str) -> Self {
-        SubProvider::Custom(s.to_string())
+        Self::Custom(s.to_string())
     }
 }
 
 impl From<String> for SubProvider {
     fn from(value: String) -> Self {
-        SubProvider::Custom(value)
+        Self::Custom(value)
     }
 }
 
 impl Display for SubProvider {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         let route = match self {
-            SubProvider::HFInference => "hf-inference/models".to_string(),
-            SubProvider::Together => "together".to_string(),
-            SubProvider::SambaNova => "sambanova".to_string(),
-            SubProvider::Fireworks => "fireworks-ai".to_string(),
-            SubProvider::Hyperbolic => "hyperbolic".to_string(),
-            SubProvider::Nebius => "nebius".to_string(),
-            SubProvider::Novita => "novita".to_string(),
-            SubProvider::Custom(route) => route.clone(),
+            Self::HFInference => "hf-inference/models".to_string(),
+            Self::Together => "together".to_string(),
+            Self::SambaNova => "sambanova".to_string(),
+            Self::Fireworks => "fireworks-ai".to_string(),
+            Self::Hyperbolic => "hyperbolic".to_string(),
+            Self::Nebius => "nebius".to_string(),
+            Self::Novita => "novita".to_string(),
+            Self::Custom(route) => route.clone(),
         };
 
         write!(f, "{route}")
@@ -172,7 +174,7 @@ impl<H> ClientBuilder<H> {
 }
 
 impl<H> Client<H> {
-    pub(crate) fn subprovider(&self) -> &SubProvider {
+    pub(crate) const fn subprovider(&self) -> &SubProvider {
         &self.ext().subprovider
     }
 }

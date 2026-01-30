@@ -144,6 +144,7 @@ impl<'a> PdfFileLoader<'a, Result<PathBuf, PdfLoaderError>> {
     ///     }
     /// }
     /// ```
+    #[must_use] 
     pub fn read(self) -> PdfFileLoader<'a, Result<String, PdfLoaderError>> {
         PdfFileLoader {
             iterator: Box::new(self.iterator.map(|res| {
@@ -178,6 +179,7 @@ impl<'a> PdfFileLoader<'a, Result<PathBuf, PdfLoaderError>> {
     ///     }
     /// }
     /// ```
+    #[must_use] 
     pub fn read_with_path(self) -> PdfFileLoader<'a, Result<(PathBuf, String), PdfLoaderError>> {
         PdfFileLoader {
             iterator: Box::new(self.iterator.map(|res| {
@@ -219,6 +221,7 @@ impl<'a> PdfFileLoader<'a, Document> {
     ///     }
     /// }
     /// ```
+    #[must_use] 
     pub fn by_page(self) -> PdfFileLoader<'a, Result<String, PdfLoaderError>> {
         PdfFileLoader {
             iterator: Box::new(self.iterator.flat_map(|doc| {
@@ -263,6 +266,7 @@ impl<'a> PdfFileLoader<'a, (PathBuf, Document)> {
     ///     }
     /// }
     /// ```
+    #[must_use] 
     pub fn by_page(self) -> PdfFileLoader<'a, ByPage> {
         PdfFileLoader {
             iterator: Box::new(self.iterator.map(|(path, doc)| {
@@ -297,6 +301,7 @@ impl<'a> PdfFileLoader<'a, ByPage> {
     ///     println!("{}", content)
     /// }
     /// ```
+    #[must_use] 
     pub fn ignore_errors(self) -> PdfFileLoader<'a, (PathBuf, Vec<(usize, String)>)> {
         PdfFileLoader {
             iterator: Box::new(self.iterator.map(|(path, pages)| {
@@ -383,14 +388,16 @@ impl PdfFileLoader<'_, Result<PathBuf, FileLoaderError>> {
 
 impl<'a> PdfFileLoader<'a, Vec<u8>> {
     /// Ingest a PDF as a byte array.
-    pub fn from_bytes(bytes: Vec<u8>) -> PdfFileLoader<'a, Vec<u8>> {
+    #[must_use] 
+    pub fn from_bytes(bytes: Vec<u8>) -> Self {
         PdfFileLoader {
             iterator: Box::new(vec![bytes].into_iter()),
         }
     }
 
     /// Ingest multiple byte arrays.
-    pub fn from_bytes_multi(bytes_vec: Vec<Vec<u8>>) -> PdfFileLoader<'a, Vec<u8>> {
+    #[must_use] 
+    pub fn from_bytes_multi(bytes_vec: Vec<Vec<u8>>) -> Self {
         PdfFileLoader {
             iterator: Box::new(bytes_vec.into_iter()),
         }

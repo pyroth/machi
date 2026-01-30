@@ -24,7 +24,7 @@ impl TryFrom<TranscriptionResponse>
     type Error = TranscriptionError;
 
     fn try_from(value: TranscriptionResponse) -> Result<Self, Self::Error> {
-        Ok(transcription::TranscriptionResponse {
+        Ok(Self {
             text: value.text.clone(),
             response: value,
         })
@@ -55,7 +55,7 @@ where
     type Client = Client<T>;
 
     fn make(client: &Self::Client, model: impl Into<String>) -> Self {
-        TranscriptionModel::new(client.clone(), model)
+        Self::new(client.clone(), model)
     }
 
     async fn transcription(

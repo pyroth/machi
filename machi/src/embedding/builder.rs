@@ -63,7 +63,7 @@ where
     T: Embed,
 {
     /// Create a new embedding builder with the given embedding model
-    pub fn new(model: M) -> Self {
+    pub const fn new(model: M) -> Self {
         Self {
             model,
             documents: vec![],
@@ -85,7 +85,7 @@ where
     pub fn documents(self, documents: impl IntoIterator<Item = T>) -> Result<Self, EmbedError> {
         let builder = documents
             .into_iter()
-            .try_fold(self, EmbeddingsBuilder::document)?;
+            .try_fold(self, Self::document)?;
 
         Ok(builder)
     }
@@ -190,7 +190,7 @@ mod tests {
             Ok(documents
                 .into_iter()
                 .map(|doc| Embedding {
-                    document: doc.clone(),
+                    document: doc,
                     vec: vec![0.0, 0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8, 0.9],
                 })
                 .collect())

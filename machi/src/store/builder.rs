@@ -32,6 +32,7 @@ where
 {
     /// Create a new builder with default settings.
     /// Default index strategy is `BruteForce`.
+    #[must_use] 
     pub fn new() -> Self {
         Self {
             embeddings: HashMap::new(),
@@ -53,7 +54,8 @@ where
     ///     })
     ///     .build();
     /// ```
-    pub fn index_strategy(mut self, index_strategy: IndexStrategy) -> Self {
+    #[must_use] 
+    pub const fn index_strategy(mut self, index_strategy: IndexStrategy) -> Self {
         self.index_strategy = index_strategy;
         self
     }
@@ -100,6 +102,7 @@ where
     }
 
     /// Build the [`InMemoryVectorStore`] with the configured settings.
+    #[must_use] 
     pub fn build(self) -> InMemoryVectorStore<D> {
         InMemoryVectorStore::from_builder(self.embeddings, self.index_strategy)
     }

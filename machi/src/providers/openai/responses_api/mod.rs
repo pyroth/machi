@@ -74,7 +74,8 @@ impl CompletionRequest {
         self
     }
 
-    pub fn with_reasoning(mut self, reasoning: Reasoning) -> Self {
+    #[must_use] 
+    pub const fn with_reasoning(mut self, reasoning: Reasoning) -> Self {
         self.additional_parameters.reasoning = Some(reasoning);
 
         self
@@ -113,7 +114,7 @@ pub enum InputContent {
     FunctionCallOutput(ToolResult),
 }
 
-#[derive(Debug, Deserialize, Serialize, Clone, PartialEq)]
+#[derive(Debug, Deserialize, Serialize, Clone, PartialEq, Eq)]
 pub struct OpenAIReasoning {
     id: String,
     pub summary: Vec<ReasoningSummary>,
@@ -122,7 +123,7 @@ pub struct OpenAIReasoning {
     pub status: Option<ToolStatus>,
 }
 
-#[derive(Debug, Deserialize, Serialize, Clone, PartialEq)]
+#[derive(Debug, Deserialize, Serialize, Clone, PartialEq, Eq)]
 #[serde(tag = "type", rename_all = "snake_case")]
 pub enum ReasoningSummary {
     SummaryText { text: String },
@@ -135,8 +136,9 @@ impl ReasoningSummary {
         }
     }
 
+    #[must_use] 
     pub fn text(&self) -> String {
-        let ReasoningSummary::SummaryText { text } = self;
+        let Self::SummaryText { text } = self;
         text.clone()
     }
 }
@@ -199,7 +201,7 @@ impl TryFrom<crate::completion::Message> for Vec<InputItem> {
     fn try_from(value: crate::completion::Message) -> Result<Self, Self::Error> {
         match value {
             crate::completion::Message::User { content } => {
-                let mut items = Vec::new();
+                let mut items = Self::new();
 
                 for user_content in content {
                     match user_content {
@@ -349,7 +351,7 @@ impl TryFrom<crate::completion::Message> for Vec<InputItem> {
                 Ok(items)
             }
             crate::completion::Message::Assistant { id, content } => {
-                let mut items = Vec::new();
+                let mut items = Self::new();
 
                 for assistant_content in content {
                     match assistant_content {
@@ -476,7 +478,7 @@ pub struct ResponsesUsage {
 
 impl ResponsesUsage {
     /// Create a new `ResponsesUsage` instance
-    pub(crate) fn new() -> Self {
+    pub(crate) const fn new() -> Self {
         Self {
             input_tokens: 0,
             input_tokens_details: Some(InputTokensDetails::new()),
@@ -520,7 +522,7 @@ pub struct InputTokensDetails {
 }
 
 impl InputTokensDetails {
-    pub(crate) fn new() -> Self {
+    pub(crate) const fn new() -> Self {
         Self { cached_tokens: 0 }
     }
 }
@@ -542,7 +544,7 @@ pub struct OutputTokensDetails {
 }
 
 impl OutputTokensDetails {
-    pub(crate) fn new() -> Self {
+    pub(crate) const fn new() -> Self {
         Self {
             reasoning_tokens: 0,
         }
@@ -582,7 +584,7 @@ pub enum ResponseObject {
 }
 
 /// The response status as an enum (ensures type validation)
-#[derive(Clone, Debug, Deserialize, Serialize, PartialEq)]
+#[derive(Clone, Debug, Deserialize, Serialize, PartialEq, Eq)]
 #[serde(rename_all = "snake_case")]
 pub enum ResponseStatus {
     InProgress,
@@ -616,8 +618,7 @@ impl TryFrom<(String, crate::completion::CompletionRequest)> for CompletionReque
                     .map(|x| <Vec<InputItem>>::try_from(x).unwrap())
                     .collect::<Vec<Vec<InputItem>>>()
                     .into_iter()
-                    .flatten()
-                    .collect::<Vec<InputItem>>(),
+                    .flatten(),
             );
 
             full_history
@@ -779,12 +780,14 @@ pub struct AdditionalParameters {
 }
 
 impl AdditionalParameters {
+    #[must_use] 
     pub fn to_json(self) -> serde_json::Value {
         serde_json::to_value(self).expect("this should never fail since a struct that impls Deserialize will always be valid JSON")
     }
 }
 
 /// The truncation strategy.
+///
 /// When using auto, if the context of this response and previous ones exceeds the model's context window size, the model will truncate the response to fit the context window by dropping input items in the middle of the conversation.
 /// Otherwise, does nothing (and is disabled by default).
 #[derive(Clone, Debug, Default, Serialize, Deserialize)]
@@ -851,7 +854,8 @@ pub struct Reasoning {
 
 impl Reasoning {
     /// Creates a new Reasoning instantiation (with empty values).
-    pub fn new() -> Self {
+    #[must_use] 
+    pub const fn new() -> Self {
         Self {
             effort: None,
             summary: None,
@@ -859,14 +863,16 @@ impl Reasoning {
     }
 
     /// Adds reasoning effort.
-    pub fn with_effort(mut self, reasoning_effort: ReasoningEffort) -> Self {
+    #[must_use] 
+    pub const fn with_effort(mut self, reasoning_effort: ReasoningEffort) -> Self {
         self.effort = Some(reasoning_effort);
 
         self
     }
 
     /// Adds summary level (how detailed the reasoning summary will be).
-    pub fn with_summary_level(mut self, reasoning_summary_level: ReasoningSummaryLevel) -> Self {
+    #[must_use] 
+    pub const fn with_summary_level(mut self, reasoning_summary_level: ReasoningSummaryLevel) -> Self {
         self.summary = Some(reasoning_summary_level);
 
         self
@@ -937,7 +943,7 @@ pub enum Output {
 
 impl From<Output> for Vec<completion::AssistantContent> {
     fn from(value: Output) -> Self {
-        let res: Vec<completion::AssistantContent> = match value {
+        let res: Self = match value {
             Output::Message(OutputMessage { content, .. }) => content
                 .into_iter()
                 .map(completion::AssistantContent::from)
@@ -964,7 +970,7 @@ impl From<Output> for Vec<completion::AssistantContent> {
     }
 }
 
-#[derive(Clone, Debug, Deserialize, Serialize, PartialEq)]
+#[derive(Clone, Debug, Deserialize, Serialize, PartialEq, Eq)]
 pub struct OutputReasoning {
     id: String,
     summary: Vec<ReasoningSummary>,
@@ -972,7 +978,7 @@ pub struct OutputReasoning {
 }
 
 /// An `OpenAI` Responses API tool call. A call ID will be returned that must be used when creating a tool result to send back to `OpenAI` as a message input, otherwise an error will be received.
-#[derive(Clone, Debug, Deserialize, Serialize, PartialEq)]
+#[derive(Clone, Debug, Deserialize, Serialize, PartialEq, Eq)]
 pub struct OutputFunctionCall {
     pub id: String,
     #[serde(with = "json_utils::stringified_json")]
@@ -983,7 +989,7 @@ pub struct OutputFunctionCall {
 }
 
 /// The status of a given tool.
-#[derive(Clone, Debug, Deserialize, Serialize, PartialEq)]
+#[derive(Clone, Debug, Deserialize, Serialize, PartialEq, Eq)]
 #[serde(rename_all = "snake_case")]
 pub enum ToolStatus {
     InProgress,
@@ -1005,7 +1011,7 @@ pub struct OutputMessage {
 }
 
 /// The role of an output message.
-#[derive(Clone, Debug, Deserialize, Serialize, PartialEq)]
+#[derive(Clone, Debug, Deserialize, Serialize, PartialEq, Eq)]
 #[serde(rename_all = "snake_case")]
 pub enum OutputRole {
     Assistant,
@@ -1108,7 +1114,7 @@ where
         crate::completion::streaming::StreamingCompletionResponse<Self::StreamingResponse>,
         CompletionError,
     > {
-        ResponsesCompletionModel::stream(self, request).await
+        Self::stream(self, request).await
     }
 }
 
@@ -1145,7 +1151,7 @@ impl TryFrom<CompletionResponse> for completion::CompletionResponse<CompletionRe
             })
             .unwrap_or_default();
 
-        Ok(completion::CompletionResponse {
+        Ok(Self {
             choice,
             usage,
             raw_response: response,
@@ -1186,7 +1192,7 @@ pub enum Message {
 }
 
 /// The type of a tool result content item.
-#[derive(Default, Debug, Serialize, Deserialize, PartialEq, Clone)]
+#[derive(Default, Debug, Serialize, Deserialize, PartialEq, Eq, Clone)]
 #[serde(rename_all = "lowercase")]
 pub enum ToolResultContentType {
     #[default]
@@ -1194,8 +1200,9 @@ pub enum ToolResultContentType {
 }
 
 impl Message {
+    #[must_use] 
     pub fn system(content: &str) -> Self {
-        Message::System {
+        Self::System {
             content: OneOrMany::one(content.to_owned().into()),
             name: None,
         }
@@ -1204,7 +1211,7 @@ impl Message {
 
 /// Text assistant content.
 /// Note that the text type in comparison to the Completions API is actually `output_text` rather than `text`.
-#[derive(Debug, Serialize, Deserialize, PartialEq, Clone)]
+#[derive(Debug, Serialize, Deserialize, PartialEq, Eq, Clone)]
 #[serde(tag = "type", rename_all = "snake_case")]
 pub enum AssistantContent {
     OutputText(Text),
@@ -1215,10 +1222,10 @@ impl From<AssistantContent> for completion::AssistantContent {
     fn from(value: AssistantContent) -> Self {
         match value {
             AssistantContent::Refusal { refusal } => {
-                completion::AssistantContent::Text(Text { text: refusal })
+                Self::Text(Text { text: refusal })
             }
             AssistantContent::OutputText(Text { text }) => {
-                completion::AssistantContent::Text(Text { text })
+                Self::Text(Text { text })
             }
         }
     }
@@ -1399,7 +1406,7 @@ impl TryFrom<message::Message> for Vec<Message> {
                             }),
                             _ => unreachable!(),
                         })
-                        .collect::<Result<Vec<_>, _>>()
+                        .collect::<Result<Self, _>>()
                 }
             }
             message::Message::Assistant { content, id } => {
@@ -1466,7 +1473,7 @@ impl FromStr for UserContent {
     type Err = Infallible;
 
     fn from_str(s: &str) -> Result<Self, Self::Err> {
-        Ok(UserContent::InputText {
+        Ok(Self::InputText {
             text: s.to_string(),
         })
     }

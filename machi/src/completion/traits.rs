@@ -72,6 +72,7 @@ pub trait Completion<M: CompletionModel> {
 }
 
 /// Trait defining a completion model that can be used to generate completion responses.
+///
 /// This trait is meant to be implemented by the user to define a custom completion model,
 /// either from a third party provider (e.g.: `OpenAI`) or a local model.
 pub trait CompletionModel: Clone + WasmCompatSend + WasmCompatSync {

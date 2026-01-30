@@ -87,7 +87,7 @@ impl ToolSchema {
     /// assert_eq!(tool.embedding_docs, vec!["Do nothing.".to_string()]);
     /// ```
     pub fn try_from(tool: &dyn ToolEmbeddingDyn) -> Result<Self, EmbedError> {
-        Ok(ToolSchema {
+        Ok(Self {
             name: tool.name(),
             context: tool.context().map_err(EmbedError::new)?,
             embedding_docs: tool.embedding_docs(),

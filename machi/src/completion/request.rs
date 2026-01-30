@@ -1,4 +1,5 @@
 //! This module provides functionality for working with completion models.
+//!
 //! It provides traits, structs, and enums for generating completion requests,
 //! handling completion responses, and defining completion models.
 //!
@@ -108,7 +109,7 @@ impl std::fmt::Display for Document {
     }
 }
 
-#[derive(Clone, Debug, Deserialize, Serialize, PartialEq)]
+#[derive(Clone, Debug, Deserialize, Serialize, PartialEq, Eq)]
 pub struct ToolDefinition {
     pub name: String,
     pub description: String,
@@ -143,6 +144,7 @@ pub struct Usage {
 impl Usage {
     /// Creates a new instance of `Usage` with zero tokens.
     #[inline]
+    #[must_use] 
     pub const fn new() -> Self {
         Self {
             input_tokens: 0,
@@ -153,6 +155,7 @@ impl Usage {
 
     /// Returns `true` if no tokens were used.
     #[inline]
+    #[must_use] 
     pub const fn is_empty(&self) -> bool {
         self.total_tokens == 0
     }
@@ -213,6 +216,7 @@ impl CompletionRequest {
     /// Returns documents normalized into a message (if any).
     /// Most providers do not accept documents directly as input, so it needs to convert into a
     ///  `Message` so that it can be incorporated into `chat_history` as a
+    #[must_use] 
     pub fn normalized_documents(&self) -> Option<Message> {
         if self.documents.is_empty() {
             return None;
@@ -335,7 +339,7 @@ impl<M: CompletionModel> CompletionRequestBuilder<M> {
     pub fn messages(self, messages: Vec<Message>) -> Self {
         messages
             .into_iter()
-            .fold(self, CompletionRequestBuilder::message)
+            .fold(self, Self::message)
     }
 
     /// Adds a document to the completion request.
@@ -348,7 +352,7 @@ impl<M: CompletionModel> CompletionRequestBuilder<M> {
     pub fn documents(self, documents: Vec<Document>) -> Self {
         documents
             .into_iter()
-            .fold(self, CompletionRequestBuilder::document)
+            .fold(self, Self::document)
     }
 
     /// Adds a tool to the completion request.
@@ -359,7 +363,7 @@ impl<M: CompletionModel> CompletionRequestBuilder<M> {
 
     /// Adds a list of tools to the completion request.
     pub fn tools(self, tools: Vec<ToolDefinition>) -> Self {
-        tools.into_iter().fold(self, CompletionRequestBuilder::tool)
+        tools.into_iter().fold(self, Self::tool)
     }
 
     /// Adds additional parameters to the completion request.
@@ -390,27 +394,27 @@ impl<M: CompletionModel> CompletionRequestBuilder<M> {
     }
 
     /// Sets the temperature for the completion request.
-    pub fn temperature(mut self, temperature: f64) -> Self {
+    pub const fn temperature(mut self, temperature: f64) -> Self {
         self.temperature = Some(temperature);
         self
     }
 
     /// Sets the temperature for the completion request.
-    pub fn temperature_opt(mut self, temperature: Option<f64>) -> Self {
+    pub const fn temperature_opt(mut self, temperature: Option<f64>) -> Self {
         self.temperature = temperature;
         self
     }
 
     /// Sets the max tokens for the completion request.
     /// Note: This is required if using Anthropic
-    pub fn max_tokens(mut self, max_tokens: u64) -> Self {
+    pub const fn max_tokens(mut self, max_tokens: u64) -> Self {
         self.max_tokens = Some(max_tokens);
         self
     }
 
     /// Sets the max tokens for the completion request.
     /// Note: This is required if using Anthropic
-    pub fn max_tokens_opt(mut self, max_tokens: Option<u64>) -> Self {
+    pub const fn max_tokens_opt(mut self, max_tokens: Option<u64>) -> Self {
         self.max_tokens = max_tokens;
         self
     }

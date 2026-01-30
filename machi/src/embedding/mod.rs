@@ -1,4 +1,5 @@
 //! This module provides functionality for working with embeddings.
+//!
 //! Embeddings are numerical representations of documents or other objects, typically used in
 //! natural language processing (NLP) tasks such as text classification, information retrieval,
 //! and document similarity.
@@ -40,13 +41,15 @@ impl Embedding {
 
     /// Returns the dimensionality of the embedding vector.
     #[inline]
-    pub fn ndims(&self) -> usize {
+    #[must_use] 
+    pub const fn ndims(&self) -> usize {
         self.vec.len()
     }
 
     /// Returns `true` if the embedding vector is empty.
     #[inline]
-    pub fn is_empty(&self) -> bool {
+    #[must_use] 
+    pub const fn is_empty(&self) -> bool {
         self.vec.is_empty()
     }
 }

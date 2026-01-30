@@ -38,14 +38,14 @@ pub struct NoBody;
 impl From<NoBody> for Bytes {
     #[inline]
     fn from(_: NoBody) -> Self {
-        Bytes::new()
+        Self::new()
     }
 }
 
 impl From<NoBody> for Body {
     #[inline]
     fn from(_: NoBody) -> Self {
-        reqwest::Body::default()
+        Self::default()
     }
 }
 

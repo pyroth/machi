@@ -28,6 +28,7 @@ pub struct VectorSearchRequest<F = Filter<serde_json::Value>> {
 
 impl<Filter> VectorSearchRequest<Filter> {
     /// Creates a [`VectorSearchRequestBuilder`] which you can use to instantiate this struct.
+    #[must_use] 
     pub fn builder() -> VectorSearchRequestBuilder<Filter> {
         VectorSearchRequestBuilder::<Filter>::default()
     }
@@ -38,17 +39,17 @@ impl<Filter> VectorSearchRequest<Filter> {
     }
 
     /// Returns the maximum number of results to return.
-    pub fn samples(&self) -> u64 {
+    pub const fn samples(&self) -> u64 {
         self.samples
     }
 
     /// Returns the optional similarity threshold.
-    pub fn threshold(&self) -> Option<f64> {
+    pub const fn threshold(&self) -> Option<f64> {
         self.threshold
     }
 
     /// Returns a reference to the optional filter expression.
-    pub fn filter(&self) -> &Option<Filter> {
+    pub const fn filter(&self) -> &Option<Filter> {
         &self.filter
     }
 
@@ -193,6 +194,7 @@ where
 
 impl Filter<serde_json::Value> {
     /// Tests whether a JSON value satisfies this filter.
+    #[must_use] 
     pub fn satisfies(&self, value: &serde_json::Value) -> bool {
         use Filter::{And, Eq, Gt, Lt, Or};
         use serde_json::{
@@ -267,13 +269,13 @@ where
     }
 
     /// Sets the maximum number of results. Required.
-    pub fn samples(mut self, samples: u64) -> Self {
+    pub const fn samples(mut self, samples: u64) -> Self {
         self.samples = Some(samples);
         self
     }
 
     /// Sets the minimum similarity threshold.
-    pub fn threshold(mut self, threshold: f64) -> Self {
+    pub const fn threshold(mut self, threshold: f64) -> Self {
         self.threshold = Some(threshold);
         self
     }

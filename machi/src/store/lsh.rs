@@ -2,6 +2,7 @@ use fastrand::Rng;
 use std::collections::HashMap;
 
 /// Locality Sensitive Hashing (LSH) with random projection.
+///
 /// Uses random hyperplanes to hash similar vectors into the same buckets for efficient
 /// approximate nearest neighbor search. See <https://www.pinecone.io/learn/series/faiss/locality-sensitive-hashing-random-projection/>
 /// for details on how LSH works.
@@ -14,6 +15,7 @@ pub struct LSH {
 
 impl LSH {
     /// Create a new LSH instance.
+    #[must_use] 
     pub fn new(dim: usize, num_tables: usize, num_hyperplanes: usize) -> Self {
         let mut rng = Rng::new();
         let mut hyperplanes = Vec::new();
@@ -26,7 +28,7 @@ impl LSH {
             // hyperplanes are uniformly distributed across the unit sphere, which is essential for
             // LSH to maintain good locality-sensitive hashing properties.
             for val in &mut plane {
-                *val = rng.f32() * 2.0 - 1.0;
+                *val = rng.f32().mul_add(2.0, -1.0);
             }
 
             // Normalize to unit vector so the dot product reflects only direction, ensuring
@@ -49,6 +51,7 @@ impl LSH {
     }
 
     /// Compute hash for a vector in a specific table
+    #[must_use] 
     pub fn hash(&self, vector: &[f64], table_idx: usize) -> u64 {
         let mut hash = 0u64;
         let start = table_idx * self.num_hyperplanes;
@@ -85,6 +88,7 @@ pub struct LSHIndex {
 
 impl LSHIndex {
     /// Create a new `LSHIndex`.
+    #[must_use] 
     pub fn new(dim: usize, num_tables: usize, num_hyperplanes: usize) -> Self {
         let lsh = LSH::new(dim, num_tables, num_hyperplanes);
         let tables = vec![HashMap::new(); num_tables];
@@ -104,6 +108,7 @@ impl LSHIndex {
     }
 
     /// Query for candidate document IDs
+    #[must_use] 
     pub fn query(&self, embedding: &[f64]) -> Vec<String> {
         use std::collections::HashSet;
 

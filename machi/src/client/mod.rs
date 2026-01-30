@@ -2,7 +2,7 @@
 //!
 //! This module provides the core abstractions for interacting with LLM providers.
 //! It defines a unified [`Client`] type that can be configured for different
-//! providers (OpenAI, Anthropic, etc.) while maintaining a consistent API.
+//! providers (`OpenAI`, Anthropic, etc.) while maintaining a consistent API.
 //!
 //! # Architecture
 //!

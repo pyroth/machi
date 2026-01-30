@@ -36,6 +36,7 @@ pub struct PauseControl {
 impl PauseControl {
     /// Creates a new pause control in the resumed state.
     #[inline]
+    #[must_use] 
     pub fn new() -> Self {
         let (paused_tx, paused_rx) = watch::channel(false);
         Self {
@@ -58,6 +59,7 @@ impl PauseControl {
 
     /// Returns `true` if the stream is currently paused.
     #[inline]
+    #[must_use] 
     pub fn is_paused(&self) -> bool {
         *self.paused_rx.borrow()
     }
@@ -70,7 +72,7 @@ impl Default for PauseControl {
 }
 
 /// The content of a tool call delta - either the tool name or argument data
-#[derive(Debug, Clone, Deserialize, Serialize, PartialEq)]
+#[derive(Debug, Clone, Deserialize, Serialize, PartialEq, Eq)]
 pub enum ToolCallDeltaContent {
     Name(String),
     Delta(String),
@@ -123,7 +125,8 @@ pub struct RawStreamingToolCall {
 impl RawStreamingToolCall {
     /// Creates an empty tool call.
     #[inline]
-    pub fn empty() -> Self {
+    #[must_use] 
+    pub const fn empty() -> Self {
         Self {
             id: String::new(),
             call_id: None,
@@ -136,7 +139,8 @@ impl RawStreamingToolCall {
 
     /// Creates a new tool call with the given id, name, and arguments.
     #[inline]
-    pub fn new(id: String, name: String, arguments: serde_json::Value) -> Self {
+    #[must_use] 
+    pub const fn new(id: String, name: String, arguments: serde_json::Value) -> Self {
         Self {
             id,
             call_id: None,
@@ -149,6 +153,7 @@ impl RawStreamingToolCall {
 
     /// Sets the call id for this tool call.
     #[inline]
+    #[must_use] 
     pub fn with_call_id(mut self, call_id: String) -> Self {
         self.call_id = Some(call_id);
         self
@@ -156,6 +161,7 @@ impl RawStreamingToolCall {
 
     /// Sets the signature for this tool call.
     #[inline]
+    #[must_use] 
     pub fn with_signature(mut self, signature: Option<String>) -> Self {
         self.signature = signature;
         self
@@ -163,6 +169,7 @@ impl RawStreamingToolCall {
 
     /// Sets additional parameters for this tool call.
     #[inline]
+    #[must_use] 
     pub fn with_additional_params(mut self, additional_params: Option<serde_json::Value>) -> Self {
         self.additional_params = additional_params;
         self
@@ -171,7 +178,7 @@ impl RawStreamingToolCall {
 
 impl From<RawStreamingToolCall> for ToolCall {
     fn from(tool_call: RawStreamingToolCall) -> Self {
-        ToolCall {
+        Self {
             id: tool_call.id,
             call_id: tool_call.call_id,
             function: ToolFunction {
@@ -218,7 +225,8 @@ impl<R> StreamingCompletionResponse<R>
 where
     R: Clone + Unpin + GetTokenUsage,
 {
-    pub fn stream(inner: StreamingResult<R>) -> StreamingCompletionResponse<R> {
+    #[must_use] 
+    pub fn stream(inner: StreamingResult<R>) -> Self {
         let (abort_handle, abort_registration) = AbortHandle::new_pair();
         let abortable_stream = Abortable::new(inner, abort_registration);
         let pause_control = PauseControl::new();
@@ -256,8 +264,8 @@ impl<R> From<StreamingCompletionResponse<R>> for CompletionResponse<Option<R>>
 where
     R: Clone + Unpin + GetTokenUsage,
 {
-    fn from(value: StreamingCompletionResponse<R>) -> CompletionResponse<Option<R>> {
-        CompletionResponse {
+    fn from(value: StreamingCompletionResponse<R>) -> Self {
+        Self {
             choice: value.choice,
             usage: Usage::new(), // Usage is not tracked in streaming responses
             raw_response: value.response,
@@ -542,13 +550,14 @@ impl<R> StreamedAssistantContent<R>
 where
     R: Clone + Unpin,
 {
+    #[must_use] 
     pub fn text(text: &str) -> Self {
         Self::Text(Text {
             text: text.to_string(),
         })
     }
 
-    pub fn final_response(res: R) -> Self {
+    pub const fn final_response(res: R) -> Self {
         Self::Final(res)
     }
 }
@@ -561,7 +570,8 @@ pub enum StreamedUserContent {
 }
 
 impl StreamedUserContent {
-    pub fn tool_result(tool_result: ToolResult) -> Self {
+    #[must_use] 
+    pub const fn tool_result(tool_result: ToolResult) -> Self {
         Self::ToolResult(tool_result)
     }
 }

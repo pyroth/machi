@@ -58,7 +58,7 @@ pub struct FinalResponse {
 impl FinalResponse {
     /// Creates an empty final response.
     #[must_use]
-    pub fn empty() -> Self {
+    pub const fn empty() -> Self {
         Self {
             response: String::new(),
             aggregated_usage: crate::completion::Usage::new(),
@@ -75,17 +75,18 @@ impl FinalResponse {
     /// Returns the aggregated token usage.
     #[must_use]
     #[inline]
-    pub fn usage(&self) -> &crate::completion::Usage {
+    pub const fn usage(&self) -> &crate::completion::Usage {
         &self.aggregated_usage
     }
 }
 
 impl<R> MultiTurnStreamItem<R> {
-    pub(crate) fn stream_item(item: StreamedAssistantContent<R>) -> Self {
+    pub(crate) const fn stream_item(item: StreamedAssistantContent<R>) -> Self {
         Self::StreamAssistantItem(item)
     }
 
     /// Creates a final response item.
+    #[must_use] 
     pub fn final_response(response: &str, aggregated_usage: crate::completion::Usage) -> Self {
         Self::FinalResponse(FinalResponse {
             response: response.to_string(),
@@ -145,7 +146,7 @@ where
     }
 
     /// Sets the maximum depth for multi-turn conversations.
-    pub fn multi_turn(mut self, depth: usize) -> Self {
+    pub const fn multi_turn(mut self, depth: usize) -> Self {
         self.max_depth = depth;
         self
     }

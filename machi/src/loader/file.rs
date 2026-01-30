@@ -205,7 +205,8 @@ impl FileLoader<'_, Result<PathBuf, FileLoaderError>> {
 impl<'a> FileLoader<'a, Vec<u8>> {
     /// Ingest a byte array.
     #[inline]
-    pub fn from_bytes(bytes: Vec<u8>) -> FileLoader<'a, Vec<u8>> {
+    #[must_use] 
+    pub fn from_bytes(bytes: Vec<u8>) -> Self {
         FileLoader {
             iterator: Box::new(vec![bytes].into_iter()),
         }
@@ -213,7 +214,8 @@ impl<'a> FileLoader<'a, Vec<u8>> {
 
     /// Ingest multiple byte arrays.
     #[inline]
-    pub fn from_bytes_multi(bytes_vec: Vec<Vec<u8>>) -> FileLoader<'a, Vec<u8>> {
+    #[must_use] 
+    pub fn from_bytes_multi(bytes_vec: Vec<Vec<u8>>) -> Self {
         FileLoader {
             iterator: Box::new(bytes_vec.into_iter()),
         }

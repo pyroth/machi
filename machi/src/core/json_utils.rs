@@ -14,6 +14,7 @@ pub fn empty_or_none(value: &Option<String>) -> bool {
 /// Merges two JSON values, returning the merged result.
 /// If both values are objects, merges `b` into `a`. Otherwise returns `a`.
 #[inline]
+#[must_use] 
 pub fn merge(a: serde_json::Value, b: serde_json::Value) -> serde_json::Value {
     match (a, b) {
         (serde_json::Value::Object(mut a_map), serde_json::Value::Object(b_map)) => {
@@ -34,9 +35,11 @@ pub fn merge_inplace(a: &mut serde_json::Value, b: serde_json::Value) {
 }
 
 /// Convert a `serde_json::Value` to a JSON string for tool arguments.
+///
 /// Handles the case where vLLM returns arguments as a JSON string (`Value::String`)
 /// instead of a JSON object (`Value::Object`) like `OpenAI` does.
 #[inline]
+#[must_use] 
 pub fn value_to_json_string(value: &serde_json::Value) -> String {
     match value {
         serde_json::Value::String(s) => s.clone(),

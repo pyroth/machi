@@ -75,7 +75,7 @@ impl<M> AudioGenerationRequestBuilder<M>
 where
     M: AudioGenerationModel,
 {
-    pub fn new(model: M) -> Self {
+    pub const fn new(model: M) -> Self {
         Self {
             model,
             text: String::new(),
@@ -98,7 +98,7 @@ where
     }
 
     /// The speed of the generated audio
-    pub fn speed(mut self, speed: f32) -> Self {
+    pub const fn speed(mut self, speed: f32) -> Self {
         self.speed = speed;
         self
     }

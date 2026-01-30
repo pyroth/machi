@@ -41,7 +41,7 @@ pub const QWEN2_VL: &str = "Qwen/Qwen2-VL-7B-Instruct";
 /// `Qwen/QVQ-72B-Preview` visual-language completion model
 pub const QWEN_QVQ_PREVIEW: &str = "Qwen/QVQ-72B-Preview";
 
-#[derive(Debug, Deserialize, Serialize, PartialEq, Clone)]
+#[derive(Debug, Deserialize, Serialize, PartialEq, Eq, Clone)]
 pub struct Function {
     name: String,
     #[serde(
@@ -65,14 +65,14 @@ where
 
 impl From<Function> for message::ToolFunction {
     fn from(value: Function) -> Self {
-        message::ToolFunction {
+        Self {
             name: value.name,
             arguments: value.arguments,
         }
     }
 }
 
-#[derive(Default, Debug, Serialize, Deserialize, PartialEq, Clone)]
+#[derive(Default, Debug, Serialize, Deserialize, PartialEq, Eq, Clone)]
 #[serde(rename_all = "lowercase")]
 pub enum ToolType {
     #[default]
@@ -94,7 +94,7 @@ impl From<completion::ToolDefinition> for ToolDefinition {
     }
 }
 
-#[derive(Debug, Deserialize, Serialize, PartialEq, Clone)]
+#[derive(Debug, Deserialize, Serialize, PartialEq, Eq, Clone)]
 pub struct ToolCall {
     pub id: String,
     pub r#type: ToolType,
@@ -103,7 +103,7 @@ pub struct ToolCall {
 
 impl From<ToolCall> for message::ToolCall {
     fn from(value: ToolCall) -> Self {
-        message::ToolCall {
+        Self {
             id: value.id,
             call_id: None,
             function: value.function.into(),
@@ -115,7 +115,7 @@ impl From<ToolCall> for message::ToolCall {
 
 impl From<message::ToolCall> for ToolCall {
     fn from(value: message::ToolCall) -> Self {
-        ToolCall {
+        Self {
             id: value.id,
             r#type: ToolType::Function,
             function: Function {
@@ -126,12 +126,12 @@ impl From<message::ToolCall> for ToolCall {
     }
 }
 
-#[derive(Debug, Deserialize, Serialize, PartialEq, Clone)]
+#[derive(Debug, Deserialize, Serialize, PartialEq, Eq, Clone)]
 pub struct ImageUrl {
     url: String,
 }
 
-#[derive(Debug, Deserialize, Serialize, PartialEq, Clone)]
+#[derive(Debug, Deserialize, Serialize, PartialEq, Eq, Clone)]
 #[serde(tag = "type", rename_all = "lowercase")]
 pub enum UserContent {
     Text {
@@ -147,13 +147,13 @@ impl FromStr for UserContent {
     type Err = Infallible;
 
     fn from_str(s: &str) -> Result<Self, Self::Err> {
-        Ok(UserContent::Text {
+        Ok(Self::Text {
             text: s.to_string(),
         })
     }
 }
 
-#[derive(Debug, Deserialize, Serialize, PartialEq, Clone)]
+#[derive(Debug, Deserialize, Serialize, PartialEq, Eq, Clone)]
 #[serde(tag = "type", rename_all = "lowercase")]
 pub enum AssistantContent {
     Text { text: String },
@@ -163,13 +163,13 @@ impl FromStr for AssistantContent {
     type Err = Infallible;
 
     fn from_str(s: &str) -> Result<Self, Self::Err> {
-        Ok(AssistantContent::Text {
+        Ok(Self::Text {
             text: s.to_string(),
         })
     }
 }
 
-#[derive(Debug, Deserialize, Serialize, PartialEq, Clone)]
+#[derive(Debug, Deserialize, Serialize, PartialEq, Eq, Clone)]
 #[serde(tag = "type", rename_all = "lowercase")]
 pub enum SystemContent {
     Text { text: String },
@@ -179,7 +179,7 @@ impl FromStr for SystemContent {
     type Err = Infallible;
 
     fn from_str(s: &str) -> Result<Self, Self::Err> {
-        Ok(SystemContent::Text {
+        Ok(Self::Text {
             text: s.to_string(),
         })
     }
@@ -188,9 +188,9 @@ impl FromStr for SystemContent {
 impl From<UserContent> for message::UserContent {
     fn from(value: UserContent) -> Self {
         match value {
-            UserContent::Text { text } => message::UserContent::text(text),
+            UserContent::Text { text } => Self::text(text),
             UserContent::ImageUrl { image_url } => {
-                message::UserContent::image_url(image_url.url, None, None)
+                Self::image_url(image_url.url, None, None)
             }
         }
     }
@@ -201,22 +201,22 @@ impl TryFrom<message::UserContent> for UserContent {
 
     fn try_from(content: message::UserContent) -> Result<Self, Self::Error> {
         match content {
-            message::UserContent::Text(text) => Ok(UserContent::Text { text: text.text }),
+            message::UserContent::Text(text) => Ok(Self::Text { text: text.text }),
             message::UserContent::Document(message::Document {
                 data: message::DocumentSourceKind::Raw(raw),
                 ..
             }) => {
                 let text = String::from_utf8_lossy(raw.as_slice()).into();
-                Ok(UserContent::Text { text })
+                Ok(Self::Text { text })
             }
             message::UserContent::Document(message::Document {
                 data:
                     message::DocumentSourceKind::Base64(text)
                     | message::DocumentSourceKind::String(text),
                 ..
-            }) => Ok(UserContent::Text { text }),
+            }) => Ok(Self::Text { text }),
             message::UserContent::Image(message::Image { data, .. }) => match data {
-                message::DocumentSourceKind::Url(url) => Ok(UserContent::ImageUrl {
+                message::DocumentSourceKind::Url(url) => Ok(Self::ImageUrl {
                     image_url: ImageUrl { url },
                 }),
                 _ => Err(message::MessageError::ConversionError(
@@ -274,8 +274,9 @@ where
 }
 
 impl Message {
+    #[must_use] 
     pub fn system(content: &str) -> Self {
-        Message::System {
+        Self::System {
             content: OneOrMany::one(SystemContent::Text {
                 text: content.to_string(),
             }),
@@ -286,7 +287,7 @@ impl Message {
 impl TryFrom<message::Message> for Vec<Message> {
     type Error = message::MessageError;
 
-    fn try_from(message: message::Message) -> Result<Vec<Message>, Self::Error> {
+    fn try_from(message: message::Message) -> Result<Self, Self::Error> {
         match message {
             message::Message::User { content } => {
                 let (tool_results, other_content): (Vec<_>, Vec<_>) = content
@@ -348,7 +349,7 @@ impl TryFrom<message::Message> for Vec<Message> {
                             }),
                             _ => unreachable!(),
                         })
-                        .collect::<Result<Vec<_>, _>>()
+                        .collect::<Result<Self, _>>()
                 }
             }
             message::Message::Assistant { content, .. } => {
@@ -391,7 +392,7 @@ impl TryFrom<Message> for message::Message {
 
     fn try_from(message: Message) -> Result<Self, Self::Error> {
         Ok(match message {
-            Message::User { content, .. } => message::Message::User {
+            Message::User { content, .. } => Self::User {
                 content: content.map(std::convert::Into::into),
             },
             Message::Assistant {
@@ -413,7 +414,7 @@ impl TryFrom<Message> for message::Message {
                         .collect::<Result<Vec<_>, _>>()?,
                 );
 
-                message::Message::Assistant {
+                Self::Assistant {
                     id: None,
                     content: OneOrMany::many(content).map_err(|_| {
                         message::MessageError::ConversionError(
@@ -424,7 +425,7 @@ impl TryFrom<Message> for message::Message {
                 }
             }
 
-            Message::ToolResult { name, content, .. } => message::Message::User {
+            Message::ToolResult { name, content, .. } => Self::User {
                 content: OneOrMany::one(message::UserContent::tool_result(
                     name,
                     content.map(message::ToolResultContent::text),
@@ -433,7 +434,7 @@ impl TryFrom<Message> for message::Message {
 
             // System messages should get stripped out when converting message's, this is just a
             // stop gap to avoid obnoxious error handling or panic occurring.
-            Message::System { content, .. } => message::Message::User {
+            Message::System { content, .. } => Self::User {
                 content: content.map(|c| match c {
                     SystemContent::Text { text } => message::UserContent::text(text),
                 }),
@@ -577,8 +578,7 @@ impl TryFrom<CompletionResponse> for completion::CompletionResponse<CompletionRe
                                 &call.function.name,
                                 call.function.arguments.clone(),
                             )
-                        })
-                        .collect::<Vec<_>>(),
+                        }),
                 );
                 Ok(content)
             }
@@ -599,7 +599,7 @@ impl TryFrom<CompletionResponse> for completion::CompletionResponse<CompletionRe
             total_tokens: response.usage.total_tokens as u64,
         };
 
-        Ok(completion::CompletionResponse {
+        Ok(Self {
             choice,
             usage,
             raw_response: response,
@@ -785,7 +785,7 @@ where
         crate::completion::streaming::StreamingCompletionResponse<Self::StreamingResponse>,
         CompletionError,
     > {
-        CompletionModel::stream(self, request).await
+        Self::stream(self, request).await
     }
 }
 

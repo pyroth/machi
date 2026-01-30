@@ -15,8 +15,9 @@ impl Default for LineDecoder {
 
 impl LineDecoder {
     /// Create a new `LineDecoder`
-    pub fn new() -> Self {
-        LineDecoder {
+    #[must_use] 
+    pub const fn new() -> Self {
+        Self {
             buffer: Vec::new(),
             carriage_return_index: None,
         }
@@ -94,7 +95,7 @@ impl LineDecoder {
         if self.buffer.is_empty() {
             return Vec::new();
         }
-        self.decode("\n".as_bytes())
+        self.decode(b"\n")
     }
 }
 
@@ -134,6 +135,7 @@ fn find_newline_index(buffer: &[u8], start_index: Option<usize>) -> Option<Newli
 }
 
 /// Find the index after a double newline pattern in the buffer
+#[must_use] 
 pub fn find_double_newline_index(buffer: &[u8]) -> isize {
     const NEWLINE: u8 = 0x0a; // \n
     const CARRIAGE: u8 = 0x0d; // \r
@@ -175,6 +177,7 @@ fn decode_text(bytes: &[u8]) -> String {
 }
 
 /// Decode multiple chunks of data, with an option to flush
+#[must_use] 
 pub fn decode_chunks(chunks: &[&[u8]], flush: bool) -> Vec<String> {
     let mut decoder = LineDecoder::new();
     let mut lines = Vec::new();
@@ -356,31 +359,31 @@ mod tests {
     #[test]
     fn test_find_double_newline_index() {
         // Test \n\n patterns
-        assert_eq!(find_double_newline_index("foo\n\nbar".as_bytes()), 5);
-        assert_eq!(find_double_newline_index("\n\nbar".as_bytes()), 2);
-        assert_eq!(find_double_newline_index("foo\n\n".as_bytes()), 5);
-        assert_eq!(find_double_newline_index("\n\n".as_bytes()), 2);
+        assert_eq!(find_double_newline_index(b"foo\n\nbar"), 5);
+        assert_eq!(find_double_newline_index(b"\n\nbar"), 2);
+        assert_eq!(find_double_newline_index(b"foo\n\n"), 5);
+        assert_eq!(find_double_newline_index(b"\n\n"), 2);
 
         // Test \r\r patterns
-        assert_eq!(find_double_newline_index("foo\r\rbar".as_bytes()), 5);
-        assert_eq!(find_double_newline_index("\r\rbar".as_bytes()), 2);
-        assert_eq!(find_double_newline_index("foo\r\r".as_bytes()), 5);
-        assert_eq!(find_double_newline_index("\r\r".as_bytes()), 2);
+        assert_eq!(find_double_newline_index(b"foo\r\rbar"), 5);
+        assert_eq!(find_double_newline_index(b"\r\rbar"), 2);
+        assert_eq!(find_double_newline_index(b"foo\r\r"), 5);
+        assert_eq!(find_double_newline_index(b"\r\r"), 2);
 
         // Test \r\n\r\n patterns
-        assert_eq!(find_double_newline_index("foo\r\n\r\nbar".as_bytes()), 7);
-        assert_eq!(find_double_newline_index("\r\n\r\nbar".as_bytes()), 4);
-        assert_eq!(find_double_newline_index("foo\r\n\r\n".as_bytes()), 7);
-        assert_eq!(find_double_newline_index("\r\n\r\n".as_bytes()), 4);
+        assert_eq!(find_double_newline_index(b"foo\r\n\r\nbar"), 7);
+        assert_eq!(find_double_newline_index(b"\r\n\r\nbar"), 4);
+        assert_eq!(find_double_newline_index(b"foo\r\n\r\n"), 7);
+        assert_eq!(find_double_newline_index(b"\r\n\r\n"), 4);
 
         // Test not found cases
-        assert_eq!(find_double_newline_index("foo\nbar".as_bytes()), -1);
-        assert_eq!(find_double_newline_index("foo\rbar".as_bytes()), -1);
-        assert_eq!(find_double_newline_index("foo\r\nbar".as_bytes()), -1);
-        assert_eq!(find_double_newline_index("".as_bytes()), -1);
+        assert_eq!(find_double_newline_index(b"foo\nbar"), -1);
+        assert_eq!(find_double_newline_index(b"foo\rbar"), -1);
+        assert_eq!(find_double_newline_index(b"foo\r\nbar"), -1);
+        assert_eq!(find_double_newline_index(b""), -1);
 
         // Test incomplete patterns
-        assert_eq!(find_double_newline_index("foo\r\n\r".as_bytes()), -1);
-        assert_eq!(find_double_newline_index("foo\r\n".as_bytes()), -1);
+        assert_eq!(find_double_newline_index(b"foo\r\n\r"), -1);
+        assert_eq!(find_double_newline_index(b"foo\r\n"), -1);
     }
 }

@@ -190,12 +190,14 @@ where
 
     /// Returns a reference to the inner agent.
     #[inline]
-    pub fn get_inner(&self) -> &Agent<M> {
+    #[must_use] 
+    pub const fn get_inner(&self) -> &Agent<M> {
         &self.agent
     }
 
     /// Consumes the extractor and returns the inner agent.
     #[inline]
+    #[must_use] 
     pub fn into_inner(self) -> Agent<M> {
         self.agent
     }
@@ -261,7 +263,7 @@ where
     }
 
     /// Set the maximum number of retries for the extractor.
-    pub fn retries(mut self, retries: u64) -> Self {
+    pub const fn retries(mut self, retries: u64) -> Self {
         self.retries = Some(retries);
         self
     }

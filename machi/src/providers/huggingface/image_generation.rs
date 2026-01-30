@@ -24,7 +24,7 @@ impl TryFrom<ImageGenerationResponse>
     type Error = ImageGenerationError;
 
     fn try_from(value: ImageGenerationResponse) -> Result<Self, Self::Error> {
-        Ok(image_generation::ImageGenerationResponse {
+        Ok(Self {
             image: value.data.clone(),
             response: value,
         })
@@ -39,7 +39,7 @@ pub struct ImageGenerationModel<T = reqwest::Client> {
 
 impl<T> ImageGenerationModel<T> {
     pub fn new(client: Client<T>, model: impl Into<String>) -> Self {
-        ImageGenerationModel {
+        Self {
             client,
             model: model.into(),
         }

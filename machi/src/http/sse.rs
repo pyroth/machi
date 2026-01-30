@@ -176,8 +176,7 @@ where
         if let Some(retry_delay) = self.retry_policy.retry(error, *self.last_retry) {
             let retry_num = self
                 .last_retry
-                .map(|retry| retry.0.saturating_add(1))
-                .unwrap_or(1);
+                .map_or(1, |retry| retry.0.saturating_add(1));
             *self.last_retry = Some((retry_num, retry_delay));
             self.delay.replace(Delay::new(retry_delay));
         } else {
@@ -197,7 +196,7 @@ pub enum Event {
 
 impl From<MessageEvent> for Event {
     fn from(event: MessageEvent) -> Self {
-        Event::Message(event)
+        Self::Message(event)
     }
 }
 
@@ -297,13 +296,12 @@ fn check_response<T>(response: Response<T>) -> Result<Response<T>, super::Error>
         .to_str()
         .map_err(|_| ())
         .and_then(|s| s.parse::<mime::Mime>().map_err(|_| ()))
-        .map(|mime_type| {
+        .is_ok_and(|mime_type| {
             matches!(
                 (mime_type.type_(), mime_type.subtype()),
                 (mime::TEXT, mime::EVENT_STREAM)
             )
         })
-        .unwrap_or(false)
     {
         Ok(response)
     } else {

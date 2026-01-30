@@ -11,7 +11,7 @@
 //! - **Static context** documents always provided to the agent
 //! - **Dynamic context** documents fetched via RAG at prompt-time
 //! - **Tools** that the agent can call
-//! - **Model parameters** (temperature, max_tokens, etc.)
+//! - **Model parameters** (temperature, `max_tokens`, etc.)
 //!
 //! # Example: Basic Agent
 //!
