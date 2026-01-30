@@ -92,9 +92,6 @@ impl Display for SubProvider {
     }
 }
 
-// ================================================================
-// Main Huggingface Client
-// ================================================================
 const HUGGINGFACE_API_BASE_URL: &str = "https://router.huggingface.co";
 
 #[derive(Debug, Default, Clone)]

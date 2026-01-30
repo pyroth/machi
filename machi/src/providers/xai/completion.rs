@@ -1,7 +1,6 @@
-// ================================================================
 //! xAI Completion Integration
+//!
 //! From [xAI Reference](https://docs.x.ai/docs/api-reference#chat-completions)
-// ================================================================
 
 use crate::{
     completion::{self, CompletionError},

@@ -4,9 +4,6 @@ use glob::glob;
 
 use super::errors::FileLoaderError;
 
-// ================================================================
-// Implementing Readable trait for reading file contents
-// ================================================================
 pub(crate) trait Readable {
     fn read(self) -> Result<String, FileLoaderError>;
     fn read_with_path(self) -> Result<(PathBuf, String), FileLoaderError>;
@@ -55,10 +52,6 @@ impl<T: Readable> Readable for Result<T, FileLoaderError> {
         self.map(Readable::read_with_path)?
     }
 }
-
-// ================================================================
-// FileLoader definitions and implementations
-// ================================================================
 
 /// [`FileLoader`] is a utility for loading files from the filesystem using glob patterns or directory
 ///  paths. It provides methods to read file contents and handle errors gracefully.
@@ -235,10 +228,6 @@ impl<'a> FileLoader<'a, Vec<u8>> {
         }
     }
 }
-
-// ================================================================
-// Iterators for FileLoader
-// ================================================================
 
 pub struct IntoIter<'a, T> {
     iterator: Box<dyn Iterator<Item = T> + 'a>,

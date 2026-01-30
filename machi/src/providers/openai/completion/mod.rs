@@ -1,7 +1,3 @@
-// ================================================================
-// OpenAI Completion API
-// ================================================================
-
 use super::{
     CompletionsClient as Client,
     client::{ApiErrorResponse, ApiResponse},

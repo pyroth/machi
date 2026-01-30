@@ -10,10 +10,6 @@ use super::RawTextProcessor;
 use super::errors::EpubLoaderError;
 use super::text_processors::TextProcessor;
 
-// ================================================================
-// Implementing Loadable trait for loading epubs
-// ================================================================
-
 pub(crate) trait Loadable {
     fn load(self) -> Result<EpubDoc<BufReader<File>>, EpubLoaderError>;
     fn load_with_path(self) -> Result<(PathBuf, EpubDoc<BufReader<File>>), EpubLoaderError>;
@@ -39,10 +35,6 @@ impl<T: Loadable> Loadable for Result<T, EpubLoaderError> {
         self.map(Loadable::load_with_path)?
     }
 }
-
-// ================================================================
-// EpubFileLoader definitions and implementations
-// ================================================================
 
 /// [`EpubFileLoader`] is a utility for loading epub files from the filesystem using glob patterns or
 ///  directory paths. It provides methods to read file contents and handle errors gracefully.
@@ -393,9 +385,6 @@ impl<P> EpubFileLoader<'_, Result<PathBuf, FileLoaderError>, P> {
     }
 }
 
-// ================================================================
-// EpubFileLoader iterator implementations
-// ================================================================
 pub struct IntoIter<'a, T> {
     iterator: Box<dyn Iterator<Item = T> + 'a>,
 }
@@ -418,10 +407,6 @@ impl<T> Iterator for IntoIter<'_, T> {
         self.iterator.next()
     }
 }
-
-// ================================================================
-// EpubChapterIterator definitions and implementations
-// ================================================================
 
 struct EpubChapterIterator<P> {
     epub: EpubDoc<BufReader<File>>,

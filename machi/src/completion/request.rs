@@ -115,10 +115,6 @@ pub struct ToolDefinition {
     pub parameters: serde_json::Value,
 }
 
-// ================================================================
-// Structs and Types
-// ================================================================
-
 /// General completion response struct that contains the high-level completion choice
 /// and the raw response. The completion choice contains one or more assistant content.
 #[derive(Debug)]

@@ -6,10 +6,6 @@ use crate::modalities::audio::{TranscriptionError, transcription};
 use crate::providers::openai::{Client, client::ApiResponse};
 use serde::Deserialize;
 
-// ================================================================
-// OpenAI Transcription API
-// ================================================================
-
 pub const WHISPER_1: &str = "whisper-1";
 
 #[derive(Debug, Deserialize)]

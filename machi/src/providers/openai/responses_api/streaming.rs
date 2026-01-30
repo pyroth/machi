@@ -17,10 +17,6 @@ use tracing_futures::Instrument as _;
 
 use super::{CompletionResponse, Output};
 
-// ================================================================
-// OpenAI Responses Streaming API
-// ================================================================
-
 /// A streaming completion chunk.
 /// Streaming chunks can come in one of two forms:
 /// - A response chunk (where the completed response will have the total token usage)

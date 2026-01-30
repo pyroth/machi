@@ -3,10 +3,6 @@ use std::{convert::Infallible, error::Error};
 use quick_xml::Reader;
 use quick_xml::events::Event;
 
-// ================================================================
-// Implementing TextProcessor trait for post-processing epubs
-// ================================================================
-
 pub trait TextProcessor {
     type Error: Error + 'static;
 

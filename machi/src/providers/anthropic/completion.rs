@@ -17,10 +17,6 @@ use bytes::Bytes;
 use serde::{Deserialize, Serialize};
 use tracing::{Instrument, Level, enabled, info_span};
 
-// ================================================================
-// Anthropic Completion API
-// ================================================================
-
 /// `claude-opus-4-0` completion model
 pub const CLAUDE_4_OPUS: &str = "claude-opus-4-0";
 /// `claude-sonnet-4-0` completion model

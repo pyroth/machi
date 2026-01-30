@@ -6,10 +6,6 @@ use crate::{
     http,
 };
 
-// ================================================================
-// xAI Client
-// ================================================================
-
 #[derive(Debug, Default, Clone, Copy)]
 pub struct XAiExt;
 #[derive(Debug, Default, Clone, Copy)]

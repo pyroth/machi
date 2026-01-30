@@ -22,10 +22,6 @@ pub enum ApiResponse<T> {
     Err(Value),
 }
 
-// ================================================================
-// Huggingface Completion API
-// ================================================================
-
 // Conversational LLMs
 /// `google/gemma-2-2b-it` completion model
 pub const GEMMA_2: &str = "google/gemma-2-2b-it";

@@ -11,10 +11,6 @@ use super::EMBED_ATTR;
 /// The attribute key for specifying custom embedding functions.
 const EMBED_WITH_KEY: &str = "embed_with";
 
-// =============================================================================
-// Simple #[embed] Fields
-// =============================================================================
-
 /// Finds and returns fields with simple `#[embed]` attribute tags.
 ///
 /// This filters out fields that use `#[embed(embed_with = "...")]` syntax.
@@ -42,10 +38,6 @@ pub(crate) fn add_struct_bounds(generics: &mut syn::Generics, field_type: &syn::
         #field_type: ::machi::embedding::Embed
     });
 }
-
-// =============================================================================
-// Custom #[embed(embed_with = "...")] Fields
-// =============================================================================
 
 /// Finds and returns fields with `#[embed(embed_with = "...")]` attribute tags.
 ///

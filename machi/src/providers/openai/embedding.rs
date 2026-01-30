@@ -9,9 +9,6 @@ use crate::{embedding, http};
 use serde::{Deserialize, Serialize};
 use serde_json::json;
 
-// ================================================================
-// OpenAI Embedding API
-// ================================================================
 /// `text-embedding-3-large` embedding model
 pub const TEXT_EMBEDDING_3_LARGE: &str = "text-embedding-3-large";
 /// `text-embedding-3-small` embedding model

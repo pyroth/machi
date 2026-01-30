@@ -10,9 +10,6 @@ use crate::{
     http,
 };
 
-// ================================================================
-// Main Anthropic Client
-// ================================================================
 #[derive(Debug, Default, Clone)]
 pub struct AnthropicExt;
 

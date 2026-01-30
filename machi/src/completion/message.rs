@@ -5,10 +5,6 @@ use serde::{Deserialize, Serialize};
 
 pub use super::errors::MessageError;
 
-// ================================================================
-// Message models
-// ================================================================
-
 /// A useful trait to help convert `crate::completion::Message` to your own message type.
 ///
 /// Particularly useful if you don't want to create a free-standing function as
@@ -194,10 +190,6 @@ impl ToolFunction {
         Self { name, arguments }
     }
 }
-
-// ================================================================
-// Base content models
-// ================================================================
 
 /// Basic text content.
 #[derive(Clone, Debug, Deserialize, Serialize, PartialEq)]
@@ -432,10 +424,6 @@ pub enum ImageDetail {
     #[default]
     Auto,
 }
-
-// ================================================================
-// Impl. for message models
-// ================================================================
 
 impl Message {
     /// This helper method is primarily used to extract the first string prompt from a `Message`.
@@ -891,10 +879,6 @@ impl std::str::FromStr for ImageDetail {
         }
     }
 }
-
-// ================================================================
-// FromStr, From<String>, and From<&str> impls
-// ================================================================
 
 impl From<String> for Text {
     fn from(text: String) -> Self {

@@ -16,9 +16,6 @@ use crate::http::HttpClientExt;
 use crate::http::sse::{Event, GenericEventSource};
 use crate::providers::openai::completion::{self, CompletionModel, OpenAIRequestParams, Usage};
 
-// ================================================================
-// OpenAI Completion Streaming API
-// ================================================================
 #[derive(Deserialize, Debug)]
 pub(crate) struct StreamingFunction {
     pub(crate) name: Option<String>,

@@ -166,13 +166,6 @@ impl<T: Clone> OneOrMany<T> {
     }
 }
 
-// ================================================================
-// Implementations of Iterator for OneOrMany
-//   - OneOrMany<T>::iter() -> iterate over references of T objects
-//   - OneOrMany<T>::into_iter() -> iterate over owned T objects
-//   - OneOrMany<T>::iter_mut() -> iterate over mutable references of T objects
-// ================================================================
-
 /// Struct returned by call to `OneOrMany::iter()`.
 pub struct Iter<'a, T> {
     // References.

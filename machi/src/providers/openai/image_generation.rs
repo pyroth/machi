@@ -8,9 +8,6 @@ use base64::prelude::BASE64_STANDARD;
 use serde::Deserialize;
 use serde_json::json;
 
-// ================================================================
-// OpenAI Image Generation API
-// ================================================================
 pub const DALL_E_2: &str = "dall-e-2";
 pub const DALL_E_3: &str = "dall-e-3";
 pub const GPT_IMAGE_1: &str = "gpt-image-1";
