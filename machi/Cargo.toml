@@ -100,5 +100,9 @@ required-features = ["derive"]
 name = "agent_with_rag"
 required-features = ["derive"]
 
+[[example]]
+name = "agent_with_pdf"
+required-features = ["pdf", "derive"]
+
 [lints]
 workspace = true

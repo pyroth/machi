@@ -3,7 +3,7 @@ use std::{fs, path::PathBuf};
 use glob::glob;
 use lopdf::Document;
 
-use super::errors::{FileLoaderError, PdfLoaderError};
+use super::error::{FileLoaderError, PdfLoaderError};
 
 pub(crate) trait Loadable {
     fn load(self) -> Result<Document, PdfLoaderError>;
@@ -147,7 +147,7 @@ impl<'a> PdfFileLoader<'a, Result<PathBuf, PdfLoaderError>> {
     #[must_use]
     pub fn read(self) -> PdfFileLoader<'a, Result<String, PdfLoaderError>> {
         PdfFileLoader {
-            iterator: Box::new(self.iterator.map(|res| {
+            iterator: Box::new(self.iterator.map(|res: Result<PathBuf, PdfLoaderError>| {
                 let doc = res.load()?;
                 Ok(doc
                     .page_iter()
@@ -182,7 +182,7 @@ impl<'a> PdfFileLoader<'a, Result<PathBuf, PdfLoaderError>> {
     #[must_use]
     pub fn read_with_path(self) -> PdfFileLoader<'a, Result<(PathBuf, String), PdfLoaderError>> {
         PdfFileLoader {
-            iterator: Box::new(self.iterator.map(|res| {
+            iterator: Box::new(self.iterator.map(|res: Result<PathBuf, PdfLoaderError>| {
                 let (path, doc) = res.load_with_path()?;
                 println!(
                     "Loaded {:?} PDF: {:?}",
@@ -304,13 +304,17 @@ impl<'a> PdfFileLoader<'a, ByPage> {
     #[must_use]
     pub fn ignore_errors(self) -> PdfFileLoader<'a, (PathBuf, Vec<(usize, String)>)> {
         PdfFileLoader {
-            iterator: Box::new(self.iterator.map(|(path, pages)| {
-                let pages = pages
-                    .into_iter()
-                    .filter_map(|(page_no, res)| res.ok().map(|content| (page_no, content)))
-                    .collect::<Vec<_>>();
-                (path, pages)
-            })),
+            iterator: Box::new(self.iterator.map(
+                |(path, pages): (PathBuf, Vec<(usize, Result<String, PdfLoaderError>)>)| {
+                    let pages = pages
+                        .into_iter()
+                        .filter_map(|(page_no, res): (usize, Result<String, PdfLoaderError>)| {
+                            res.ok().map(|content| (page_no, content))
+                        })
+                        .collect::<Vec<_>>();
+                    (path, pages)
+                },
+            )),
         }
     }
 }
