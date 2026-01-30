@@ -26,9 +26,9 @@
 //! # Multiple Servers
 //!
 //! ```rust,ignore
-//! use machi::mcp::McpServers;
+//! use machi::mcp::McpClientBuilder;
 //!
-//! let servers = McpServers::new()
+//! let clients = McpClientBuilder::new()
 //!     .http("math", "http://localhost:8080")
 //!     .stdio("local", "python", &["server.py"])
 //!     .connect_all()
@@ -51,7 +51,7 @@ mod error;
 mod tool;
 mod transport;
 
-pub use client::{McpClient, McpClientConfig, McpServers};
+pub use client::{McpClient, McpClientBuilder, McpClientConfig};
 pub use error::McpError;
 pub use tool::McpTool;
 pub use transport::TransportConfig;

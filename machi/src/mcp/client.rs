@@ -206,19 +206,19 @@ impl McpClient {
 /// # Example
 ///
 /// ```rust,ignore
-/// let servers = McpServers::new()
+/// let clients = McpClientBuilder::new()
 ///     .http("calculator", "http://localhost:8080")
 ///     .stdio("local_tools", "python", &["tools.py"])
 ///     .connect_all()
 ///     .await?;
 /// ```
 #[derive(Default)]
-pub struct McpServers {
+pub struct McpClientBuilder {
     configs: Vec<(String, TransportConfig)>,
     client_config: McpClientConfig,
 }
 
-impl McpServers {
+impl McpClientBuilder {
     /// Creates a new empty server collection.
     #[must_use]
     pub fn new() -> Self {
