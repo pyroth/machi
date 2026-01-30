@@ -1,228 +1,163 @@
 //! CLI chatbot module for interactive conversations with AI agents.
 //!
-//! This module provides a simple CLI interface for chatting with agents.
+//! Provides a simple, streaming CLI interface for chatting with Machi agents.
+
+use std::io::{self, Write};
 
 use futures::StreamExt;
 use machi::{
     agent::{Agent, MultiTurnStreamItem, Text},
-    completion::message::Message,
-    completion::streaming::{StreamedAssistantContent, StreamingPrompt},
-    completion::{Chat, CompletionError, CompletionModel, PromptError, Usage},
+    completion::{
+        CompletionError, CompletionModel, GetTokenUsage, PromptError, Usage,
+        message::Message,
+        streaming::{StreamedAssistantContent, StreamingPrompt},
+    },
     core::wasm_compat::WasmCompatSend,
 };
-use std::io::{self, Write};
 
-pub struct NoImplProvided;
+/// Configuration for the chatbot.
+#[derive(Debug, Clone)]
+pub struct ChatBotConfig {
+    /// Maximum depth for multi-turn tool calls.
+    pub multi_turn_depth: usize,
+    /// Whether to display token usage after each response.
+    pub show_usage: bool,
+    /// System prompt/preamble for the agent.
+    pub system_prompt: Option<String>,
+}
 
-pub struct ChatImpl<T>(T)
-where
-    T: Chat;
+impl Default for ChatBotConfig {
+    fn default() -> Self {
+        Self {
+            multi_turn_depth: 5,
+            show_usage: false,
+            system_prompt: None,
+        }
+    }
+}
 
-pub struct AgentImpl<M>
+/// A streaming CLI chatbot powered by Machi agents.
+pub struct ChatBot<M>
 where
     M: CompletionModel + 'static,
 {
     agent: Agent<M>,
-    multi_turn_depth: usize,
-    show_usage: bool,
-    usage: Usage,
+    config: ChatBotConfig,
+    history: Vec<Message>,
+    last_usage: Option<Usage>,
 }
 
-pub struct ChatBotBuilder<T>(T);
-
-pub struct ChatBot<T>(T);
-
-/// Trait to abstract message behavior away from cli_chat/`run` loop
-#[allow(private_interfaces)]
-trait CliChat {
-    async fn request(&mut self, prompt: &str, history: Vec<Message>)
-    -> Result<String, PromptError>;
-
-    fn show_usage(&self) -> bool {
-        false
-    }
-
-    fn usage(&self) -> Option<Usage> {
-        None
-    }
-}
-
-impl<T> CliChat for ChatImpl<T>
-where
-    T: Chat,
-{
-    async fn request(
-        &mut self,
-        prompt: &str,
-        history: Vec<Message>,
-    ) -> Result<String, PromptError> {
-        let res = self.0.chat(prompt, history).await?;
-        println!("{res}");
-
-        Ok(res)
-    }
-}
-
-impl<M> CliChat for AgentImpl<M>
+impl<M> ChatBot<M>
 where
     M: CompletionModel + WasmCompatSend + 'static,
+    M::StreamingResponse: GetTokenUsage,
 {
-    async fn request(
-        &mut self,
-        prompt: &str,
-        history: Vec<Message>,
-    ) -> Result<String, PromptError> {
-        let mut response_stream = self
+    /// Create a new chatbot with the given agent and configuration.
+    pub fn new(agent: Agent<M>, config: ChatBotConfig) -> Self {
+        Self {
+            agent,
+            config,
+            history: Vec::new(),
+            last_usage: None,
+        }
+    }
+
+    /// Send a single prompt and stream the response to stdout.
+    pub async fn chat(&mut self, prompt: &str) -> Result<String, PromptError> {
+        let mut stream = self
             .agent
             .stream_prompt(prompt)
-            .with_history(history)
-            .multi_turn(self.multi_turn_depth)
+            .with_history(self.history.clone())
+            .multi_turn(self.config.multi_turn_depth)
             .await;
 
-        let mut acc = String::new();
+        let mut response = String::new();
 
-        loop {
-            let Some(chunk) = response_stream.next().await else {
-                break Ok(acc);
-            };
-
+        while let Some(chunk) = stream.next().await {
             match chunk {
                 Ok(MultiTurnStreamItem::StreamAssistantItem(StreamedAssistantContent::Text(
                     Text { text },
                 ))) => {
-                    print!("{}", text);
-                    acc.push_str(&text);
+                    print!("{text}");
+                    io::stdout().flush().ok();
+                    response.push_str(&text);
                 }
-                Ok(MultiTurnStreamItem::FinalResponse(final_response)) => {
-                    self.usage = final_response.usage();
+                Ok(MultiTurnStreamItem::FinalResponse(final_resp)) => {
+                    self.last_usage = Some(final_resp.usage().clone());
                 }
                 Err(e) => {
-                    break Err(PromptError::CompletionError(
+                    return Err(PromptError::CompletionError(
                         CompletionError::ResponseError(e.to_string()),
                     ));
                 }
-                _ => continue,
+                _ => {}
             }
         }
+
+        // Update history
+        self.history.push(Message::user(prompt));
+        self.history.push(Message::assistant(&response));
+
+        Ok(response)
     }
 
-    fn show_usage(&self) -> bool {
-        self.show_usage
-    }
-
-    fn usage(&self) -> Option<Usage> {
-        Some(self.usage)
-    }
-}
-
-impl Default for ChatBotBuilder<NoImplProvided> {
-    fn default() -> Self {
-        Self(NoImplProvided)
-    }
-}
-
-impl ChatBotBuilder<NoImplProvided> {
-    pub fn new() -> Self {
-        Self::default()
-    }
-
-    pub fn agent<M: CompletionModel + 'static>(
-        self,
-        agent: Agent<M>,
-    ) -> ChatBotBuilder<AgentImpl<M>> {
-        ChatBotBuilder(AgentImpl {
-            agent,
-            multi_turn_depth: 1,
-            show_usage: false,
-            usage: Usage::default(),
-        })
-    }
-
-    pub fn chat<T: Chat>(self, chatbot: T) -> ChatBotBuilder<ChatImpl<T>> {
-        ChatBotBuilder(ChatImpl(chatbot))
-    }
-}
-
-impl<T> ChatBotBuilder<ChatImpl<T>>
-where
-    T: Chat,
-{
-    pub fn build(self) -> ChatBot<ChatImpl<T>> {
-        let ChatBotBuilder(chat_impl) = self;
-        ChatBot(chat_impl)
-    }
-}
-
-impl<M> ChatBotBuilder<AgentImpl<M>>
-where
-    M: CompletionModel + 'static,
-{
-    pub fn multi_turn_depth(self, multi_turn_depth: usize) -> Self {
-        ChatBotBuilder(AgentImpl {
-            multi_turn_depth,
-            ..self.0
-        })
-    }
-
-    pub fn show_usage(self) -> Self {
-        ChatBotBuilder(AgentImpl {
-            show_usage: true,
-            ..self.0
-        })
-    }
-
-    pub fn build(self) -> ChatBot<AgentImpl<M>> {
-        ChatBot(self.0)
-    }
-}
-
-#[allow(private_bounds)]
-impl<T> ChatBot<T>
-where
-    T: CliChat,
-{
-    pub async fn run(mut self) -> Result<(), PromptError> {
+    /// Run the interactive REPL loop.
+    pub async fn run(&mut self) -> Result<(), PromptError> {
         let stdin = io::stdin();
         let mut stdout = io::stdout();
-        let mut history = vec![];
+
+        println!("Machi CLI Chatbot (type 'exit' or Ctrl+C to quit, 'clear' to reset history)");
+        println!();
 
         loop {
             print!("> ");
-            stdout.flush().unwrap();
+            stdout.flush().ok();
 
             let mut input = String::new();
-            match stdin.read_line(&mut input) {
-                Ok(_) => {
-                    let input = input.trim();
-                    if input == "exit" {
-                        break;
-                    }
-
-                    tracing::info!("Prompt:\n{input}\n");
-
-                    println!();
-                    println!("========================== Response ============================");
-
-                    let response = self.0.request(input, history.clone()).await?;
-                    history.push(Message::user(input));
-                    history.push(Message::assistant(response));
-
-                    println!("================================================================");
-                    println!();
-
-                    if self.0.show_usage() {
-                        let Usage {
-                            input_tokens,
-                            output_tokens,
-                            ..
-                        } = self.0.usage().unwrap();
-                        println!("Input {input_tokens} tokens\nOutput {output_tokens} tokens");
-                    }
-                }
-                Err(e) => println!("Error reading request: {e}"),
+            if stdin.read_line(&mut input).is_err() {
+                continue;
             }
+
+            let input = input.trim();
+            if input.is_empty() {
+                continue;
+            }
+
+            match input {
+                "exit" | "quit" => break,
+                "clear" => {
+                    self.history.clear();
+                    println!("History cleared.");
+                    continue;
+                }
+                _ => {}
+            }
+
+            println!();
+            self.chat(input).await?;
+            println!();
+
+            if self.config.show_usage {
+                if let Some(usage) = &self.last_usage {
+                    println!(
+                        "[Tokens: {} in / {} out]",
+                        usage.input_tokens, usage.output_tokens
+                    );
+                }
+            }
+            println!();
         }
 
         Ok(())
+    }
+
+    /// Clear the conversation history.
+    pub fn clear_history(&mut self) {
+        self.history.clear();
+    }
+
+    /// Get the last token usage.
+    pub fn last_usage(&self) -> Option<&Usage> {
+        self.last_usage.as_ref()
     }
 }

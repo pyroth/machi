@@ -1,26 +1,25 @@
-use crate::{
-    agent::CancelSignal,
-    completion::GetTokenUsage,
-    completion::message::{
-        AssistantContent, Reasoning, ToolResult, ToolResultContent, UserContent,
-    },
-    completion::streaming::{StreamedAssistantContent, StreamedUserContent, StreamingCompletion},
-    core::OneOrMany,
-    core::json_utils,
-    core::wasm_compat::{WasmBoxedFuture, WasmCompatSend},
-};
+use std::{pin::Pin, sync::Arc};
+
 use futures::{Stream, StreamExt};
 use serde::{Deserialize, Serialize};
-use std::{pin::Pin, sync::Arc};
 use tokio::sync::RwLock;
 use tracing::info_span;
 use tracing_futures::Instrument;
 
 use super::ToolCallHookAction;
 use crate::{
-    agent::Agent,
-    completion::message::{Message, Text},
-    completion::{CompletionModel, PromptError},
+    agent::{Agent, CancelSignal},
+    completion::{
+        CompletionModel, GetTokenUsage, PromptError,
+        message::{
+            AssistantContent, Message, Reasoning, Text, ToolResult, ToolResultContent, UserContent,
+        },
+        streaming::{StreamedAssistantContent, StreamedUserContent, StreamingCompletion},
+    },
+    core::{
+        OneOrMany, json_utils,
+        wasm_compat::{WasmBoxedFuture, WasmCompatSend},
+    },
 };
 
 #[cfg(not(all(feature = "wasm", target_arch = "wasm32")))]
@@ -51,6 +50,7 @@ pub struct FinalResponse {
 }
 
 impl FinalResponse {
+    #[must_use]
     pub fn empty() -> Self {
         Self {
             response: String::new(),
@@ -58,12 +58,16 @@ impl FinalResponse {
         }
     }
 
+    #[must_use]
+    #[inline]
     pub fn response(&self) -> &str {
         &self.response
     }
 
-    pub fn usage(&self) -> crate::completion::Usage {
-        self.aggregated_usage
+    #[must_use]
+    #[inline]
+    pub fn usage(&self) -> &crate::completion::Usage {
+        &self.aggregated_usage
     }
 }
 
@@ -81,6 +85,18 @@ impl<R> MultiTurnStreamItem<R> {
 }
 
 pub use super::super::errors::StreamingError;
+
+/// Helper to build a cancellation error from the current state.
+#[inline]
+fn make_cancel_error(history: Vec<Message>, cancel_sig: &CancelSignal) -> StreamingError {
+    StreamingError::Prompt(
+        PromptError::prompt_cancelled(
+            history,
+            cancel_sig.cancel_reason().unwrap_or("<no reason given>"),
+        )
+        .into(),
+    )
+}
 
 /// A builder for creating prompt requests with customizable options.
 /// Uses generics to track which options have been set during the build process.
@@ -175,11 +191,7 @@ where
 
         let agent = self.agent;
 
-        let chat_history = if let Some(history) = self.chat_history {
-            Arc::new(RwLock::new(history))
-        } else {
-            Arc::new(RwLock::new(vec![]))
-        };
+        let chat_history = Arc::new(RwLock::new(self.chat_history.unwrap_or_default()));
 
         let mut current_max_depth = 0;
         let mut last_prompt_error = String::new();
@@ -220,14 +232,12 @@ where
                 }
 
                 if let Some(ref hook) = self.hook {
-                    let reader = chat_history.read().await;
-                    hook.on_completion_call(&current_prompt, &reader.to_vec(), cancel_sig.clone())
+                    let history_snapshot = chat_history.read().await.clone();
+                    hook.on_completion_call(&current_prompt, &history_snapshot, cancel_sig.clone())
                         .await;
 
                     if cancel_sig.is_cancelled() {
-                        yield Err(StreamingError::Prompt(PromptError::prompt_cancelled(chat_history.read().await.to_vec(),
-                            cancel_sig.cancel_reason().unwrap_or("<no reason given>"),
-                        ).into()));
+                        yield Err(make_cancel_error(history_snapshot, &cancel_sig));
                     }
                 }
 
@@ -273,9 +283,7 @@ where
                             if let Some(ref hook) = self.hook {
                                 hook.on_text_delta(&text.text, &last_text_response, cancel_sig.clone()).await;
                                 if cancel_sig.is_cancelled() {
-                                    yield Err(StreamingError::Prompt(PromptError::prompt_cancelled(chat_history.read().await.to_vec(),
-                                        cancel_sig.cancel_reason().unwrap_or("<no reason given>"),
-                                    ).into()));
+                                    yield Err(make_cancel_error(chat_history.read().await.clone(), &cancel_sig));
                                 }
                             }
                             yield Ok(MultiTurnStreamItem::stream_item(StreamedAssistantContent::Text(text)));
@@ -304,9 +312,7 @@ where
                                         .await;
 
                                     if cancel_sig.is_cancelled() {
-                                        return Err(StreamingError::Prompt(PromptError::prompt_cancelled(chat_history.read().await.to_vec(),
-                                            cancel_sig.cancel_reason().unwrap_or("<no reason given>"),
-                                        ).into()));
+                                        return Err(make_cancel_error(chat_history.read().await.clone(), &cancel_sig));
                                     }
 
                                     if let ToolCallHookAction::Skip { reason } = action {
@@ -339,13 +345,11 @@ where
                                 tool_span.record("gen_ai.tool.call.result", &tool_result);
 
                                 if let Some(ref hook) = self.hook {
-                                    hook.on_tool_result(&tool_call.function.name, tool_call.call_id.clone(), &tool_args, &tool_result.clone(), cancel_sig.clone())
+                                    hook.on_tool_result(&tool_call.function.name, tool_call.call_id.clone(), &tool_args, &tool_result, cancel_sig.clone())
                                     .await;
 
                                     if cancel_sig.is_cancelled() {
-                                        return Err(StreamingError::Prompt(PromptError::prompt_cancelled(chat_history.read().await.to_vec(),
-                                            cancel_sig.cancel_reason().unwrap_or("<no reason given>"),
-                                        ).into()));
+                                        return Err(make_cancel_error(chat_history.read().await.clone(), &cancel_sig));
                                     }
                                 }
 
@@ -374,13 +378,10 @@ where
                                     crate::completion::streaming::ToolCallDeltaContent::Name(n) => (Some(n.as_str()), ""),
                                     crate::completion::streaming::ToolCallDeltaContent::Delta(d) => (None, d.as_str()),
                                 };
-                                hook.on_tool_call_delta(&id, name, delta, cancel_sig.clone())
-                                .await;
+                                hook.on_tool_call_delta(&id, name, delta, cancel_sig.clone()).await;
 
                                 if cancel_sig.is_cancelled() {
-                                    yield Err(StreamingError::Prompt(PromptError::prompt_cancelled(chat_history.read().await.to_vec(),
-                                        cancel_sig.cancel_reason().unwrap_or("<no reason given>"),
-                                    ).into()));
+                                    yield Err(make_cancel_error(chat_history.read().await.clone(), &cancel_sig));
                                 }
                             }
                         }
@@ -393,15 +394,15 @@ where
                             did_call_tool = false;
                         },
                         Ok(StreamedAssistantContent::Final(final_resp)) => {
-                            if let Some(usage) = final_resp.token_usage() { aggregated_usage += usage; }
+                            if let Some(usage) = final_resp.token_usage() {
+                                aggregated_usage += usage;
+                            }
                             if is_text_response {
                                 if let Some(ref hook) = self.hook {
                                     hook.on_stream_completion_response_finish(&prompt, &final_resp, cancel_sig.clone()).await;
 
                                     if cancel_sig.is_cancelled() {
-                                        yield Err(StreamingError::Prompt(PromptError::prompt_cancelled(chat_history.read().await.to_vec(),
-                                            cancel_sig.cancel_reason().unwrap_or("<no reason given>"),
-                                        ).into()));
+                                        yield Err(make_cancel_error(chat_history.read().await.clone(), &cancel_sig));
                                     }
                                 }
 
@@ -529,8 +530,8 @@ pub trait StreamingPromptHook<M>: Clone + Send + Sync
 where
     M: CompletionModel,
 {
+    /// Called before the prompt is sent to the model.
     #[allow(unused_variables)]
-    /// Called before the prompt is sent to the model
     fn on_completion_call(
         &self,
         prompt: &Message,
@@ -540,8 +541,8 @@ where
         async {}
     }
 
+    /// Called when receiving a text delta.
     #[allow(unused_variables)]
-    /// Called when receiving a text delta
     fn on_text_delta(
         &self,
         text_delta: &str,
@@ -551,9 +552,10 @@ where
         async {}
     }
 
-    #[allow(unused_variables)]
     /// Called when receiving a tool call delta.
-    /// `tool_name` is Some on the first delta for a tool call, None on subsequent deltas.
+    ///
+    /// `tool_name` is `Some` on the first delta for a tool call, `None` on subsequent deltas.
+    #[allow(unused_variables)]
     fn on_tool_call_delta(
         &self,
         tool_call_id: &str,
@@ -564,8 +566,8 @@ where
         async {}
     }
 
-    #[allow(unused_variables)]
     /// Called after the model provider has finished streaming a text response from their completion API to the client.
+    #[allow(unused_variables)]
     fn on_stream_completion_response_finish(
         &self,
         prompt: &Message,
@@ -575,12 +577,12 @@ where
         async {}
     }
 
-    #[allow(unused_variables)]
     /// Called before a tool is invoked.
     ///
     /// # Returns
-    /// - `ToolCallHookAction::Continue` - Allow tool execution to proceed
-    /// - `ToolCallHookAction::Skip { reason }` - Reject tool execution; `reason` will be returned to the LLM as the tool result
+    /// - [`ToolCallHookAction::Continue`] - Allow tool execution to proceed
+    /// - [`ToolCallHookAction::Skip`] - Reject tool execution; `reason` will be returned to the LLM as the tool result
+    #[allow(unused_variables)]
     fn on_tool_call(
         &self,
         tool_name: &str,
@@ -591,8 +593,8 @@ where
         async { ToolCallHookAction::Continue }
     }
 
-    #[allow(unused_variables)]
     /// Called after a tool is invoked (and a result has been returned).
+    #[allow(unused_variables)]
     fn on_tool_result(
         &self,
         tool_name: &str,

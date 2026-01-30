@@ -19,22 +19,12 @@ fn add(a: i32, b: i32) -> Result<i32, machi::tool::ToolError> {
 
 /// A subtraction tool.
 #[tool(
-    description = "Subtract one number from another (a - b)",
+    description = "Sub one number from another",
     params(a = "The number to subtract from", b = "The number to subtract"),
     required(a, b)
 )]
-fn subtract(a: i32, b: i32) -> Result<i32, machi::tool::ToolError> {
+fn sub(a: i32, b: i32) -> Result<i32, machi::tool::ToolError> {
     Ok(a - b)
-}
-
-/// A multiplication tool.
-#[tool(
-    description = "Multiply two numbers together",
-    params(a = "The first number", b = "The second number"),
-    required(a, b)
-)]
-fn multiply(a: i32, b: i32) -> Result<i32, machi::tool::ToolError> {
-    Ok(a * b)
 }
 
 #[tokio::main]
@@ -47,26 +37,26 @@ async fn main() -> Result<(), anyhow::Error> {
 
     // The macro generates static instances with predictable names:
     // - AddTool, AddArgs, ADD_TOOL
-    // - SubtractTool, SubtractArgs, SUBTRACT_TOOL
-    // - MultiplyTool, MultiplyArgs, MULTIPLY_TOOL
+    // - SubTool, SubArgs, SUB_TOOL
     println!("Add tool name: {}", Tool::name(&ADD_TOOL));
-    println!("Subtract tool name: {}", Tool::name(&SUBTRACT_TOOL));
-    println!("Multiply tool name: {}", Tool::name(&MULTIPLY_TOOL));
+    println!("Sub tool name: {}", Tool::name(&SUB_TOOL));
 
     let add_def = Tool::definition(&ADD_TOOL, String::new()).await;
+    let sub_def = Tool::definition(&SUB_TOOL, String::new()).await;
     println!(
         "Add definition:\n{}",
         serde_json::to_string_pretty(&add_def.parameters)?
+    );
+    println!(
+        "Sub definition:\n{}",
+        serde_json::to_string_pretty(&sub_def.parameters)?
     );
 
     let result = Tool::call(&ADD_TOOL, AddArgs { a: 10, b: 20 }).await?;
     println!("10 + 20 = {}", result);
 
-    let result = Tool::call(&SUBTRACT_TOOL, SubtractArgs { a: 100, b: 42 }).await?;
+    let result = Tool::call(&SUB_TOOL, SubArgs { a: 100, b: 42 }).await?;
     println!("100 - 42 = {}", result);
-
-    let result = Tool::call(&MULTIPLY_TOOL, MultiplyArgs { a: 7, b: 8 }).await?;
-    println!("7 * 8 = {}", result);
 
     Ok(())
 }

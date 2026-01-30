@@ -4,4 +4,4 @@
 
 pub mod chatbot;
 
-pub use chatbot::{ChatBot, ChatBotBuilder};
+pub use chatbot::{ChatBot, ChatBotConfig};
