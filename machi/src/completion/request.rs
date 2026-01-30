@@ -144,7 +144,7 @@ pub struct Usage {
 impl Usage {
     /// Creates a new instance of `Usage` with zero tokens.
     #[inline]
-    #[must_use] 
+    #[must_use]
     pub const fn new() -> Self {
         Self {
             input_tokens: 0,
@@ -155,7 +155,7 @@ impl Usage {
 
     /// Returns `true` if no tokens were used.
     #[inline]
-    #[must_use] 
+    #[must_use]
     pub const fn is_empty(&self) -> bool {
         self.total_tokens == 0
     }
@@ -216,7 +216,7 @@ impl CompletionRequest {
     /// Returns documents normalized into a message (if any).
     /// Most providers do not accept documents directly as input, so it needs to convert into a
     ///  `Message` so that it can be incorporated into `chat_history` as a
-    #[must_use] 
+    #[must_use]
     pub fn normalized_documents(&self) -> Option<Message> {
         if self.documents.is_empty() {
             return None;
@@ -337,9 +337,7 @@ impl<M: CompletionModel> CompletionRequestBuilder<M> {
 
     /// Adds a list of messages to the chat history for the completion request.
     pub fn messages(self, messages: Vec<Message>) -> Self {
-        messages
-            .into_iter()
-            .fold(self, Self::message)
+        messages.into_iter().fold(self, Self::message)
     }
 
     /// Adds a document to the completion request.
@@ -350,9 +348,7 @@ impl<M: CompletionModel> CompletionRequestBuilder<M> {
 
     /// Adds a list of documents to the completion request.
     pub fn documents(self, documents: Vec<Document>) -> Self {
-        documents
-            .into_iter()
-            .fold(self, Self::document)
+        documents.into_iter().fold(self, Self::document)
     }
 
     /// Adds a tool to the completion request.

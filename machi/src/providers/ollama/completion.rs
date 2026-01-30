@@ -18,13 +18,10 @@ use tracing_futures::Instrument;
 use super::client::Client;
 use super::message::Message;
 
-// ---------- Completion Constants ----------
-
 pub const LLAMA3_2: &str = "llama3.2";
 pub const LLAVA: &str = "llava";
 pub const MISTRAL: &str = "mistral";
-
-// ---------- Completion Response ----------
+pub const QWEN3: &str = "Qwen3";
 
 #[derive(Debug, Serialize, Deserialize)]
 pub struct CompletionResponse {
@@ -112,8 +109,6 @@ impl TryFrom<CompletionResponse> for completion::CompletionResponse<CompletionRe
     }
 }
 
-// ---------- Completion Request ----------
-
 #[derive(Debug, Serialize, Deserialize)]
 pub(super) struct OllamaCompletionRequest {
     model: String,
@@ -187,8 +182,6 @@ impl TryFrom<(&str, CompletionRequest)> for OllamaCompletionRequest {
     }
 }
 
-// ---------- Completion Model ----------
-
 #[derive(Clone)]
 pub struct CompletionModel<T = reqwest::Client> {
     client: Client<T>,
@@ -203,8 +196,6 @@ impl<T> CompletionModel<T> {
         }
     }
 }
-
-// ---------- Streaming Response ----------
 
 #[derive(Clone, Serialize, Deserialize, Debug)]
 pub struct StreamingCompletionResponse {
@@ -229,8 +220,6 @@ impl GetTokenUsage for StreamingCompletionResponse {
         Some(usage)
     }
 }
-
-// ---------- CompletionModel Implementation ----------
 
 impl<T> completion::CompletionModel for CompletionModel<T>
 where
@@ -466,8 +455,6 @@ impl From<crate::completion::ToolDefinition> for ToolDefinition {
         }
     }
 }
-
-// ---------- Tests ----------
 
 #[cfg(test)]
 mod tests {

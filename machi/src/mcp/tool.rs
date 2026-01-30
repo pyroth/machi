@@ -1,6 +1,4 @@
-//! MCP (Model Context Protocol) tool integration.
-//!
-//! This module provides integration with MCP servers through the `rmcp` crate.
+//! MCP tool wrapper for agent integration.
 
 use std::borrow::Cow;
 
@@ -8,9 +6,9 @@ use rmcp::model::RawContent;
 
 use crate::completion::ToolDefinition;
 use crate::core::wasm_compat::WasmBoxedFuture;
+use crate::tool::{ToolDyn, ToolError};
 
-use super::errors::ToolError;
-use super::traits::ToolDyn;
+use super::error::McpError;
 
 /// A tool that wraps an MCP server tool.
 #[derive(Clone)]
@@ -20,42 +18,15 @@ pub struct McpTool {
 }
 
 impl McpTool {
-    #[must_use] 
-    pub const fn from_mcp_server(
-        definition: rmcp::model::Tool,
-        client: rmcp::service::ServerSink,
-    ) -> Self {
+    /// Creates a new MCP tool from a server tool definition and client sink.
+    #[must_use]
+    pub const fn new(definition: rmcp::model::Tool, client: rmcp::service::ServerSink) -> Self {
         Self { definition, client }
     }
 }
 
-impl From<&rmcp::model::Tool> for ToolDefinition {
-    fn from(val: &rmcp::model::Tool) -> Self {
-        Self {
-            name: val.name.to_string(),
-            description: val.description.clone().unwrap_or(Cow::from("")).to_string(),
-            parameters: val.schema_as_json_value(),
-        }
-    }
-}
-
-impl From<rmcp::model::Tool> for ToolDefinition {
-    fn from(val: rmcp::model::Tool) -> Self {
-        Self {
-            name: val.name.to_string(),
-            description: val.description.clone().unwrap_or(Cow::from("")).to_string(),
-            parameters: val.schema_as_json_value(),
-        }
-    }
-}
-
-/// Error type for MCP tool operations.
-#[derive(Debug, thiserror::Error)]
-#[error("MCP tool error: {0}")]
-pub struct McpToolError(String);
-
-impl From<McpToolError> for ToolError {
-    fn from(e: McpToolError) -> Self {
+impl From<McpError> for ToolError {
+    fn from(e: McpError) -> Self {
         Self::ToolCallError(Box::new(e))
     }
 }
@@ -94,7 +65,7 @@ impl ToolDyn for McpTool {
                     task: None,
                 })
                 .await
-                .map_err(|e| McpToolError(format!("Tool returned an error: {e}")))?;
+                .map_err(|e| McpError::ToolExecutionFailed(format!("Tool call error: {e}")))?;
 
             if result.is_error == Some(true) {
                 let error_msg = result
@@ -106,20 +77,22 @@ impl ToolDyn for McpTool {
 
                 let error_message = error_msg.map(|x| x.join("\n"));
                 if let Some(error_message) = error_message {
-                    return Err(McpToolError(error_message).into());
+                    return Err(McpError::ToolExecutionFailed(error_message).into());
                 }
-                return Err(McpToolError("No message returned".to_string()).into());
+                return Err(
+                    McpError::ToolExecutionFailed("No message returned".to_string()).into(),
+                );
             }
 
             Ok(result
                 .content
                 .into_iter()
                 .map(|c| match c.raw {
-                    rmcp::model::RawContent::Text(raw) => raw.text,
-                    rmcp::model::RawContent::Image(raw) => {
+                    RawContent::Text(raw) => raw.text,
+                    RawContent::Image(raw) => {
                         format!("data:{};base64,{}", raw.mime_type, raw.data)
                     }
-                    rmcp::model::RawContent::Resource(raw) => match raw.resource {
+                    RawContent::Resource(raw) => match raw.resource {
                         rmcp::model::ResourceContents::TextResourceContents {
                             uri,
                             mime_type,
@@ -128,9 +101,8 @@ impl ToolDyn for McpTool {
                         } => {
                             format!(
                                 "{mime_type}{uri}:{text}",
-                                mime_type = mime_type
-                                    .map(|m| format!("data:{m};"))
-                                    .unwrap_or_default(),
+                                mime_type =
+                                    mime_type.map(|m| format!("data:{m};")).unwrap_or_default(),
                             )
                         }
                         rmcp::model::ResourceContents::BlobResourceContents {
@@ -140,16 +112,12 @@ impl ToolDyn for McpTool {
                             ..
                         } => format!(
                             "{mime_type}{uri}:{blob}",
-                            mime_type = mime_type
-                                .map(|m| format!("data:{m};"))
-                                .unwrap_or_default(),
+                            mime_type = mime_type.map(|m| format!("data:{m};")).unwrap_or_default(),
                         ),
                     },
-                    RawContent::Audio(_) => {
-                        panic!("Support for audio results from an MCP tool is currently unimplemented. Come back later!")
-                    }
-                    RawContent::ResourceLink(thing) => {
-                        panic!("Unsupported ResourceLink type found: {thing:?}")
+                    RawContent::Audio(_) => "[Audio content not supported]".to_string(),
+                    RawContent::ResourceLink(link) => {
+                        format!("[ResourceLink: {:?}]", link)
                     }
                 })
                 .collect::<String>())

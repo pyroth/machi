@@ -41,14 +41,14 @@ impl Embedding {
 
     /// Returns the dimensionality of the embedding vector.
     #[inline]
-    #[must_use] 
+    #[must_use]
     pub const fn ndims(&self) -> usize {
         self.vec.len()
     }
 
     /// Returns `true` if the embedding vector is empty.
     #[inline]
-    #[must_use] 
+    #[must_use]
     pub const fn is_empty(&self) -> bool {
         self.vec.is_empty()
     }

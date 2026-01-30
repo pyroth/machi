@@ -74,7 +74,7 @@ impl CompletionRequest {
         self
     }
 
-    #[must_use] 
+    #[must_use]
     pub const fn with_reasoning(mut self, reasoning: Reasoning) -> Self {
         self.additional_parameters.reasoning = Some(reasoning);
 
@@ -136,7 +136,7 @@ impl ReasoningSummary {
         }
     }
 
-    #[must_use] 
+    #[must_use]
     pub fn text(&self) -> String {
         let Self::SummaryText { text } = self;
         text.clone()
@@ -780,7 +780,7 @@ pub struct AdditionalParameters {
 }
 
 impl AdditionalParameters {
-    #[must_use] 
+    #[must_use]
     pub fn to_json(self) -> serde_json::Value {
         serde_json::to_value(self).expect("this should never fail since a struct that impls Deserialize will always be valid JSON")
     }
@@ -854,7 +854,7 @@ pub struct Reasoning {
 
 impl Reasoning {
     /// Creates a new Reasoning instantiation (with empty values).
-    #[must_use] 
+    #[must_use]
     pub const fn new() -> Self {
         Self {
             effort: None,
@@ -863,7 +863,7 @@ impl Reasoning {
     }
 
     /// Adds reasoning effort.
-    #[must_use] 
+    #[must_use]
     pub const fn with_effort(mut self, reasoning_effort: ReasoningEffort) -> Self {
         self.effort = Some(reasoning_effort);
 
@@ -871,8 +871,11 @@ impl Reasoning {
     }
 
     /// Adds summary level (how detailed the reasoning summary will be).
-    #[must_use] 
-    pub const fn with_summary_level(mut self, reasoning_summary_level: ReasoningSummaryLevel) -> Self {
+    #[must_use]
+    pub const fn with_summary_level(
+        mut self,
+        reasoning_summary_level: ReasoningSummaryLevel,
+    ) -> Self {
         self.summary = Some(reasoning_summary_level);
 
         self
@@ -1200,7 +1203,7 @@ pub enum ToolResultContentType {
 }
 
 impl Message {
-    #[must_use] 
+    #[must_use]
     pub fn system(content: &str) -> Self {
         Self::System {
             content: OneOrMany::one(content.to_owned().into()),
@@ -1221,12 +1224,8 @@ pub enum AssistantContent {
 impl From<AssistantContent> for completion::AssistantContent {
     fn from(value: AssistantContent) -> Self {
         match value {
-            AssistantContent::Refusal { refusal } => {
-                Self::Text(Text { text: refusal })
-            }
-            AssistantContent::OutputText(Text { text }) => {
-                Self::Text(Text { text })
-            }
+            AssistantContent::Refusal { refusal } => Self::Text(Text { text: refusal }),
+            AssistantContent::OutputText(Text { text }) => Self::Text(Text { text }),
         }
     }
 }

@@ -83,7 +83,7 @@ pub enum Message {
 }
 
 impl Message {
-    #[must_use] 
+    #[must_use]
     pub fn system(content: &str) -> Self {
         Self::System {
             content: content.to_owned(),

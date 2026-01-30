@@ -86,7 +86,7 @@ impl<R> MultiTurnStreamItem<R> {
     }
 
     /// Creates a final response item.
-    #[must_use] 
+    #[must_use]
     pub fn final_response(response: &str, aggregated_usage: crate::completion::Usage) -> Self {
         Self::FinalResponse(FinalResponse {
             response: response.to_string(),

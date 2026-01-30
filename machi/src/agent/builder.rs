@@ -18,7 +18,7 @@ use crate::{
 
 #[cfg(feature = "rmcp")]
 #[cfg_attr(docsrs, doc(cfg(feature = "rmcp")))]
-use crate::tool::mcp::McpTool as RmcpTool;
+use crate::mcp::{McpClient, McpTool};
 
 use super::Agent;
 
@@ -178,7 +178,7 @@ where
         client: rmcp::service::ServerSink,
     ) -> AgentBuilder<M, WithTools> {
         let toolname = tool.name.clone().to_string();
-        let tools = ToolSet::from_tools(vec![RmcpTool::from_mcp_server(tool, client)]);
+        let tools = ToolSet::from_tools(vec![McpTool::new(tool, client)]);
 
         AgentBuilder {
             name: self.name,
@@ -213,7 +213,7 @@ where
                 .into_iter()
                 .fold((Vec::new(), Vec::new()), |(mut names, mut set), tool| {
                     let name = tool.name.to_string();
-                    let mcp_tool = RmcpTool::from_mcp_server(tool, client.clone());
+                    let mcp_tool = McpTool::new(tool, client.clone());
                     names.push(name);
                     set.push(mcp_tool);
                     (names, set)
@@ -237,6 +237,30 @@ where
             tools: ToolSet::from_tools(tool_vec),
             _marker: PhantomData,
         }
+    }
+
+    /// Adds tools from an MCP client, transitioning to `WithTools` state.
+    ///
+    /// This is a simplified API that accepts an [`McpClient`] directly,
+    /// eliminating the need to manually manage tools and sinks.
+    ///
+    /// # Example
+    ///
+    /// ```rust,ignore
+    /// use machi::mcp::McpClient;
+    ///
+    /// let mcp = McpClient::connect("http://localhost:8080").await?;
+    /// let agent = client
+    ///     .agent(model)
+    ///     .preamble("You are a helpful assistant.")
+    ///     .mcp_tools(mcp)
+    ///     .build();
+    /// ```
+    #[cfg(feature = "rmcp")]
+    #[cfg_attr(docsrs, doc(cfg(feature = "rmcp")))]
+    pub fn mcp_tools(self, mcp_client: McpClient) -> AgentBuilder<M, WithTools> {
+        let (tools, sink) = mcp_client.into_parts();
+        self.rmcp_tools(tools, sink)
     }
 
     /// Adds dynamic tools, transitioning to `WithTools` state.
@@ -320,11 +344,34 @@ where
     ) -> Self {
         for tool in tools {
             let name = tool.name.to_string();
-            let mcp_tool = RmcpTool::from_mcp_server(tool, client.clone());
+            let mcp_tool = McpTool::new(tool, client.clone());
             self.static_tools.push(name);
             self.tools.add_tool(mcp_tool);
         }
         self
+    }
+
+    /// Adds tools from an MCP client.
+    ///
+    /// This is a simplified API that accepts an [`McpClient`] directly.
+    ///
+    /// # Example
+    ///
+    /// ```rust,ignore
+    /// use machi::mcp::McpClient;
+    ///
+    /// let mcp = McpClient::connect("http://localhost:8080").await?;
+    /// let agent = client
+    ///     .agent(model)
+    ///     .tool(some_tool)
+    ///     .mcp_tools(mcp)  // Add more tools from MCP
+    ///     .build();
+    /// ```
+    #[cfg(feature = "rmcp")]
+    #[cfg_attr(docsrs, doc(cfg(feature = "rmcp")))]
+    pub fn mcp_tools(self, mcp_client: McpClient) -> Self {
+        let (tools, sink) = mcp_client.into_parts();
+        self.rmcp_tools(tools, sink)
     }
 
     /// Adds dynamic tools.

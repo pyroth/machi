@@ -384,9 +384,9 @@ impl TryFrom<message::ImageMediaType> for ImageFormat {
             message::ImageMediaType::GIF => Self::GIF,
             message::ImageMediaType::WEBP => Self::WEBP,
             _ => {
-                return Err(MessageError::ConversionError(
-                    format!("Unsupported image media type: {media_type:?}"),
-                ));
+                return Err(MessageError::ConversionError(format!(
+                    "Unsupported image media type: {media_type:?}"
+                )));
             }
         })
     }
@@ -573,15 +573,11 @@ impl TryFrom<Content> for message::AssistantContent {
     fn try_from(content: Content) -> Result<Self, Self::Error> {
         Ok(match content {
             Content::Text { text, .. } => Self::text(text),
-            Content::ToolUse { id, name, input } => {
-                Self::tool_call(id, name, input)
-            }
+            Content::ToolUse { id, name, input } => Self::tool_call(id, name, input),
             Content::Thinking {
                 thinking,
                 signature,
-            } => Self::Reasoning(
-                Reasoning::new(&thinking).with_signature(signature),
-            ),
+            } => Self::Reasoning(Reasoning::new(&thinking).with_signature(signature)),
             _ => {
                 return Err(MessageError::ConversionError(
                     "Content did not contain a message, tool call, or reasoning".to_owned(),
@@ -650,9 +646,9 @@ impl TryFrom<Message> for message::Message {
                 }
 
                 _ => {
-                    return Err(MessageError::ConversionError(
-                        format!("Unsupported message for Assistant role: {message:?}"),
-                    ));
+                    return Err(MessageError::ConversionError(format!(
+                        "Unsupported message for Assistant role: {message:?}"
+                    )));
                 }
             },
         })

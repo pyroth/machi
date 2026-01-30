@@ -190,7 +190,7 @@ where
     Builder: Default + ProviderBuilder,
 {
     /// Returns a builder for constructing a new client.
-    #[must_use] 
+    #[must_use]
     pub fn builder() -> ClientBuilder<Builder, NeedsApiKey, H> {
         ClientBuilder::default()
     }

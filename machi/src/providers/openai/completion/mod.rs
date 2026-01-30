@@ -146,7 +146,7 @@ pub enum Message {
 }
 
 impl Message {
-    #[must_use] 
+    #[must_use]
     pub fn system(content: &str) -> Self {
         Self::System {
             content: OneOrMany::one(content.to_owned().into()),
@@ -257,7 +257,7 @@ pub enum ToolResultContentValue {
 }
 
 impl ToolResultContentValue {
-    #[must_use] 
+    #[must_use]
     pub fn from_string(s: String, use_array_format: bool) -> Self {
         if use_array_format {
             Self::Array(vec![ToolResultContent::from(s)])
@@ -266,7 +266,7 @@ impl ToolResultContentValue {
         }
     }
 
-    #[must_use] 
+    #[must_use]
     pub fn as_text(&self) -> String {
         match self {
             Self::Array(arr) => arr
@@ -278,13 +278,11 @@ impl ToolResultContentValue {
         }
     }
 
-    #[must_use] 
+    #[must_use]
     pub fn to_array(&self) -> Self {
         match self {
             Self::Array(_) => self.clone(),
-            Self::String(s) => {
-                Self::Array(vec![ToolResultContent::from(s.clone())])
-            }
+            Self::String(s) => Self::Array(vec![ToolResultContent::from(s.clone())]),
         }
     }
 }
@@ -337,7 +335,7 @@ impl From<completion::ToolDefinition> for ToolDefinition {
 impl ToolDefinition {
     /// Apply strict mode to this tool definition.
     /// This sets `strict: true` and sanitizes the schema to meet `OpenAI` requirements.
-    #[must_use] 
+    #[must_use]
     pub fn with_strict(mut self) -> Self {
         self.function.strict = Some(true);
         super::sanitize_schema(&mut self.function.parameters);
@@ -778,17 +776,13 @@ impl TryFrom<CompletionResponse> for completion::CompletionResponse<CompletionRe
                     })
                     .collect::<Vec<_>>();
 
-                content.extend(
-                    tool_calls
-                        .iter()
-                        .map(|call| {
-                            completion::AssistantContent::tool_call(
-                                &call.id,
-                                &call.function.name,
-                                call.function.arguments.clone(),
-                            )
-                        }),
-                );
+                content.extend(tool_calls.iter().map(|call| {
+                    completion::AssistantContent::tool_call(
+                        &call.id,
+                        &call.function.name,
+                        call.function.arguments.clone(),
+                    )
+                }));
                 Ok(content)
             }
             _ => Err(CompletionError::ResponseError(
@@ -868,7 +862,7 @@ pub struct Usage {
 }
 
 impl Usage {
-    #[must_use] 
+    #[must_use]
     pub const fn new() -> Self {
         Self {
             prompt_tokens: 0,
@@ -1099,7 +1093,7 @@ impl crate::telemetry::ProviderRequestExt for CompletionRequest {
 }
 
 impl CompletionModel<reqwest::Client> {
-    #[must_use] 
+    #[must_use]
     pub fn into_agent_builder(self) -> crate::agent::AgentBuilder<Self> {
         crate::agent::AgentBuilder::new(self)
     }

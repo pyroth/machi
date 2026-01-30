@@ -20,7 +20,7 @@ pub struct ExponentialBackoff {
 
 impl ExponentialBackoff {
     /// Create a new exponential backoff retry policy
-    #[must_use] 
+    #[must_use]
     pub const fn new(
         start: Duration,
         factor: f64,
@@ -72,7 +72,7 @@ pub struct Constant {
 
 impl Constant {
     /// Create a new constant retry policy
-    #[must_use] 
+    #[must_use]
     pub const fn new(delay: Duration, max_retries: Option<usize>) -> Self {
         Self { delay, max_retries }
     }

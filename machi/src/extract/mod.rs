@@ -190,14 +190,14 @@ where
 
     /// Returns a reference to the inner agent.
     #[inline]
-    #[must_use] 
+    #[must_use]
     pub const fn get_inner(&self) -> &Agent<M> {
         &self.agent
     }
 
     /// Consumes the extractor and returns the inner agent.
     #[inline]
-    #[must_use] 
+    #[must_use]
     pub fn into_inner(self) -> Agent<M> {
         self.agent
     }

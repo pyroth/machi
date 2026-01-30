@@ -19,6 +19,10 @@ pub mod store;
 pub mod telemetry;
 pub mod tool;
 
+#[cfg(feature = "rmcp")]
+#[cfg_attr(docsrs, doc(cfg(feature = "rmcp")))]
+pub mod mcp;
+
 #[cfg(feature = "audio")]
 pub use modalities::audio::generation as audio_generation;
 #[cfg(feature = "image")]

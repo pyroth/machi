@@ -52,7 +52,7 @@ pub struct ToolSet {
 
 impl ToolSet {
     /// Create a new `ToolSet` from a list of tools
-    #[must_use] 
+    #[must_use]
     pub fn from_tools(tools: Vec<impl ToolDyn + 'static>) -> Self {
         let mut toolset = Self::default();
         for tool in tools {
@@ -61,7 +61,7 @@ impl ToolSet {
         toolset
     }
 
-    #[must_use] 
+    #[must_use]
     pub fn from_tools_boxed(tools: Vec<Box<dyn ToolDyn + 'static>>) -> Self {
         let mut toolset = Self::default();
         for tool in tools {
@@ -72,14 +72,14 @@ impl ToolSet {
 
     /// Create a toolset builder
     #[inline]
-    #[must_use] 
+    #[must_use]
     pub fn builder() -> ToolSetBuilder {
         ToolSetBuilder::default()
     }
 
     /// Check if the toolset contains a tool with the given name
     #[inline]
-    #[must_use] 
+    #[must_use]
     pub fn contains(&self, toolname: &str) -> bool {
         self.tools.contains_key(toolname)
     }

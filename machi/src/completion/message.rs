@@ -84,7 +84,7 @@ pub struct Reasoning {
 
 impl Reasoning {
     /// Create a new reasoning item from a single item
-    #[must_use] 
+    #[must_use]
     pub fn new(input: &str) -> Self {
         Self {
             id: None,
@@ -93,24 +93,24 @@ impl Reasoning {
         }
     }
 
-    #[must_use] 
+    #[must_use]
     pub fn optional_id(mut self, id: Option<String>) -> Self {
         self.id = id;
         self
     }
-    #[must_use] 
+    #[must_use]
     pub fn with_id(mut self, id: String) -> Self {
         self.id = Some(id);
         self
     }
 
-    #[must_use] 
+    #[must_use]
     pub fn with_signature(mut self, signature: Option<String>) -> Self {
         self.signature = signature;
         self
     }
 
-    #[must_use] 
+    #[must_use]
     pub const fn multi(input: Vec<String>) -> Self {
         Self {
             id: None,
@@ -158,7 +158,7 @@ pub struct ToolCall {
 }
 
 impl ToolCall {
-    #[must_use] 
+    #[must_use]
     pub const fn new(id: String, function: ToolFunction) -> Self {
         Self {
             id,
@@ -169,19 +169,19 @@ impl ToolCall {
         }
     }
 
-    #[must_use] 
+    #[must_use]
     pub fn with_call_id(mut self, call_id: String) -> Self {
         self.call_id = Some(call_id);
         self
     }
 
-    #[must_use] 
+    #[must_use]
     pub fn with_signature(mut self, signature: Option<String>) -> Self {
         self.signature = signature;
         self
     }
 
-    #[must_use] 
+    #[must_use]
     pub fn with_additional_params(mut self, additional_params: Option<serde_json::Value>) -> Self {
         self.additional_params = additional_params;
         self
@@ -196,7 +196,7 @@ pub struct ToolFunction {
 }
 
 impl ToolFunction {
-    #[must_use] 
+    #[must_use]
     pub const fn new(name: String, arguments: serde_json::Value) -> Self {
         Self { name, arguments }
     }
@@ -209,7 +209,7 @@ pub struct Text {
 }
 
 impl Text {
-    #[must_use] 
+    #[must_use]
     pub fn text(&self) -> &str {
         &self.text
     }
@@ -277,12 +277,12 @@ pub enum DocumentSourceKind {
 }
 
 impl DocumentSourceKind {
-    #[must_use] 
+    #[must_use]
     pub fn url(url: &str) -> Self {
         Self::Url(url.to_string())
     }
 
-    #[must_use] 
+    #[must_use]
     pub fn base64(base64_string: &str) -> Self {
         Self::Base64(base64_string.to_string())
     }
@@ -291,17 +291,17 @@ impl DocumentSourceKind {
         Self::Raw(bytes.into())
     }
 
-    #[must_use] 
+    #[must_use]
     pub fn string(input: &str) -> Self {
         Self::String(input.into())
     }
 
-    #[must_use] 
+    #[must_use]
     pub const fn unknown() -> Self {
         Self::Unknown
     }
 
-    #[must_use] 
+    #[must_use]
     pub fn try_into_inner(self) -> Option<String> {
         match self {
             Self::Url(s) | Self::Base64(s) => Some(s),
@@ -405,7 +405,7 @@ pub enum DocumentMediaType {
 }
 
 impl DocumentMediaType {
-    #[must_use] 
+    #[must_use]
     pub const fn is_code(&self) -> bool {
         matches!(self, Self::Javascript | Self::Python)
     }

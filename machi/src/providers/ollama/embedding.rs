@@ -7,12 +7,8 @@ use serde_json::json;
 
 use super::client::Client;
 
-// ---------- Embedding Constants ----------
-
 pub const ALL_MINILM: &str = "all-minilm";
 pub const NOMIC_EMBED_TEXT: &str = "nomic-embed-text";
-
-// ---------- Embedding Response ----------
 
 #[derive(Debug, Serialize, Deserialize)]
 pub struct EmbeddingResponse {
@@ -42,8 +38,6 @@ impl From<super::client::ApiResponse<EmbeddingResponse>>
         }
     }
 }
-
-// ---------- Embedding Model ----------
 
 #[derive(Clone)]
 pub struct EmbeddingModel<T = reqwest::Client> {
@@ -77,7 +71,8 @@ where
     type Client = Client<T>;
 
     fn make(client: &Self::Client, model: impl Into<String>, dims: Option<usize>) -> Self {
-        Self::new(client.clone(), model, dims.unwrap())
+        // Default to 768 dimensions (common for nomic-embed-text and similar models)
+        Self::new(client.clone(), model, dims.unwrap_or(768))
     }
 
     const MAX_DOCUMENTS: usize = 1024;

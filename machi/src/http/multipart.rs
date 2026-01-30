@@ -75,7 +75,7 @@ pub struct MultipartForm {
 
 impl MultipartForm {
     /// Create a new empty multipart form
-    #[must_use] 
+    #[must_use]
     pub fn new() -> Self {
         Self::default()
     }
@@ -113,7 +113,7 @@ impl MultipartForm {
     }
 
     /// Get the parts
-    #[must_use] 
+    #[must_use]
     pub fn parts(&self) -> &[Part] {
         &self.parts
     }
@@ -137,7 +137,7 @@ impl MultipartForm {
     }
 
     /// Encode the multipart form to bytes with the given boundary
-    #[must_use] 
+    #[must_use]
     pub fn encode(&self) -> (String, Bytes) {
         let boundary = self.get_boundary();
         let mut body = Vec::new();

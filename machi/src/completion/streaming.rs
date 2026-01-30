@@ -36,7 +36,7 @@ pub struct PauseControl {
 impl PauseControl {
     /// Creates a new pause control in the resumed state.
     #[inline]
-    #[must_use] 
+    #[must_use]
     pub fn new() -> Self {
         let (paused_tx, paused_rx) = watch::channel(false);
         Self {
@@ -59,7 +59,7 @@ impl PauseControl {
 
     /// Returns `true` if the stream is currently paused.
     #[inline]
-    #[must_use] 
+    #[must_use]
     pub fn is_paused(&self) -> bool {
         *self.paused_rx.borrow()
     }
@@ -125,7 +125,7 @@ pub struct RawStreamingToolCall {
 impl RawStreamingToolCall {
     /// Creates an empty tool call.
     #[inline]
-    #[must_use] 
+    #[must_use]
     pub const fn empty() -> Self {
         Self {
             id: String::new(),
@@ -139,7 +139,7 @@ impl RawStreamingToolCall {
 
     /// Creates a new tool call with the given id, name, and arguments.
     #[inline]
-    #[must_use] 
+    #[must_use]
     pub const fn new(id: String, name: String, arguments: serde_json::Value) -> Self {
         Self {
             id,
@@ -153,7 +153,7 @@ impl RawStreamingToolCall {
 
     /// Sets the call id for this tool call.
     #[inline]
-    #[must_use] 
+    #[must_use]
     pub fn with_call_id(mut self, call_id: String) -> Self {
         self.call_id = Some(call_id);
         self
@@ -161,7 +161,7 @@ impl RawStreamingToolCall {
 
     /// Sets the signature for this tool call.
     #[inline]
-    #[must_use] 
+    #[must_use]
     pub fn with_signature(mut self, signature: Option<String>) -> Self {
         self.signature = signature;
         self
@@ -169,7 +169,7 @@ impl RawStreamingToolCall {
 
     /// Sets additional parameters for this tool call.
     #[inline]
-    #[must_use] 
+    #[must_use]
     pub fn with_additional_params(mut self, additional_params: Option<serde_json::Value>) -> Self {
         self.additional_params = additional_params;
         self
@@ -225,7 +225,7 @@ impl<R> StreamingCompletionResponse<R>
 where
     R: Clone + Unpin + GetTokenUsage,
 {
-    #[must_use] 
+    #[must_use]
     pub fn stream(inner: StreamingResult<R>) -> Self {
         let (abort_handle, abort_registration) = AbortHandle::new_pair();
         let abortable_stream = Abortable::new(inner, abort_registration);
@@ -550,7 +550,7 @@ impl<R> StreamedAssistantContent<R>
 where
     R: Clone + Unpin,
 {
-    #[must_use] 
+    #[must_use]
     pub fn text(text: &str) -> Self {
         Self::Text(Text {
             text: text.to_string(),
@@ -570,7 +570,7 @@ pub enum StreamedUserContent {
 }
 
 impl StreamedUserContent {
-    #[must_use] 
+    #[must_use]
     pub const fn tool_result(tool_result: ToolResult) -> Self {
         Self::ToolResult(tool_result)
     }

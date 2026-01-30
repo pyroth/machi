@@ -73,8 +73,6 @@ impl ProviderClient for Client {
     }
 }
 
-// ---------- API Error and Response Structures ----------
-
 #[derive(Debug, serde::Deserialize)]
 pub(super) struct ApiErrorResponse {
     pub message: String,

@@ -28,7 +28,7 @@ pub struct VectorSearchRequest<F = Filter<serde_json::Value>> {
 
 impl<Filter> VectorSearchRequest<Filter> {
     /// Creates a [`VectorSearchRequestBuilder`] which you can use to instantiate this struct.
-    #[must_use] 
+    #[must_use]
     pub fn builder() -> VectorSearchRequestBuilder<Filter> {
         VectorSearchRequestBuilder::<Filter>::default()
     }
@@ -194,7 +194,7 @@ where
 
 impl Filter<serde_json::Value> {
     /// Tests whether a JSON value satisfies this filter.
-    #[must_use] 
+    #[must_use]
     pub fn satisfies(&self, value: &serde_json::Value) -> bool {
         use Filter::{And, Eq, Gt, Lt, Or};
         use serde_json::{

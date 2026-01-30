@@ -24,8 +24,8 @@ pub mod message;
 
 pub use client::*;
 pub use completion::{
-    CompletionModel, CompletionResponse, LLAMA3_2, LLAVA, MISTRAL, StreamingCompletionResponse,
-    ToolDefinition,
+    CompletionModel, CompletionResponse, LLAMA3_2, LLAVA, MISTRAL, QWEN3,
+    StreamingCompletionResponse, ToolDefinition,
 };
 pub use embedding::{ALL_MINILM, EmbeddingModel, EmbeddingResponse, NOMIC_EMBED_TEXT};
 pub use message::*;

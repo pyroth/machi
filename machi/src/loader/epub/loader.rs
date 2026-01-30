@@ -174,7 +174,7 @@ where
     ///     }
     /// }
     /// ```
-    #[must_use] 
+    #[must_use]
     pub fn read(self) -> EpubFileLoader<'a, Result<String, EpubLoaderError>, P> {
         EpubFileLoader {
             iterator: Box::new(self.iterator.map(|res| {
@@ -206,7 +206,7 @@ where
     ///     }
     /// }
     /// ```
-    #[must_use] 
+    #[must_use]
     pub fn read_with_path(
         self,
     ) -> EpubFileLoader<'a, Result<(PathBuf, String), EpubLoaderError>, P> {
@@ -268,7 +268,7 @@ impl<'a, P: TextProcessor> EpubFileLoader<'a, (PathBuf, EpubDoc<BufReader<File>>
     ///     println!("{:?}", result);
     /// }
     /// ```
-    #[must_use] 
+    #[must_use]
     pub fn by_chapter(self) -> EpubFileLoader<'a, ByChapter, P> {
         EpubFileLoader {
             iterator: Box::new(self.iterator.map(|doc| {
@@ -302,7 +302,7 @@ where
     ///     println!("{}", content)
     /// }
     /// ```
-    #[must_use] 
+    #[must_use]
     pub fn ignore_errors(self) -> EpubFileLoader<'a, (PathBuf, Vec<(usize, String)>), P> {
         EpubFileLoader {
             iterator: Box::new(self.iterator.map(|(path, chapters)| {

@@ -26,7 +26,7 @@ impl SubProvider {
     /// Get the chat completion endpoint for the `SubProvider`
     /// Required because Huggingface Inference requires the model
     /// in the url and in the request body.
-    #[must_use] 
+    #[must_use]
     pub fn completion_endpoint(&self, _model: &str) -> String {
         "v1/chat/completions".to_string()
     }
@@ -56,7 +56,7 @@ impl SubProvider {
         }
     }
 
-    #[must_use] 
+    #[must_use]
     pub fn model_identifier(&self, model: &str) -> String {
         match self {
             Self::Fireworks => format!("accounts/fireworks/models/{model}"),

@@ -189,9 +189,7 @@ impl From<UserContent> for message::UserContent {
     fn from(value: UserContent) -> Self {
         match value {
             UserContent::Text { text } => Self::text(text),
-            UserContent::ImageUrl { image_url } => {
-                Self::image_url(image_url.url, None, None)
-            }
+            UserContent::ImageUrl { image_url } => Self::image_url(image_url.url, None, None),
         }
     }
 }
@@ -274,7 +272,7 @@ where
 }
 
 impl Message {
-    #[must_use] 
+    #[must_use]
     pub fn system(content: &str) -> Self {
         Self::System {
             content: OneOrMany::one(SystemContent::Text {
@@ -569,17 +567,13 @@ impl TryFrom<CompletionResponse> for completion::CompletionResponse<CompletionRe
                     })
                     .collect::<Vec<_>>();
 
-                content.extend(
-                    tool_calls
-                        .iter()
-                        .map(|call| {
-                            completion::AssistantContent::tool_call(
-                                &call.id,
-                                &call.function.name,
-                                call.function.arguments.clone(),
-                            )
-                        }),
-                );
+                content.extend(tool_calls.iter().map(|call| {
+                    completion::AssistantContent::tool_call(
+                        &call.id,
+                        &call.function.name,
+                        call.function.arguments.clone(),
+                    )
+                }));
                 Ok(content)
             }
             _ => Err(CompletionError::ResponseError(

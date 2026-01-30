@@ -46,7 +46,7 @@ impl<D: Serialize + Eq> InMemoryVectorStore<D> {
     ///     .build();
     /// ```
     #[inline]
-    #[must_use] 
+    #[must_use]
     pub fn builder() -> InMemoryVectorStoreBuilder<D> {
         InMemoryVectorStoreBuilder::new()
     }
@@ -392,14 +392,14 @@ impl<D: Serialize> InMemoryVectorStore<D> {
 
     /// Returns the number of documents in the store.
     #[inline]
-    #[must_use] 
+    #[must_use]
     pub fn len(&self) -> usize {
         self.embeddings.len()
     }
 
     /// Returns `true` if the store contains no documents.
     #[inline]
-    #[must_use] 
+    #[must_use]
     pub fn is_empty(&self) -> bool {
         self.embeddings.is_empty()
     }

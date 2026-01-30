@@ -2,7 +2,7 @@ use std::{fs, path::PathBuf};
 
 use glob::glob;
 
-use super::errors::FileLoaderError;
+use super::error::FileLoaderError;
 
 pub(crate) trait Readable {
     fn read(self) -> Result<String, FileLoaderError>;
@@ -205,7 +205,7 @@ impl FileLoader<'_, Result<PathBuf, FileLoaderError>> {
 impl<'a> FileLoader<'a, Vec<u8>> {
     /// Ingest a byte array.
     #[inline]
-    #[must_use] 
+    #[must_use]
     pub fn from_bytes(bytes: Vec<u8>) -> Self {
         FileLoader {
             iterator: Box::new(vec![bytes].into_iter()),
@@ -214,7 +214,7 @@ impl<'a> FileLoader<'a, Vec<u8>> {
 
     /// Ingest multiple byte arrays.
     #[inline]
-    #[must_use] 
+    #[must_use]
     pub fn from_bytes_multi(bytes_vec: Vec<Vec<u8>>) -> Self {
         FileLoader {
             iterator: Box::new(bytes_vec.into_iter()),

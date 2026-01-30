@@ -15,7 +15,7 @@ impl Default for LineDecoder {
 
 impl LineDecoder {
     /// Create a new `LineDecoder`
-    #[must_use] 
+    #[must_use]
     pub const fn new() -> Self {
         Self {
             buffer: Vec::new(),
@@ -135,7 +135,7 @@ fn find_newline_index(buffer: &[u8], start_index: Option<usize>) -> Option<Newli
 }
 
 /// Find the index after a double newline pattern in the buffer
-#[must_use] 
+#[must_use]
 pub fn find_double_newline_index(buffer: &[u8]) -> isize {
     const NEWLINE: u8 = 0x0a; // \n
     const CARRIAGE: u8 = 0x0d; // \r
@@ -177,7 +177,7 @@ fn decode_text(bytes: &[u8]) -> String {
 }
 
 /// Decode multiple chunks of data, with an option to flush
-#[must_use] 
+#[must_use]
 pub fn decode_chunks(chunks: &[&[u8]], flush: bool) -> Vec<String> {
     let mut decoder = LineDecoder::new();
     let mut lines = Vec::new();

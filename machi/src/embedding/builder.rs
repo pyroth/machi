@@ -83,9 +83,7 @@ where
     /// Add multiple documents to be embedded to the builder. `documents` must be iterable
     /// with items that implement the [Embed] trait.
     pub fn documents(self, documents: impl IntoIterator<Item = T>) -> Result<Self, EmbedError> {
-        let builder = documents
-            .into_iter()
-            .try_fold(self, Self::document)?;
+        let builder = documents.into_iter().try_fold(self, Self::document)?;
 
         Ok(builder)
     }

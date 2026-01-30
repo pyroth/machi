@@ -15,7 +15,7 @@ pub struct LSH {
 
 impl LSH {
     /// Create a new LSH instance.
-    #[must_use] 
+    #[must_use]
     pub fn new(dim: usize, num_tables: usize, num_hyperplanes: usize) -> Self {
         let mut rng = Rng::new();
         let mut hyperplanes = Vec::new();
@@ -51,7 +51,7 @@ impl LSH {
     }
 
     /// Compute hash for a vector in a specific table
-    #[must_use] 
+    #[must_use]
     pub fn hash(&self, vector: &[f64], table_idx: usize) -> u64 {
         let mut hash = 0u64;
         let start = table_idx * self.num_hyperplanes;
@@ -88,7 +88,7 @@ pub struct LSHIndex {
 
 impl LSHIndex {
     /// Create a new `LSHIndex`.
-    #[must_use] 
+    #[must_use]
     pub fn new(dim: usize, num_tables: usize, num_hyperplanes: usize) -> Self {
         let lsh = LSH::new(dim, num_tables, num_hyperplanes);
         let tables = vec![HashMap::new(); num_tables];
@@ -108,7 +108,7 @@ impl LSHIndex {
     }
 
     /// Query for candidate document IDs
-    #[must_use] 
+    #[must_use]
     pub fn query(&self, embedding: &[f64]) -> Vec<String> {
         use std::collections::HashSet;
 

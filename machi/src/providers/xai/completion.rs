@@ -227,17 +227,13 @@ pub mod xai_api_types {
                         })
                         .collect::<Vec<_>>();
 
-                    content.extend(
-                        tool_calls
-                            .iter()
-                            .map(|call| {
-                                completion::AssistantContent::tool_call(
-                                    &call.id,
-                                    &call.function.name,
-                                    call.function.arguments.clone(),
-                                )
-                            }),
-                    );
+                    content.extend(tool_calls.iter().map(|call| {
+                        completion::AssistantContent::tool_call(
+                            &call.id,
+                            &call.function.name,
+                            call.function.arguments.clone(),
+                        )
+                    }));
                     Ok(content)
                 }
                 _ => Err(CompletionError::ResponseError(

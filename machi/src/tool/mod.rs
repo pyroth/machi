@@ -10,16 +10,11 @@
 //! and optionally `RAGged`.
 
 pub mod errors;
-#[cfg(feature = "rmcp")]
-#[cfg_attr(docsrs, doc(cfg(feature = "rmcp")))]
-pub mod mcp;
 pub mod server;
 pub mod toolset;
 pub mod traits;
 
 pub use errors::{ToolError, ToolSetError};
-#[cfg(feature = "rmcp")]
-pub use mcp::{McpTool, McpToolError};
 pub use toolset::{ToolSet, ToolSetBuilder};
 pub use traits::{Tool, ToolDyn, ToolEmbedding, ToolEmbeddingDyn};
 

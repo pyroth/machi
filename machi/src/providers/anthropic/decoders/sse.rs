@@ -46,7 +46,7 @@ impl Default for SSEDecoder {
 
 impl SSEDecoder {
     /// Create a new SSE decoder
-    #[must_use] 
+    #[must_use]
     pub const fn new() -> Self {
         Self {
             data: Vec::new(),

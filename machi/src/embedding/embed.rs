@@ -29,7 +29,7 @@ pub struct TextEmbedder {
 impl TextEmbedder {
     /// Creates a new empty `TextEmbedder`.
     #[inline]
-    #[must_use] 
+    #[must_use]
     pub fn new() -> Self {
         Self::default()
     }
@@ -42,14 +42,14 @@ impl TextEmbedder {
 
     /// Returns the number of texts accumulated.
     #[inline]
-    #[must_use] 
+    #[must_use]
     pub const fn len(&self) -> usize {
         self.texts.len()
     }
 
     /// Returns `true` if no texts have been accumulated.
     #[inline]
-    #[must_use] 
+    #[must_use]
     pub const fn is_empty(&self) -> bool {
         self.texts.is_empty()
     }

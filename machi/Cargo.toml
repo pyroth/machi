@@ -56,6 +56,7 @@ wasm-bindgen-futures = { workspace = true, optional = true }
 [dev-dependencies]
 anyhow.workspace = true
 assert_fs.workspace = true
+hyper-util.workspace = true
 serde_path_to_error.workspace = true
 tokio = { workspace = true, features = ["full"] }
 tokio-test.workspace = true

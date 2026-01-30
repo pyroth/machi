@@ -16,10 +16,10 @@
 //!
 //! Note: The `EpubFileLoader` requires the `epub` feature to be enabled in the `Cargo.toml` file.
 
-pub mod errors;
+pub mod error;
 pub mod file;
 
-pub use errors::FileLoaderError;
+pub use error::FileLoaderError;
 pub use file::FileLoader;
 
 #[cfg(feature = "pdf")]
@@ -27,7 +27,7 @@ pub use file::FileLoader;
 pub mod pdf;
 
 #[cfg(feature = "pdf")]
-pub use errors::PdfLoaderError;
+pub use error::PdfLoaderError;
 #[cfg(feature = "pdf")]
 pub use pdf::PdfFileLoader;
 

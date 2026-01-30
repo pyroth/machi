@@ -24,7 +24,7 @@ impl Default for ToolServer {
 }
 
 impl ToolServer {
-    #[must_use] 
+    #[must_use]
     pub fn new() -> Self {
         Self {
             static_tool_names: Vec::new(),
@@ -65,10 +65,9 @@ impl ToolServer {
     #[cfg(feature = "rmcp")]
     #[must_use]
     pub fn rmcp_tool(mut self, tool: rmcp::model::Tool, client: rmcp::service::ServerSink) -> Self {
-        use crate::tool::mcp::McpTool;
+        use crate::mcp::McpTool;
         let toolname = tool.name.clone();
-        self.toolset
-            .add_tool(McpTool::from_mcp_server(tool, client));
+        self.toolset.add_tool(McpTool::new(tool, client));
         self.static_tool_names.push(toolname.to_string());
         self
     }
@@ -87,7 +86,7 @@ impl ToolServer {
         self
     }
 
-    #[must_use] 
+    #[must_use]
     pub fn run(mut self) -> ToolServerHandle {
         let (tx, mut rx) = tokio::sync::mpsc::channel(1000);
 

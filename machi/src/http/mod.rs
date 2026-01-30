@@ -10,14 +10,14 @@ pub use http::{
 };
 use reqwest::Body;
 
-pub mod errors;
+pub mod error;
 pub mod multipart;
 pub mod retry;
 pub mod sse;
 pub mod traits;
 
-pub(crate) use errors::instance_error;
-pub use errors::{Error, Result};
+pub(crate) use error::instance_error;
+pub use error::{Error, Result};
 pub use multipart::MultipartForm;
 pub use traits::{HttpClientExt, RetryPolicy};
 
