@@ -5,6 +5,7 @@
 
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
+use std::fmt::Write;
 
 /// Role of a message in a conversation.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Serialize, Deserialize)]
@@ -280,10 +281,11 @@ impl ChatMessage {
 
         if let Some(tool_calls) = &self.tool_calls {
             for call in tool_calls {
-                result.push_str(&format!(
+                let _ = write!(
+                    result,
                     "\n[Tool Call: {} with args: {}]",
                     call.function.name, call.function.arguments
-                ));
+                );
             }
         }
 

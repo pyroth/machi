@@ -120,11 +120,13 @@ impl fmt::Debug for CallbackManager {
 }
 
 /// A simple logging callback that prints events to stdout.
+#[allow(clippy::print_stdout)]
 pub fn logging_callback(event: &StepEvent) {
     println!("[Agent] {event}");
 }
 
 /// Create a callback that logs events with a custom prefix.
+#[allow(clippy::print_stdout)]
 pub fn prefixed_logging_callback(prefix: String) -> impl Fn(&StepEvent) + Send + Sync {
     move |event| {
         println!("[{prefix}] {event}");

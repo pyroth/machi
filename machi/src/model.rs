@@ -263,7 +263,7 @@ impl OpenAIModel {
     fn build_request_body(&self, messages: &[ChatMessage], options: &GenerateOptions) -> Value {
         let mut body = serde_json::json!({
             "model": self.model_id,
-            "messages": self.convert_messages(messages),
+            "messages": Self::convert_messages(messages),
         });
 
         if let Some(temp) = options.temperature {
@@ -295,15 +295,15 @@ impl OpenAIModel {
     }
 
     /// Convert `ChatMessage` to `OpenAI` API format.
-    fn convert_messages(&self, messages: &[ChatMessage]) -> Vec<Value> {
+    fn convert_messages(messages: &[ChatMessage]) -> Vec<Value> {
         messages
             .iter()
             .map(|msg| {
                 let role = match msg.role {
                     crate::message::MessageRole::System => "system",
                     crate::message::MessageRole::User => "user",
-                    crate::message::MessageRole::Assistant => "assistant",
-                    crate::message::MessageRole::ToolCall => "assistant",
+                    crate::message::MessageRole::Assistant
+                    | crate::message::MessageRole::ToolCall => "assistant",
                     crate::message::MessageRole::ToolResponse => "tool",
                 };
 

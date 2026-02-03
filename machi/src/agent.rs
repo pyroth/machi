@@ -234,7 +234,10 @@ impl Agent for ToolCallingAgent {
 
         // Set up system prompt
         self.system_prompt = self.initialize_system_prompt();
-        self.memory.system_prompt.system_prompt = self.system_prompt.clone();
+        self.memory
+            .system_prompt
+            .system_prompt
+            .clone_from(&self.system_prompt);
 
         // Store task
         let task_with_args = if self.state.is_empty() {
@@ -496,7 +499,7 @@ impl CodeAgent {
                 format!(
                     "def {}({}) -> {}:\n    \"\"\"{}\"\"\"",
                     t.name,
-                    self.format_params(&t.parameters),
+                    Self::format_params(&t.parameters),
                     "Any",
                     t.description
                 )
@@ -529,7 +532,7 @@ Code:
     }
 
     /// Format parameters for display.
-    fn format_params(&self, params: &Value) -> String {
+    fn format_params(params: &Value) -> String {
         if let Some(props) = params.get("properties").and_then(|p| p.as_object()) {
             props
                 .keys()
@@ -542,7 +545,7 @@ Code:
     }
 
     /// Extract code from model output.
-    fn extract_code(&self, output: &str) -> Option<String> {
+    fn extract_code(output: &str) -> Option<String> {
         // Look for code blocks
         let code_pattern: Regex = Regex::new(r"```(?:python)?\s*\n([\s\S]*?)\n```").ok()?;
         let captures = code_pattern.captures(output)?;
@@ -564,15 +567,14 @@ Code:
         action_step.model_output = Some(output.clone());
 
         // Extract code
-        if let Some(code) = self.extract_code(&output) {
+        if let Some(code) = Self::extract_code(&output) {
             action_step.code_action = Some(code.clone());
 
             // Check for final_answer call
             if code.contains("final_answer(") {
                 // Simple extraction of final answer
                 let answer_pattern: Regex = Regex::new(r#"final_answer\([\"'](.+?)[\"']\)"#)
-                    .ok()
-                    .unwrap();
+                    .expect("Invalid regex pattern");
                 if let Some(captures) = answer_pattern.captures(&code)
                     && let Some(answer) = captures.get(1)
                 {
@@ -601,7 +603,10 @@ impl Agent for CodeAgent {
         self.interrupt_flag.store(false, Ordering::SeqCst);
 
         self.system_prompt = self.initialize_system_prompt();
-        self.memory.system_prompt.system_prompt = self.system_prompt.clone();
+        self.memory
+            .system_prompt
+            .system_prompt
+            .clone_from(&self.system_prompt);
 
         let task_with_args = if args.is_empty() {
             task.to_string()
