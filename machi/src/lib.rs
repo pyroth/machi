@@ -15,10 +15,15 @@
 //!
 //! #[tokio::main]
 //! async fn main() {
-//!     let model = OpenAIModel::new("gpt-4");
-//!     let agent = ToolCallingAgent::builder()
+//!     // Use OpenAI (requires OPENAI_API_KEY env var)
+//!     let model = OpenAIClient::from_env().completion_model("gpt-4o");
+//!
+//!     // Or use Ollama (local, no API key needed)
+//!     // let model = OllamaClient::new().completion_model("qwen3");
+//!
+//!     let mut agent = ToolCallingAgent::builder()
 //!         .model(model)
-//!         .tools(vec![Box::new(Add)])
+//!         .tool(Box::new(Add))
 //!         .build();
 //!
 //!     let result = agent.run("What is 2 + 3?").await;
@@ -30,7 +35,6 @@ pub mod callback;
 pub mod error;
 pub mod memory;
 pub mod message;
-pub mod model;
 pub mod prompts;
 pub mod providers;
 pub mod tool;
@@ -56,6 +60,7 @@ pub mod prelude {
             FromEnv, GenerateOptions, Model, ModelResponse, ModelStream, TokenUsage,
             model_requires_max_completion_tokens, model_supports_stop_parameter,
         },
+        mock::MockModel,
         ollama::{
             CompletionModel as OllamaModel, DEEPSEEK_R1, LLAMA3_2, LLAMA3_3, MISTRAL, OllamaClient,
             QWEN2_5,

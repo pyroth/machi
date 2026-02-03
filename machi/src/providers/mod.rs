@@ -31,10 +31,12 @@
 
 pub mod anthropic;
 pub mod common;
+pub mod mock;
 pub mod ollama;
 pub mod openai;
 
 pub use common::*;
+pub use mock::MockModel;
 
 // Re-export main client types for convenience
 pub use anthropic::AnthropicClient;
