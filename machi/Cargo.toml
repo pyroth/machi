@@ -16,6 +16,7 @@ futures.workspace = true
 machi-derive.workspace = true
 regex.workspace = true
 reqwest.workspace = true
+rmcp.workspace = true
 serde.workspace = true
 serde_json.workspace = true
 serde_yaml.workspace = true

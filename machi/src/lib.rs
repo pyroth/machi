@@ -33,6 +33,7 @@
 pub mod agent;
 pub mod callback;
 pub mod error;
+pub mod mcp;
 pub mod memory;
 pub mod message;
 pub mod prompts;
@@ -45,6 +46,7 @@ pub mod prelude {
     pub use crate::agent::{Agent, AgentBuilder, AgentConfig};
     pub use crate::callback::{CallbackManager, StepEvent};
     pub use crate::error::{AgentError, Result};
+    pub use crate::mcp::McpClient;
     pub use crate::memory::{
         ActionStep, AgentMemory, MemoryStep, PlanningStep, TaskStep, ToolCall,
     };

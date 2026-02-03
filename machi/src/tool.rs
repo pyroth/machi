@@ -56,6 +56,20 @@ impl From<serde_json::Error> for ToolError {
     }
 }
 
+impl ToolError {
+    /// Create an execution error.
+    #[must_use]
+    pub fn execution(msg: impl Into<String>) -> Self {
+        Self::ExecutionError(msg.into())
+    }
+
+    /// Create an invalid arguments error.
+    #[must_use]
+    pub fn invalid_args(msg: impl Into<String>) -> Self {
+        Self::InvalidArguments(msg.into())
+    }
+}
+
 /// Definition of a tool for LLM function calling.
 #[derive(Debug, Clone, Serialize, Deserialize)]
 #[non_exhaustive]
@@ -194,7 +208,7 @@ pub type BoxedTool = Box<dyn DynTool>;
 #[async_trait]
 pub trait DynTool: Send + Sync {
     /// Get the name of the tool.
-    fn name(&self) -> &'static str;
+    fn name(&self) -> &str;
 
     /// Get the description of the tool.
     fn description(&self) -> String;
@@ -211,7 +225,7 @@ impl<T: Tool + 'static> DynTool for T
 where
     T::Output: 'static,
 {
-    fn name(&self) -> &'static str {
+    fn name(&self) -> &str {
         Tool::name(self)
     }
 
