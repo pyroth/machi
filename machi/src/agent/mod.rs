@@ -44,7 +44,7 @@ use tracing::{info, instrument, warn};
 use crate::{
     callback::{CallbackContext, CallbackRegistry},
     error::{AgentError, Result},
-    managed_agent::{ManagedAgent, ManagedAgentRegistry},
+    managed::{ManagedAgent, ManagedAgentRegistry},
     memory::{AgentMemory, FinalAnswerStep, TaskStep, Timing},
     multimodal::AgentImage,
     prompts::{PromptEngine, PromptTemplates},

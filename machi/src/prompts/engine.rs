@@ -126,7 +126,7 @@ impl TemplateContext {
     #[must_use]
     pub fn with_managed_agents(
         mut self,
-        agents: &HashMap<String, crate::managed_agent::ManagedAgentInfo>,
+        agents: &HashMap<String, crate::managed::ManagedAgentInfo>,
     ) -> Self {
         self.managed_agents = agents
             .values()

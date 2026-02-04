@@ -3,7 +3,7 @@
 use crate::{
     callback::CallbackRegistry,
     error::{AgentError, Result},
-    managed_agent::{BoxedManagedAgent, ManagedAgentRegistry},
+    managed::{BoxedManagedAgent, ManagedAgentRegistry},
     memory::AgentMemory,
     prompts::{PromptEngine, PromptTemplates},
     providers::common::Model,

@@ -2,11 +2,36 @@
 //!
 //! Tools are the primary way agents interact with the world. Each tool
 //! represents a specific capability that an agent can invoke.
+//!
+//! # Result Type
+//!
+//! Tool functions should return `ToolResult<T>` for ergonomic error handling:
+//!
+//! ```rust,ignore
+//! use machi::prelude::*;
+//!
+//! #[machi::tool]
+//! async fn add(a: i64, b: i64) -> ToolResult<i64> {
+//!     Ok(a + b)
+//! }
+//! ```
 
 use async_trait::async_trait;
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
 use std::fmt;
+
+/// A type alias for `Result<T, ToolError>`.
+///
+/// This provides ergonomic error handling for tool functions:
+///
+/// ```rust,ignore
+/// #[machi::tool]
+/// async fn my_tool(input: String) -> ToolResult<String> {
+///     Ok(input.to_uppercase())
+/// }
+/// ```
+pub type ToolResult<T> = Result<T, ToolError>;
 
 /// Error type for tool execution failures.
 #[derive(Debug, Clone)]

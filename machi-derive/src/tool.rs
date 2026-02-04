@@ -412,23 +412,26 @@ const RUST_KEYWORDS: &[&str] = &[
 fn validate_tool_function(input_fn: &ItemFn) -> syn::Result<()> {
     let fn_name = &input_fn.sig.ident;
 
-    // Check return type is Result<T, E>
+    // Check return type is Result<T, E> or ToolResult<T>
     match &input_fn.sig.output {
         ReturnType::Default => {
             return Err(syn::Error::new_spanned(
                 fn_name,
-                "tool function must return Result<T, ToolError>",
+                "tool function must return Result<T, ToolError> or ToolResult<T>",
             ));
         }
         ReturnType::Type(_, ty) => {
             if let Type::Path(type_path) = &**ty
                 && let Some(segment) = type_path.path.segments.last()
-                && segment.ident != "Result"
             {
-                return Err(syn::Error::new_spanned(
-                    ty,
-                    "tool function must return Result<T, E>",
-                ));
+                let ident = &segment.ident;
+                // Accept both Result<T, E> and ToolResult<T>
+                if ident != "Result" && ident != "ToolResult" {
+                    return Err(syn::Error::new_spanned(
+                        ty,
+                        "tool function must return Result<T, ToolError> or ToolResult<T>",
+                    ));
+                }
             }
         }
     }
@@ -451,18 +454,27 @@ fn validate_tool_function(input_fn: &ItemFn) -> syn::Result<()> {
     Ok(())
 }
 
-/// Extract Output and Error types from Result<T, E>.
+/// Extract Output and Error types from Result<T, E> or ToolResult<T>.
 fn extract_result_types(return_type: &ReturnType) -> (TokenStream2, TokenStream2) {
     if let ReturnType::Type(_, ty) = return_type {
         if let Type::Path(type_path) = &**ty
             && let Some(segment) = type_path.path.segments.last()
-            && segment.ident == "Result"
             && let PathArguments::AngleBracketed(args) = &segment.arguments
-            && args.args.len() == 2
         {
-            let output = args.args.first().expect("output type");
-            let error = args.args.last().expect("error type");
-            return (quote!(#output), quote!(#error));
+            let ident = segment.ident.to_string();
+
+            // Handle ToolResult<T> - single generic parameter, error is always ToolError
+            if ident == "ToolResult" && args.args.len() == 1 {
+                let output = args.args.first().expect("output type");
+                return (quote!(#output), quote!(::machi::tool::ToolError));
+            }
+
+            // Handle Result<T, E> - two generic parameters
+            if ident == "Result" && args.args.len() == 2 {
+                let output = args.args.first().expect("output type");
+                let error = args.args.last().expect("error type");
+                return (quote!(#output), quote!(#error));
+            }
         }
         return (quote!(#ty), quote!(::machi::tool::ToolError));
     }

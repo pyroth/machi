@@ -33,7 +33,7 @@
 pub mod agent;
 pub mod callback;
 pub mod error;
-pub mod managed_agent;
+pub mod managed;
 pub mod mcp;
 pub mod memory;
 pub mod message;
@@ -69,7 +69,7 @@ pub mod prelude {
         tracing_handler,
     };
     pub use crate::error::{AgentError, Result};
-    pub use crate::managed_agent::{
+    pub use crate::managed::{
         BoxedManagedAgent, ManagedAgent, ManagedAgentArgs, ManagedAgentInfo, ManagedAgentRegistry,
         ManagedAgentTool,
     };
@@ -101,7 +101,9 @@ pub mod prelude {
         },
     };
     pub use crate::telemetry::{RunMetrics, Telemetry};
-    pub use crate::tool::{BoxedTool, DynTool, Tool, ToolBox, ToolDefinition, ToolError};
+    pub use crate::tool::{
+        BoxedTool, DynTool, Tool, ToolBox, ToolDefinition, ToolError, ToolResult,
+    };
     pub use crate::tools::{FinalAnswerTool, UserInputTool, VisitWebpageTool, WebSearchTool};
 
     // Re-export derive macro

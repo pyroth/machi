@@ -11,13 +11,13 @@ use machi::prelude::*;
 
 /// Adds two numbers.
 #[machi::tool]
-async fn add(a: i64, b: i64) -> std::result::Result<i64, ToolError> {
+async fn add(a: i64, b: i64) -> ToolResult<i64> {
     Ok(a + b)
 }
 
 /// Multiplies two numbers.
 #[machi::tool]
-async fn multiply(a: i64, b: i64) -> std::result::Result<i64, ToolError> {
+async fn multiply(a: i64, b: i64) -> ToolResult<i64> {
     Ok(a * b)
 }
 
