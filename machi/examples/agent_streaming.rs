@@ -88,6 +88,8 @@ async fn main() -> std::result::Result<(), Box<dyn std::error::Error>> {
                 Ok(StreamEvent::TokenUsage(usage)) => {
                     println!("\n[Tokens: {} total]", usage.total());
                 }
+                // Handle future StreamEvent variants (non_exhaustive)
+                Ok(_) => {}
                 Err(e) => {
                     eprintln!("\n[Stream error] {e}");
                 }

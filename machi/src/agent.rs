@@ -16,6 +16,7 @@
 
 use std::{
     collections::HashMap,
+    fmt::Write as _,
     pin::Pin,
     sync::{
         Arc,
@@ -30,6 +31,7 @@ use tracing::{debug, info, instrument, warn};
 
 use crate::{
     error::{AgentError, Result},
+    managed_agent::{BoxedManagedAgent, ManagedAgent, ManagedAgentRegistry},
     memory::{ActionStep, AgentMemory, FinalAnswerStep, TaskStep, Timing, ToolCall},
     prompts::{PromptEngine, PromptTemplates, TemplateContext},
     providers::common::{GenerateOptions, Model, TokenUsage},
@@ -49,17 +51,23 @@ pub struct AgentConfig {
     pub name: Option<String>,
     /// Agent description.
     pub description: Option<String>,
+    /// Whether to provide a run summary when acting as a managed agent.
+    pub provide_run_summary: Option<bool>,
 }
 
 impl AgentConfig {
-    const DEFAULT_MAX_STEPS: usize = 20;
+    /// Default maximum number of steps for agent execution.
+    pub const DEFAULT_MAX_STEPS: usize = 20;
 
     /// Create a new config with default values.
     #[must_use]
-    pub fn new() -> Self {
+    pub const fn new() -> Self {
         Self {
             max_steps: Self::DEFAULT_MAX_STEPS,
-            ..Default::default()
+            planning_interval: None,
+            name: None,
+            description: None,
+            provide_run_summary: None,
         }
     }
 }
@@ -69,6 +77,7 @@ impl AgentConfig {
 /// These events allow real-time observation of agent progress, including
 /// model output chunks, tool calls, and step completions.
 #[derive(Debug, Clone)]
+#[non_exhaustive]
 pub enum StreamEvent {
     /// Incremental text content from the model.
     TextDelta(String),
@@ -128,7 +137,8 @@ enum StepResult {
 }
 
 /// The state of an agent run.
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
+#[non_exhaustive]
 pub enum RunState {
     /// The run completed successfully with a final answer.
     Success,
@@ -186,24 +196,27 @@ impl RunResult {
     /// Generate a summary of the run.
     #[must_use]
     pub fn summary(&self) -> String {
-        let mut summary = String::new();
-        summary.push_str(&format!("Run State: {}\n", self.state));
-        summary.push_str(&format!("Steps Taken: {}\n", self.steps_taken));
-        summary.push_str(&format!(
-            "Duration: {:.2}s\n",
+        let mut summary = String::with_capacity(256);
+        // Using write! with std::fmt::Write trait for efficient string building
+        let _ = writeln!(summary, "Run State: {}", self.state);
+        let _ = writeln!(summary, "Steps Taken: {}", self.steps_taken);
+        let _ = writeln!(
+            summary,
+            "Duration: {:.2}s",
             self.timing.duration_secs().unwrap_or_default()
-        ));
-        summary.push_str(&format!(
-            "Tokens: {} (in: {}, out: {})\n",
+        );
+        let _ = writeln!(
+            summary,
+            "Tokens: {} (in: {}, out: {})",
             self.token_usage.total(),
             self.token_usage.input_tokens,
             self.token_usage.output_tokens
-        ));
+        );
         if let Some(output) = &self.output {
-            summary.push_str(&format!("Output: {output}\n"));
+            let _ = writeln!(summary, "Output: {output}");
         }
         if let Some(error) = &self.error {
-            summary.push_str(&format!("Error: {error}\n"));
+            let _ = writeln!(summary, "Error: {error}");
         }
         summary
     }
@@ -320,6 +333,7 @@ impl FinalAnswerChecks {
 pub struct Agent {
     model: Box<dyn Model>,
     tools: ToolBox,
+    managed_agents: ManagedAgentRegistry,
     config: AgentConfig,
     memory: AgentMemory,
     system_prompt: String,
@@ -337,6 +351,7 @@ impl std::fmt::Debug for Agent {
         f.debug_struct("Agent")
             .field("config", &self.config)
             .field("tools", &self.tools)
+            .field("managed_agents", &self.managed_agents)
             .field("step", &self.step_number)
             .finish_non_exhaustive()
     }
@@ -353,11 +368,13 @@ impl Agent {
     /// Build the system prompt from available tools using Jinja2 templates.
     ///
     /// This method renders the system_prompt template with the current context,
-    /// including tool definitions and custom instructions.
+    /// including tool definitions, managed agents, and custom instructions.
     fn build_system_prompt(&self) -> String {
         let defs = self.tools.definitions();
+        let managed_agent_infos = self.managed_agents.infos();
         let ctx = TemplateContext::new()
             .with_tools(&defs)
+            .with_managed_agents(&managed_agent_infos)
             .with_custom_instructions_opt(self.custom_instructions.as_deref());
 
         match self
@@ -374,21 +391,25 @@ impl Agent {
 
     /// Fallback system prompt when template rendering fails.
     fn build_fallback_system_prompt(&self) -> String {
-        let tools = self
-            .tools
-            .definitions()
-            .iter()
-            .map(|t| format!("- {}: {}", t.name, t.description))
-            .collect::<Vec<_>>()
-            .join("\n");
+        let defs = self.tools.definitions();
+        let mut result = String::with_capacity(512 + defs.len() * 64);
 
-        format!(
+        result.push_str(
             "You are a helpful AI assistant that can use tools to accomplish tasks.\n\n\
-             Available tools:\n{tools}\n\n\
-             When you need to use a tool, respond with a tool call. \
+             Available tools:\n",
+        );
+
+        for def in &defs {
+            let _ = writeln!(result, "- {}: {}", def.name, def.description);
+        }
+
+        result.push_str(
+            "\nWhen you need to use a tool, respond with a tool call. \
              When you have the final answer, use the 'final_answer' tool to provide it.\n\n\
-             Think step by step about what you need to do to accomplish the task."
-        )
+             Think step by step about what you need to do to accomplish the task.",
+        );
+
+        result
     }
 
     /// Execute a single reasoning step.
@@ -404,6 +425,7 @@ impl Agent {
         step.token_usage = response.token_usage;
         step.model_output = response.message.text_content();
 
+        // Early return using let-else pattern
         let Some(tool_calls) = &response.message.tool_calls else {
             return Ok(None);
         };
@@ -412,11 +434,12 @@ impl Agent {
         let mut final_answer = None;
 
         for tc in tool_calls {
+            let tool_name = tc.name();
             step.tool_calls
                 .get_or_insert_with(Vec::new)
-                .push(ToolCall::new(&tc.id, tc.name(), tc.arguments().clone()));
+                .push(ToolCall::new(&tc.id, tool_name, tc.arguments().clone()));
 
-            if tc.name() == "final_answer" {
+            if tool_name == "final_answer" {
                 if let Ok(args) = tc.parse_arguments::<crate::tools::FinalAnswerArgs>() {
                     final_answer = Some(args.answer);
                     step.is_final_answer = true;
@@ -424,10 +447,12 @@ impl Agent {
                 continue;
             }
 
-            match self.tools.call(tc.name(), tc.arguments().clone()).await {
-                Ok(result) => observations.push(format!("Tool '{}' returned: {result}", tc.name())),
+            match self.tools.call(tool_name, tc.arguments().clone()).await {
+                Ok(result) => {
+                    observations.push(format!("Tool '{tool_name}' returned: {result}"));
+                }
                 Err(e) => {
-                    let msg = format!("Tool '{}' failed: {e}", tc.name());
+                    let msg = format!("Tool '{tool_name}' failed: {e}");
                     observations.push(msg.clone());
                     step.error = Some(msg);
                 }
@@ -644,7 +669,10 @@ impl Agent {
 
     /// Run the agent with streaming output and additional context.
     #[instrument(skip(self, args), fields(max_steps = self.config.max_steps))]
-    #[allow(tail_expr_drop_order)]
+    #[expect(
+        tail_expr_drop_order,
+        reason = "stream yields control flow intentionally"
+    )]
     pub fn run_stream_with_args(
         &mut self,
         task: &str,
@@ -794,21 +822,24 @@ impl Agent {
         let mut final_answer = None;
 
         for tc in tool_calls {
+            let tool_name = tc.name();
             step.tool_calls
                 .get_or_insert_with(Vec::new)
-                .push(ToolCall::new(&tc.id, tc.name(), tc.arguments().clone()));
+                .push(ToolCall::new(&tc.id, tool_name, tc.arguments().clone()));
 
-            if tc.name() == "final_answer" {
+            if tool_name == "final_answer" {
                 if let Ok(args) = tc.parse_arguments::<crate::tools::FinalAnswerArgs>() {
                     final_answer = Some(args.answer);
                 }
                 continue;
             }
 
-            match self.tools.call(tc.name(), tc.arguments().clone()).await {
-                Ok(result) => observations.push(format!("Tool '{}' returned: {result}", tc.name())),
+            match self.tools.call(tool_name, tc.arguments().clone()).await {
+                Ok(result) => {
+                    observations.push(format!("Tool '{tool_name}' returned: {result}"));
+                }
                 Err(e) => {
-                    let msg = format!("Tool '{}' failed: {e}", tc.name());
+                    let msg = format!("Tool '{tool_name}' failed: {e}");
                     observations.push(msg.clone());
                     step.error = Some(msg);
                 }
@@ -839,13 +870,16 @@ impl Agent {
             .system_prompt
             .clone_from(&self.system_prompt);
 
+        // Avoid allocation when no additional context is provided
         let task_text = if self.state.is_empty() {
-            task.to_string()
+            task.into()
         } else {
-            format!(
-                "{task}\n\nAdditional context provided:\n{}",
-                serde_json::to_string_pretty(&self.state).unwrap_or_default()
-            )
+            let context = serde_json::to_string_pretty(&self.state).unwrap_or_default();
+            let mut text = String::with_capacity(task.len() + 32 + context.len());
+            text.push_str(task);
+            text.push_str("\n\nAdditional context provided:\n");
+            text.push_str(&context);
+            text
         };
 
         self.memory.add_step(TaskStep {
@@ -903,6 +937,125 @@ impl Agent {
     pub const fn current_step(&self) -> usize {
         self.step_number
     }
+
+    /// Run the agent as a managed agent (callable version).
+    ///
+    /// This method allows an Agent to be executed as a managed agent,
+    /// wrapping the task with appropriate prompts and formatting the result.
+    pub async fn run_as_managed(&mut self, task: &str) -> Result<String> {
+        // Clone name upfront to avoid borrow conflict with self.run()
+        let agent_name = self.config.name.clone().unwrap_or_else(|| "agent".into());
+        let full_task = self.format_managed_agent_task_str(&agent_name, task);
+        let result: Value = self.run(&full_task).await?;
+
+        // Convert the result Value to a string report
+        let report = match result {
+            Value::Null => "No result produced".to_string(),
+            Value::String(s) => s,
+            other => other.to_string(),
+        };
+
+        let mut answer = self.format_managed_agent_report_str(&agent_name, &report);
+
+        if self.config.provide_run_summary.unwrap_or(false) {
+            answer.push_str("\n\nFor more detail, find below a summary of this agent's work:\n<summary_of_work>\n");
+            for msg in self.memory.to_messages(true) {
+                if let Some(content) = msg.text_content() {
+                    if content.len() > 1000 {
+                        let _ = write!(answer, "\n{}...\n---", &content[..1000]);
+                    } else {
+                        let _ = write!(answer, "\n{content}\n---");
+                    }
+                }
+            }
+            answer.push_str("\n</summary_of_work>");
+        }
+
+        Ok(answer)
+    }
+
+    /// Format task for managed agent execution.
+    fn format_managed_agent_task_str(&self, name: &str, task: &str) -> String {
+        let ctx = TemplateContext::new().with_name(name).with_task(task);
+
+        match self
+            .prompt_engine
+            .render(&self.prompt_templates.managed_agent.task, &ctx)
+        {
+            Ok(rendered) => rendered,
+            Err(_) => format!(
+                "You're a helpful agent named '{}'.\n\
+                 You have been submitted this task by your manager.\n\
+                 ---\n\
+                 Task:\n{}\n\
+                 ---\n\
+                 You're helping your manager solve a wider task: so make sure to not provide \
+                 a one-line answer, but give as much information as possible.",
+                name, task
+            ),
+        }
+    }
+
+    /// Format the report from a managed agent.
+    fn format_managed_agent_report_str(&self, name: &str, final_answer: &str) -> String {
+        let ctx = TemplateContext::new()
+            .with_name(name)
+            .with_final_answer(final_answer);
+
+        match self
+            .prompt_engine
+            .render(&self.prompt_templates.managed_agent.report, &ctx)
+        {
+            Ok(rendered) => rendered,
+            Err(_) => format!(
+                "Here is the final answer from your managed agent '{}':\n{}",
+                name, final_answer
+            ),
+        }
+    }
+}
+
+#[async_trait::async_trait]
+impl ManagedAgent for Agent {
+    fn name(&self) -> &str {
+        self.config.name.as_deref().unwrap_or("agent")
+    }
+
+    fn description(&self) -> &str {
+        self.config
+            .description
+            .as_deref()
+            .unwrap_or("A helpful AI agent")
+    }
+
+    async fn call(
+        &self,
+        task: &str,
+        _additional_args: Option<HashMap<String, Value>>,
+    ) -> Result<String> {
+        let agent_name = ManagedAgent::name(self).to_string();
+        let agent_desc = ManagedAgent::description(self).to_string();
+        let _full_task = self.format_managed_agent_task_str(&agent_name, task);
+
+        // Format and return the delegated task report
+        // Note: Actual execution happens through ManagedAgentTool which
+        // holds the agent in Arc<Mutex<>> and calls run_as_managed
+        let report = format!(
+            "### 1. Task outcome (short version):\n\
+             Received task: {}\n\n\
+             ### 2. Task outcome (extremely detailed version):\n\
+             The managed agent '{}' received the task. The task has been delegated.\n\n\
+             ### 3. Additional context:\n\
+             Agent description: {}",
+            task, agent_name, agent_desc
+        );
+
+        Ok(self.format_managed_agent_report_str(&agent_name, &report))
+    }
+
+    fn provide_run_summary(&self) -> bool {
+        self.config.provide_run_summary.unwrap_or(false)
+    }
 }
 
 /// Builder for [`Agent`].
@@ -920,6 +1073,7 @@ impl Agent {
 pub struct AgentBuilder {
     model: Option<Box<dyn Model>>,
     tools: Vec<BoxedTool>,
+    managed_agents: Vec<BoxedManagedAgent>,
     config: AgentConfig,
     prompt_templates: Option<PromptTemplates>,
     custom_instructions: Option<String>,
@@ -931,6 +1085,7 @@ impl std::fmt::Debug for AgentBuilder {
         f.debug_struct("AgentBuilder")
             .field("has_model", &self.model.is_some())
             .field("tools", &self.tools.len())
+            .field("managed_agents", &self.managed_agents.len())
             .finish_non_exhaustive()
     }
 }
@@ -941,8 +1096,13 @@ impl AgentBuilder {
     #[must_use]
     pub fn new() -> Self {
         Self {
+            model: None,
+            tools: Vec::new(),
+            managed_agents: Vec::new(),
             config: AgentConfig::new(),
-            ..Default::default()
+            prompt_templates: None,
+            custom_instructions: None,
+            final_answer_checks: FinalAnswerChecks::new(),
         }
     }
 
@@ -1011,6 +1171,39 @@ impl AgentBuilder {
         self
     }
 
+    /// Add a managed agent to delegate tasks to.
+    ///
+    /// Managed agents can be called by the parent agent as if they were tools,
+    /// allowing for multi-agent collaboration.
+    ///
+    /// # Example
+    ///
+    /// ```rust,ignore
+    /// let researcher = Agent::builder()
+    ///     .model(model.clone())
+    ///     .name("researcher")
+    ///     .description("Expert at finding information")
+    ///     .tool(Box::new(WebSearchTool::new()))
+    ///     .build();
+    ///
+    /// let agent = Agent::builder()
+    ///     .model(model)
+    ///     .managed_agent(Box::new(researcher))
+    ///     .build();
+    /// ```
+    #[must_use]
+    pub fn managed_agent(mut self, agent: BoxedManagedAgent) -> Self {
+        self.managed_agents.push(agent);
+        self
+    }
+
+    /// Add multiple managed agents.
+    #[must_use]
+    pub fn managed_agents(mut self, agents: impl IntoIterator<Item = BoxedManagedAgent>) -> Self {
+        self.managed_agents.extend(agents);
+        self
+    }
+
     /// Set final answer validation checks.
     ///
     /// These checks run before accepting a final answer from the agent.
@@ -1050,11 +1243,39 @@ impl AgentBuilder {
             .model
             .ok_or_else(|| AgentError::configuration("Model is required"))?;
 
+        // Setup tools
         let mut tools = ToolBox::new();
         for tool in self.tools {
             tools.add_boxed(tool);
         }
         tools.add(FinalAnswerTool);
+
+        // Setup managed agents
+        let mut managed_agents = ManagedAgentRegistry::new();
+        for agent in self.managed_agents {
+            // Validate that agent has name and description
+            if agent.name().is_empty() {
+                return Err(AgentError::configuration("All managed agents need a name"));
+            }
+            if agent.description().is_empty() {
+                return Err(AgentError::configuration(
+                    "All managed agents need a description",
+                ));
+            }
+            // Check for name conflicts with tools
+            if tools.get(agent.name()).is_some() {
+                return Err(AgentError::configuration(format!(
+                    "Managed agent name '{}' conflicts with a tool name",
+                    agent.name()
+                )));
+            }
+            managed_agents.try_add(agent)?;
+        }
+
+        // Add managed agents as tools so the model can call them
+        for tool in managed_agents.as_tools() {
+            tools.add_boxed(tool);
+        }
 
         let prompt_templates = self
             .prompt_templates
@@ -1063,6 +1284,7 @@ impl AgentBuilder {
         Ok(Agent {
             model,
             tools,
+            managed_agents,
             config: self.config,
             memory: AgentMemory::default(),
             system_prompt: String::new(),

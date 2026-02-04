@@ -124,7 +124,25 @@ impl TemplateContext {
 
     /// Add managed agents to the context.
     #[must_use]
-    pub fn with_managed_agents(mut self, agents: Vec<ManagedAgentInfo>) -> Self {
+    pub fn with_managed_agents(
+        mut self,
+        agents: &HashMap<String, crate::managed_agent::ManagedAgentInfo>,
+    ) -> Self {
+        self.managed_agents = agents
+            .values()
+            .map(|a| ManagedAgentInfo {
+                name: a.name.clone(),
+                description: a.description.clone(),
+                inputs: serde_json::to_string(&a.inputs).unwrap_or_default(),
+                output_type: a.output_type.clone(),
+            })
+            .collect();
+        self
+    }
+
+    /// Add managed agents from a Vec to the context.
+    #[must_use]
+    pub fn with_managed_agents_vec(mut self, agents: Vec<ManagedAgentInfo>) -> Self {
         self.managed_agents = agents;
         self
     }
