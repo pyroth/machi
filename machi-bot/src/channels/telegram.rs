@@ -518,7 +518,11 @@ impl Channel for TelegramChannel {
                         _ => "❌ Denied",
                     };
 
-                    if let Err(e) = bot.answer_callback_query(query.id.clone()).text(answer_text).await {
+                    if let Err(e) = bot
+                        .answer_callback_query(query.id.clone())
+                        .text(answer_text)
+                        .await
+                    {
                         error!(error = %e, "failed to answer callback query");
                     }
 

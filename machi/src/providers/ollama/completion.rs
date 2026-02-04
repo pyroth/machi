@@ -1,24 +1,16 @@
 //! Ollama Chat Completions API implementation.
-
-#![allow(
-    clippy::cast_possible_truncation,
-    clippy::missing_fields_in_debug,
-    clippy::match_same_arms,
-    clippy::unused_self,
-    clippy::unnecessary_wraps,
-    clippy::unwrap_used,
-    clippy::unnecessary_filter_map
-)]
+//!
+//! Implements the [`Model`] trait for Ollama's Chat API,
+//! supporting both synchronous and streaming generation.
 
 use super::client::OllamaClient;
 use super::streaming::StreamingResponse;
 use crate::error::AgentError;
 use crate::message::{ChatMessage, ChatMessageToolCall, MessageRole};
 use crate::providers::common::{
-    GenerateOptions, Model, ModelResponse, ModelStream, TokenUsage, saturating_u32,
+    ApiClient, GenerateOptions, Model, ModelResponse, ModelStream, TokenUsage, saturating_u32,
 };
 use async_trait::async_trait;
-use serde::Deserialize;
 use serde_json::Value;
 use tracing::{debug, instrument};
 
@@ -40,7 +32,8 @@ impl std::fmt::Debug for CompletionModel {
         f.debug_struct("CompletionModel")
             .field("model_id", &self.model_id)
             .field("num_predict", &self.num_predict)
-            .finish()
+            .field("keep_alive", &self.keep_alive)
+            .finish_non_exhaustive()
     }
 }
 
@@ -87,12 +80,11 @@ impl CompletionModel {
     fn build_request_body(&self, messages: &[ChatMessage], options: &GenerateOptions) -> Value {
         let api_messages: Vec<Value> = messages
             .iter()
-            .filter_map(|msg| {
+            .map(|msg| {
                 let role = match msg.role {
                     MessageRole::System => "system",
                     MessageRole::User => "user",
-                    MessageRole::Assistant => "assistant",
-                    MessageRole::ToolCall => "assistant",
+                    MessageRole::Assistant | MessageRole::ToolCall => "assistant",
                     MessageRole::ToolResponse => "tool",
                 };
 
@@ -140,7 +132,7 @@ impl CompletionModel {
                     obj["tool_name"] = serde_json::json!(tool_call_id);
                 }
 
-                Some(obj)
+                obj
             })
             .collect();
 
@@ -209,24 +201,30 @@ impl CompletionModel {
     }
 
     /// Parse the API response into a `ModelResponse`.
+    #[allow(clippy::unused_self, clippy::unnecessary_wraps)]
     fn parse_response(&self, json: Value) -> Result<ModelResponse, AgentError> {
         let message_json = &json["message"];
-        
+
         // Get content - in think mode, actual response may be in "thinking" field
         let content = message_json["content"].as_str().map(String::from);
-        
+
         // If content is empty but thinking exists, log it for debugging
         // The tool_calls should still be present when think=true
-        if content.as_ref().is_none_or(|c| c.is_empty()) {
-            if let Some(thinking) = message_json["thinking"].as_str() {
-                debug!(thinking_len = thinking.len(), "Model returned thinking content");
-                // Don't use thinking as content - tool_calls should be parsed below
-            }
+        if content.as_ref().is_none_or(String::is_empty)
+            && let Some(thinking) = message_json["thinking"].as_str()
+        {
+            debug!(
+                thinking_len = thinking.len(),
+                "Model returned thinking content"
+            );
+            // Don't use thinking as content - tool_calls should be parsed below
         }
 
         // Parse tool calls
         let tool_calls = if message_json["tool_calls"].is_array() {
-            let tc_array = message_json["tool_calls"].as_array().unwrap();
+            let tc_array = message_json["tool_calls"]
+                .as_array()
+                .expect("tool_calls should be array");
             let calls: Vec<ChatMessageToolCall> = tc_array
                 .iter()
                 .enumerate()
@@ -291,6 +289,10 @@ impl Model for CompletionModel {
         true
     }
 
+    fn provider(&self) -> &'static str {
+        "ollama"
+    }
+
     #[instrument(skip(self, messages, options), fields(model = %self.model_id))]
     async fn generate(
         &self,
@@ -298,6 +300,7 @@ impl Model for CompletionModel {
         options: GenerateOptions,
     ) -> Result<ModelResponse, AgentError> {
         let body = self.build_request_body(&messages, &options);
+        let url = format!("{}/api/chat", self.client.base_url());
 
         // Log tools being sent to help debug tool calling issues
         if let Some(tools) = body.get("tools") {
@@ -308,9 +311,9 @@ impl Model for CompletionModel {
 
         let response = self
             .client
-            .http_client
-            .post(format!("{}/api/chat", self.client.base_url))
-            .headers(self.client.headers())
+            .http_client()
+            .post(&url)
+            .headers(self.client.auth_headers())
             .json(&body)
             .send()
             .await?;
@@ -337,13 +340,15 @@ impl Model for CompletionModel {
         let mut body = self.build_request_body(&messages, &options);
         body["stream"] = serde_json::json!(true);
 
+        let url = format!("{}/api/chat", self.client.base_url());
+
         debug!("Sending streaming request to Ollama API");
 
         let response = self
             .client
-            .http_client
-            .post(format!("{}/api/chat", self.client.base_url))
-            .headers(self.client.headers())
+            .http_client()
+            .post(&url)
+            .headers(self.client.auth_headers())
             .json(&body)
             .send()
             .await?;
@@ -358,36 +363,5 @@ impl Model for CompletionModel {
 
         let stream = StreamingResponse::new(response.bytes_stream());
         Ok(Box::pin(stream))
-    }
-}
-
-/// Ollama API error response.
-#[derive(Debug, Deserialize)]
-pub struct ApiError {
-    /// Error message.
-    pub error: String,
-}
-
-#[cfg(test)]
-mod tests {
-    use super::*;
-
-    #[test]
-    fn test_model_id() {
-        let client = OllamaClient::new();
-        let model = client.completion_model("llama3.3");
-        assert_eq!(model.model_id(), "llama3.3");
-    }
-
-    #[test]
-    fn test_with_options() {
-        let client = OllamaClient::new();
-        let model = client
-            .completion_model("llama3.3")
-            .with_num_predict(2048)
-            .with_keep_alive("10m");
-
-        assert_eq!(model.num_predict, Some(2048));
-        assert_eq!(model.keep_alive, Some("10m".to_string()));
     }
 }

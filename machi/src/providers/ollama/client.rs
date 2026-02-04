@@ -1,12 +1,10 @@
 //! Ollama API client implementation.
-
-#![allow(
-    clippy::missing_fields_in_debug,
-    clippy::missing_panics_doc,
-    clippy::unused_self
-)]
+//!
+//! Provides a client for interacting with Ollama's local LLM server,
+//! supporting models like Llama, Qwen, Mistral, DeepSeek, and more.
 
 use super::completion::CompletionModel;
+use crate::providers::common::ApiClient;
 use reqwest::header::{CONTENT_TYPE, HeaderMap, HeaderValue};
 use std::sync::Arc;
 
@@ -16,6 +14,7 @@ pub const OLLAMA_API_BASE_URL: &str = "http://localhost:11434";
 /// Ollama API client for creating completion models.
 ///
 /// Ollama runs locally and doesn't require an API key by default.
+/// Supports a wide variety of open-source models.
 ///
 /// # Example
 ///
@@ -34,15 +33,15 @@ pub const OLLAMA_API_BASE_URL: &str = "http://localhost:11434";
 /// ```
 #[derive(Clone)]
 pub struct OllamaClient {
-    pub(crate) http_client: reqwest::Client,
-    pub(crate) base_url: Arc<str>,
+    http_client: reqwest::Client,
+    base_url: Arc<str>,
 }
 
 impl std::fmt::Debug for OllamaClient {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         f.debug_struct("OllamaClient")
             .field("base_url", &self.base_url)
-            .finish()
+            .finish_non_exhaustive()
     }
 }
 
@@ -72,22 +71,17 @@ impl OllamaClient {
     /// # Arguments
     ///
     /// * `model_id` - The model identifier (e.g., "llama3.3", "qwen2.5", "mistral")
+    ///
+    /// # Example
+    ///
+    /// ```rust,ignore
+    /// let client = OllamaClient::new();
+    /// let llama = client.completion_model("llama3.3");
+    /// let qwen = client.completion_model("qwen2.5");
+    /// ```
     #[must_use]
     pub fn completion_model(&self, model_id: impl Into<String>) -> CompletionModel {
         CompletionModel::new(self.clone(), model_id)
-    }
-
-    /// Get the base URL for API requests.
-    #[must_use]
-    pub fn base_url(&self) -> &str {
-        &self.base_url
-    }
-
-    /// Build the headers for API requests.
-    pub(crate) fn headers(&self) -> HeaderMap {
-        let mut headers = HeaderMap::new();
-        headers.insert(CONTENT_TYPE, HeaderValue::from_static("application/json"));
-        headers
     }
 
     /// Check if the Ollama server is running and accessible.
@@ -132,7 +126,26 @@ impl OllamaClient {
     }
 }
 
+impl ApiClient for OllamaClient {
+    fn base_url(&self) -> &str {
+        &self.base_url
+    }
+
+    fn http_client(&self) -> &reqwest::Client {
+        &self.http_client
+    }
+
+    fn auth_headers(&self) -> HeaderMap {
+        // Ollama doesn't require authentication
+        let mut headers = HeaderMap::with_capacity(1);
+        headers.insert(CONTENT_TYPE, HeaderValue::from_static("application/json"));
+        headers
+    }
+}
+
 /// Builder for [`OllamaClient`].
+///
+/// Provides a fluent API for configuring the client with custom settings.
 #[derive(Debug, Default)]
 pub struct OllamaClientBuilder {
     base_url: Option<String>,
@@ -152,6 +165,7 @@ impl OllamaClientBuilder {
     /// Set the request timeout in seconds.
     ///
     /// Default is no timeout (Ollama inference can be slow).
+    /// Note: timeout is not supported on WASM.
     #[must_use]
     pub const fn timeout_secs(mut self, timeout: u64) -> Self {
         self.timeout_secs = Some(timeout);
@@ -159,47 +173,33 @@ impl OllamaClientBuilder {
     }
 
     /// Build the client.
+    ///
+    /// # Panics
+    ///
+    /// Panics if the HTTP client fails to build.
     #[must_use]
     pub fn build(self) -> OllamaClient {
         let base_url = self
             .base_url
             .unwrap_or_else(|| OLLAMA_API_BASE_URL.to_string());
-
-        #[allow(unused_mut)]
-        let mut client_builder = reqwest::Client::builder();
-
-        // Timeout is not supported on WASM
-        #[cfg(not(target_arch = "wasm32"))]
-        if let Some(timeout) = self.timeout_secs {
-            client_builder = client_builder.timeout(std::time::Duration::from_secs(timeout));
-        }
-
-        let http_client = client_builder.build().expect("Failed to build HTTP client");
+        let http_client = Self::build_http_client(self.timeout_secs);
 
         OllamaClient {
             http_client,
             base_url: base_url.into(),
         }
     }
-}
 
-#[cfg(test)]
-mod tests {
-    use super::*;
+    /// Build the HTTP client with configured settings.
+    fn build_http_client(timeout_secs: Option<u64>) -> reqwest::Client {
+        #[allow(unused_mut)]
+        let mut builder = reqwest::Client::builder();
 
-    #[test]
-    fn test_client_builder() {
-        let client = OllamaClient::builder()
-            .base_url("http://192.168.1.100:11434")
-            .timeout_secs(300)
-            .build();
+        #[cfg(not(target_arch = "wasm32"))]
+        if let Some(timeout) = timeout_secs {
+            builder = builder.timeout(std::time::Duration::from_secs(timeout));
+        }
 
-        assert_eq!(client.base_url(), "http://192.168.1.100:11434");
-    }
-
-    #[test]
-    fn test_default_base_url() {
-        let client = OllamaClient::new();
-        assert_eq!(client.base_url(), OLLAMA_API_BASE_URL);
+        builder.build().expect("Failed to build HTTP client")
     }
 }

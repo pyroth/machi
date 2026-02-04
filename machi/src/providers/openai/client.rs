@@ -1,9 +1,10 @@
 //! `OpenAI` API client implementation.
-
-#![allow(clippy::missing_fields_in_debug, clippy::missing_panics_doc)]
+//!
+//! Provides a client for interacting with OpenAI's Chat Completions API,
+//! supporting GPT-4, GPT-5, O-series, and compatible APIs.
 
 use super::completion::CompletionModel;
-use crate::providers::common::FromEnv;
+use crate::providers::common::{ApiClient, FromEnv};
 use reqwest::header::{AUTHORIZATION, CONTENT_TYPE, HeaderMap, HeaderValue};
 use std::sync::Arc;
 
@@ -11,6 +12,9 @@ use std::sync::Arc;
 pub const OPENAI_API_BASE_URL: &str = "https://api.openai.com/v1";
 
 /// `OpenAI` API client for creating completion models.
+///
+/// Supports OpenAI's official API as well as compatible APIs like Azure OpenAI,
+/// local proxies, and third-party providers.
 ///
 /// # Example
 ///
@@ -31,9 +35,9 @@ pub const OPENAI_API_BASE_URL: &str = "https://api.openai.com/v1";
 /// ```
 #[derive(Clone)]
 pub struct OpenAIClient {
-    pub(crate) http_client: reqwest::Client,
-    pub(crate) api_key: Arc<str>,
-    pub(crate) base_url: Arc<str>,
+    http_client: reqwest::Client,
+    api_key: Arc<str>,
+    base_url: Arc<str>,
 }
 
 impl std::fmt::Debug for OpenAIClient {
@@ -41,7 +45,7 @@ impl std::fmt::Debug for OpenAIClient {
         f.debug_struct("OpenAIClient")
             .field("base_url", &self.base_url)
             .field("api_key", &"[REDACTED]")
-            .finish()
+            .finish_non_exhaustive()
     }
 }
 
@@ -64,26 +68,38 @@ impl OpenAIClient {
     ///
     /// # Arguments
     ///
-    /// * `model_id` - The model identifier (e.g., "gpt-4o", "gpt-3.5-turbo")
+    /// * `model_id` - The model identifier (e.g., "gpt-4o", "gpt-5", "o3")
+    ///
+    /// # Example
+    ///
+    /// ```rust,ignore
+    /// let client = OpenAIClient::from_env();
+    /// let gpt4 = client.completion_model("gpt-4o");
+    /// let gpt5 = client.completion_model("gpt-5");
+    /// ```
     #[must_use]
     pub fn completion_model(&self, model_id: impl Into<String>) -> CompletionModel {
         CompletionModel::new(self.clone(), model_id)
     }
+}
 
-    /// Get the base URL for API requests.
-    #[must_use]
-    pub fn base_url(&self) -> &str {
+impl ApiClient for OpenAIClient {
+    fn base_url(&self) -> &str {
         &self.base_url
     }
 
-    /// Build the authorization headers for API requests.
-    pub(crate) fn auth_headers(&self) -> HeaderMap {
-        let mut headers = HeaderMap::new();
-        headers.insert(
-            AUTHORIZATION,
-            HeaderValue::from_str(&format!("Bearer {}", self.api_key))
-                .expect("Invalid API key format"),
-        );
+    fn http_client(&self) -> &reqwest::Client {
+        &self.http_client
+    }
+
+    fn auth_headers(&self) -> HeaderMap {
+        let mut headers = HeaderMap::with_capacity(2);
+
+        // Authorization header
+        if let Ok(value) = HeaderValue::from_str(&format!("Bearer {}", self.api_key)) {
+            headers.insert(AUTHORIZATION, value);
+        }
+
         headers.insert(CONTENT_TYPE, HeaderValue::from_static("application/json"));
         headers
     }
@@ -92,8 +108,10 @@ impl OpenAIClient {
 impl FromEnv for OpenAIClient {
     /// Create a new `OpenAI` client from environment variables.
     ///
-    /// Uses `OPENAI_API_KEY` for the API key and optionally
-    /// `OPENAI_BASE_URL` for a custom base URL.
+    /// # Environment Variables
+    ///
+    /// - `OPENAI_API_KEY` (required): The API key
+    /// - `OPENAI_BASE_URL` (optional): Custom base URL
     ///
     /// # Panics
     ///
@@ -113,6 +131,8 @@ impl FromEnv for OpenAIClient {
 }
 
 /// Builder for [`OpenAIClient`].
+///
+/// Provides a fluent API for configuring the client with custom settings.
 #[derive(Debug, Default)]
 pub struct OpenAIClientBuilder {
     api_key: Option<String>,
@@ -138,6 +158,8 @@ impl OpenAIClientBuilder {
     }
 
     /// Set the request timeout in seconds.
+    ///
+    /// Default is no timeout. Note: timeout is not supported on WASM.
     #[must_use]
     pub const fn timeout_secs(mut self, timeout: u64) -> Self {
         self.timeout_secs = Some(timeout);
@@ -148,30 +170,33 @@ impl OpenAIClientBuilder {
     ///
     /// # Panics
     ///
-    /// Panics if the API key is not set.
+    /// Panics if the API key is not set or if the HTTP client fails to build.
     #[must_use]
     pub fn build(self) -> OpenAIClient {
         let api_key = self.api_key.expect("API key is required");
         let base_url = self
             .base_url
             .unwrap_or_else(|| OPENAI_API_BASE_URL.to_string());
-
-        #[allow(unused_mut)]
-        let mut client_builder = reqwest::Client::builder();
-
-        // Timeout is not supported on WASM
-        #[cfg(not(target_arch = "wasm32"))]
-        if let Some(timeout) = self.timeout_secs {
-            client_builder = client_builder.timeout(std::time::Duration::from_secs(timeout));
-        }
-
-        let http_client = client_builder.build().expect("Failed to build HTTP client");
+        let http_client = Self::build_http_client(self.timeout_secs);
 
         OpenAIClient {
             http_client,
             api_key: api_key.into(),
             base_url: base_url.into(),
         }
+    }
+
+    /// Build the HTTP client with configured settings.
+    fn build_http_client(timeout_secs: Option<u64>) -> reqwest::Client {
+        #[allow(unused_mut)]
+        let mut builder = reqwest::Client::builder();
+
+        #[cfg(not(target_arch = "wasm32"))]
+        if let Some(timeout) = timeout_secs {
+            builder = builder.timeout(std::time::Duration::from_secs(timeout));
+        }
+
+        builder.build().expect("Failed to build HTTP client")
     }
 }
 

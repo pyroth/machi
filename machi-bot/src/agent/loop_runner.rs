@@ -139,10 +139,7 @@ impl<M: Model + Clone + Send + Sync + 'static> AgentLoop<M> {
     }
 
     /// Create a confirmation handler for the given channel.
-    fn create_confirmation_handler(
-        &self,
-        channel: &str,
-    ) -> Box<dyn MachiConfirmationHandler> {
+    fn create_confirmation_handler(&self, channel: &str) -> Box<dyn MachiConfirmationHandler> {
         match channel {
             "cli" => Box::new(ChannelConfirmationAdapter::new(
                 CliConfirmationHandler,

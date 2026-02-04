@@ -1,27 +1,18 @@
 //! `OpenAI` Chat Completions API implementation.
-
-#![allow(
-    clippy::cast_possible_truncation,
-    clippy::or_fun_call,
-    clippy::default_trait_access,
-    clippy::option_if_let_else,
-    clippy::unused_self,
-    clippy::unwrap_used,
-    clippy::missing_fields_in_debug,
-    clippy::match_same_arms
-)]
+//!
+//! Implements the [`Model`] trait for OpenAI's Chat Completions API,
+//! supporting both synchronous and streaming generation.
 
 use super::client::OpenAIClient;
 use super::streaming::StreamingResponse;
 use crate::error::AgentError;
 use crate::message::{ChatMessage, ChatMessageToolCall, MessageRole};
 use crate::providers::common::{
-    GenerateOptions, Model, ModelResponse, ModelStream, TokenUsage,
+    ApiClient, GenerateOptions, Model, ModelResponse, ModelStream, TokenUsage,
     model_requires_max_completion_tokens, model_supports_stop_parameter, saturating_u32,
 };
 use crate::tool::ToolDefinition;
 use async_trait::async_trait;
-use serde::Deserialize;
 use serde_json::Value;
 use tracing::{debug, instrument};
 
@@ -41,7 +32,7 @@ impl std::fmt::Debug for CompletionModel {
         f.debug_struct("CompletionModel")
             .field("model_id", &self.model_id)
             .field("default_max_tokens", &self.default_max_tokens)
-            .finish()
+            .finish_non_exhaustive()
     }
 }
 
@@ -147,6 +138,7 @@ impl CompletionModel {
     }
 
     /// Convert `ChatMessage` to `OpenAI` API format.
+    #[allow(clippy::unused_self)]
     fn convert_messages(&self, messages: &[ChatMessage]) -> Vec<Value> {
         messages
             .iter()
@@ -154,8 +146,7 @@ impl CompletionModel {
                 let role = match msg.role {
                     MessageRole::System => "system",
                     MessageRole::User => "user",
-                    MessageRole::Assistant => "assistant",
-                    MessageRole::ToolCall => "assistant",
+                    MessageRole::Assistant | MessageRole::ToolCall => "assistant",
                     MessageRole::ToolResponse => "tool",
                 };
 
@@ -207,6 +198,7 @@ impl CompletionModel {
     }
 
     /// Parse the API response into a `ModelResponse`.
+    #[allow(clippy::unused_self, clippy::unnecessary_wraps)]
     fn parse_response(&self, json: Value) -> Result<ModelResponse, AgentError> {
         let choice = json["choices"]
             .get(0)
@@ -217,7 +209,9 @@ impl CompletionModel {
 
         // Parse tool calls
         let tool_calls = if message_json["tool_calls"].is_array() {
-            let tc_array = message_json["tool_calls"].as_array().unwrap();
+            let tc_array = message_json["tool_calls"]
+                .as_array()
+                .expect("tool_calls should be array");
             let calls: Result<Vec<ChatMessageToolCall>, _> = tc_array
                 .iter()
                 .map(|tc| {
@@ -227,7 +221,8 @@ impl CompletionModel {
                         .unwrap_or_default()
                         .to_string();
                     let arguments = if let Some(args_str) = tc["function"]["arguments"].as_str() {
-                        serde_json::from_str(args_str).unwrap_or(Value::Object(Default::default()))
+                        serde_json::from_str(args_str)
+                            .unwrap_or_else(|_| Value::Object(serde_json::Map::default()))
                     } else {
                         tc["function"]["arguments"].clone()
                     };
@@ -279,6 +274,10 @@ impl Model for CompletionModel {
         true
     }
 
+    fn provider(&self) -> &'static str {
+        "openai"
+    }
+
     #[instrument(skip(self, messages, options), fields(model = %self.model_id))]
     async fn generate(
         &self,
@@ -286,13 +285,14 @@ impl Model for CompletionModel {
         options: GenerateOptions,
     ) -> Result<ModelResponse, AgentError> {
         let body = self.build_request_body(&messages, &options);
+        let url = format!("{}/chat/completions", self.client.base_url());
 
         debug!("Sending request to OpenAI API");
 
         let response = self
             .client
-            .http_client
-            .post(format!("{}/chat/completions", self.client.base_url))
+            .http_client()
+            .post(&url)
             .headers(self.client.auth_headers())
             .json(&body)
             .send()
@@ -320,12 +320,14 @@ impl Model for CompletionModel {
         body["stream"] = serde_json::json!(true);
         body["stream_options"] = serde_json::json!({"include_usage": true});
 
+        let url = format!("{}/chat/completions", self.client.base_url());
+
         debug!("Sending streaming request to OpenAI API");
 
         let response = self
             .client
-            .http_client
-            .post(format!("{}/chat/completions", self.client.base_url))
+            .http_client()
+            .post(&url)
             .headers(self.client.auth_headers())
             .json(&body)
             .send()
@@ -342,27 +344,6 @@ impl Model for CompletionModel {
         let stream = StreamingResponse::new(response.bytes_stream());
         Ok(Box::pin(stream))
     }
-}
-
-/// `OpenAI` API error response.
-#[derive(Debug, Deserialize)]
-#[non_exhaustive]
-pub struct ApiErrorResponse {
-    /// Detailed error information.
-    pub error: ApiError,
-}
-
-/// `OpenAI` API error details.
-#[derive(Debug, Deserialize)]
-#[non_exhaustive]
-pub struct ApiError {
-    /// Human-readable error message.
-    pub message: String,
-    /// Error type identifier.
-    #[serde(rename = "type")]
-    pub error_type: Option<String>,
-    /// Error code.
-    pub code: Option<String>,
 }
 
 #[cfg(test)]

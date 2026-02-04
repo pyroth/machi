@@ -1,23 +1,16 @@
 //! Anthropic Messages API implementation.
-
-#![allow(
-    clippy::cast_possible_truncation,
-    clippy::missing_fields_in_debug,
-    clippy::match_same_arms,
-    clippy::unused_self,
-    clippy::unwrap_used,
-    clippy::unnecessary_wraps
-)]
+//!
+//! Implements the [`Model`] trait for Anthropic's Messages API,
+//! supporting both synchronous and streaming generation.
 
 use super::client::AnthropicClient;
 use super::streaming::StreamingResponse;
 use crate::error::AgentError;
 use crate::message::{ChatMessage, ChatMessageToolCall, MessageRole};
 use crate::providers::common::{
-    GenerateOptions, Model, ModelResponse, ModelStream, TokenUsage, saturating_u32,
+    ApiClient, GenerateOptions, Model, ModelResponse, ModelStream, TokenUsage, saturating_u32,
 };
 use async_trait::async_trait;
-use serde::{Deserialize, Serialize};
 use serde_json::Value;
 use tracing::{debug, instrument};
 
@@ -37,7 +30,7 @@ impl std::fmt::Debug for CompletionModel {
         f.debug_struct("CompletionModel")
             .field("model_id", &self.model_id)
             .field("default_max_tokens", &self.default_max_tokens)
-            .finish()
+            .finish_non_exhaustive()
     }
 }
 
@@ -242,6 +235,7 @@ impl CompletionModel {
     }
 
     /// Parse the API response into a `ModelResponse`.
+    #[allow(clippy::unused_self, clippy::unnecessary_wraps)]
     fn parse_response(&self, json: Value) -> Result<ModelResponse, AgentError> {
         let content = &json["content"];
         let mut text_content = String::new();
@@ -316,6 +310,10 @@ impl Model for CompletionModel {
         true
     }
 
+    fn provider(&self) -> &'static str {
+        "anthropic"
+    }
+
     #[instrument(skip(self, messages, options), fields(model = %self.model_id))]
     async fn generate(
         &self,
@@ -323,13 +321,14 @@ impl Model for CompletionModel {
         options: GenerateOptions,
     ) -> Result<ModelResponse, AgentError> {
         let body = self.build_request_body(&messages, &options);
+        let url = format!("{}/v1/messages", self.client.base_url());
 
         debug!("Sending request to Anthropic API");
 
         let response = self
             .client
-            .http_client
-            .post(format!("{}/v1/messages", self.client.base_url))
+            .http_client()
+            .post(&url)
             .headers(self.client.auth_headers())
             .json(&body)
             .send()
@@ -356,12 +355,14 @@ impl Model for CompletionModel {
         let mut body = self.build_request_body(&messages, &options);
         body["stream"] = serde_json::json!(true);
 
+        let url = format!("{}/v1/messages", self.client.base_url());
+
         debug!("Sending streaming request to Anthropic API");
 
         let response = self
             .client
-            .http_client
-            .post(format!("{}/v1/messages", self.client.base_url))
+            .http_client()
+            .post(&url)
             .headers(self.client.auth_headers())
             .json(&body)
             .send()
@@ -378,46 +379,6 @@ impl Model for CompletionModel {
         let stream = StreamingResponse::new(response.bytes_stream());
         Ok(Box::pin(stream))
     }
-}
-
-/// Anthropic API error response.
-#[derive(Debug, Deserialize)]
-pub struct ApiErrorResponse {
-    /// Error type identifier.
-    #[serde(rename = "type")]
-    pub error_type: String,
-    /// Detailed error information.
-    pub error: ApiError,
-}
-
-/// Anthropic API error details.
-#[derive(Debug, Deserialize)]
-pub struct ApiError {
-    /// Error type identifier.
-    #[serde(rename = "type")]
-    pub error_type: String,
-    /// Human-readable error message.
-    pub message: String,
-}
-
-/// Content block types in Anthropic responses.
-#[derive(Debug, Clone, Serialize, Deserialize)]
-#[serde(tag = "type", rename_all = "snake_case")]
-pub enum ContentBlock {
-    /// Text content block.
-    Text {
-        /// The text content.
-        text: String,
-    },
-    /// Tool use content block.
-    ToolUse {
-        /// Unique identifier for this tool use.
-        id: String,
-        /// Name of the tool being used.
-        name: String,
-        /// Input arguments for the tool.
-        input: Value,
-    },
 }
 
 #[cfg(test)]

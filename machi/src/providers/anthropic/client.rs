@@ -1,10 +1,11 @@
 //! Anthropic API client implementation.
-
-#![allow(clippy::missing_fields_in_debug, clippy::missing_panics_doc)]
+//!
+//! Provides a client for interacting with Anthropic's Messages API,
+//! supporting Claude models like Claude 4, Claude 3.5, and more.
 
 use super::ANTHROPIC_VERSION_LATEST;
 use super::completion::CompletionModel;
-use crate::providers::common::FromEnv;
+use crate::providers::common::{ApiClient, FromEnv};
 use reqwest::header::{CONTENT_TYPE, HeaderMap, HeaderValue};
 use std::sync::Arc;
 
@@ -12,6 +13,8 @@ use std::sync::Arc;
 pub const ANTHROPIC_API_BASE_URL: &str = "https://api.anthropic.com";
 
 /// Anthropic API client for creating completion models.
+///
+/// Supports Claude models with features like tool use, vision, and extended thinking.
 ///
 /// # Example
 ///
@@ -28,15 +31,16 @@ pub const ANTHROPIC_API_BASE_URL: &str = "https://api.anthropic.com";
 /// let client = AnthropicClient::builder()
 ///     .api_key("sk-ant-...")
 ///     .anthropic_version("2023-06-01")
+///     .anthropic_beta("prompt-caching-2024-07-31")
 ///     .build();
 /// ```
 #[derive(Clone)]
 pub struct AnthropicClient {
-    pub(crate) http_client: reqwest::Client,
-    pub(crate) api_key: Arc<str>,
-    pub(crate) base_url: Arc<str>,
-    pub(crate) anthropic_version: Arc<str>,
-    pub(crate) anthropic_betas: Vec<String>,
+    http_client: reqwest::Client,
+    api_key: Arc<str>,
+    base_url: Arc<str>,
+    anthropic_version: Arc<str>,
+    anthropic_betas: Vec<String>,
 }
 
 impl std::fmt::Debug for AnthropicClient {
@@ -45,7 +49,7 @@ impl std::fmt::Debug for AnthropicClient {
             .field("base_url", &self.base_url)
             .field("anthropic_version", &self.anthropic_version)
             .field("api_key", &"[REDACTED]")
-            .finish()
+            .finish_non_exhaustive()
     }
 }
 
@@ -69,34 +73,51 @@ impl AnthropicClient {
     /// # Arguments
     ///
     /// * `model_id` - The model identifier (e.g., "claude-3-5-sonnet-latest")
+    ///
+    /// # Example
+    ///
+    /// ```rust,ignore
+    /// let client = AnthropicClient::from_env();
+    /// let sonnet = client.completion_model("claude-sonnet-4-5-latest");
+    /// let opus = client.completion_model("claude-opus-4-5-latest");
+    /// ```
     #[must_use]
     pub fn completion_model(&self, model_id: impl Into<String>) -> CompletionModel {
         CompletionModel::new(self.clone(), model_id)
     }
 
-    /// Get the base URL for API requests.
+    /// Get the Anthropic API version being used.
     #[must_use]
-    pub fn base_url(&self) -> &str {
+    pub fn anthropic_version(&self) -> &str {
+        &self.anthropic_version
+    }
+}
+
+impl ApiClient for AnthropicClient {
+    fn base_url(&self) -> &str {
         &self.base_url
     }
 
-    /// Build the headers for API requests.
-    pub(crate) fn auth_headers(&self) -> HeaderMap {
-        let mut headers = HeaderMap::new();
+    fn http_client(&self) -> &reqwest::Client {
+        &self.http_client
+    }
 
-        headers.insert(
-            "x-api-key",
-            HeaderValue::from_str(&self.api_key).expect("Invalid API key format"),
-        );
+    fn auth_headers(&self) -> HeaderMap {
+        let mut headers = HeaderMap::with_capacity(4);
 
-        headers.insert(
-            "anthropic-version",
-            HeaderValue::from_str(&self.anthropic_version).expect("Invalid version format"),
-        );
+        // API key header
+        if let Ok(value) = HeaderValue::from_str(&self.api_key) {
+            headers.insert("x-api-key", value);
+        }
+
+        // Version header
+        if let Ok(value) = HeaderValue::from_str(&self.anthropic_version) {
+            headers.insert("anthropic-version", value);
+        }
 
         headers.insert(CONTENT_TYPE, HeaderValue::from_static("application/json"));
 
-        // Add beta headers if any
+        // Beta headers if any
         if !self.anthropic_betas.is_empty()
             && let Ok(value) = HeaderValue::from_str(&self.anthropic_betas.join(","))
         {
@@ -131,6 +152,8 @@ impl FromEnv for AnthropicClient {
 }
 
 /// Builder for [`AnthropicClient`].
+///
+/// Provides a fluent API for configuring the client with custom settings.
 #[derive(Debug)]
 pub struct AnthropicClientBuilder {
     api_key: Option<String>,
@@ -190,6 +213,8 @@ impl AnthropicClientBuilder {
     }
 
     /// Set the request timeout in seconds.
+    ///
+    /// Note: timeout is not supported on WASM.
     #[must_use]
     pub const fn timeout_secs(mut self, timeout: u64) -> Self {
         self.timeout_secs = Some(timeout);
@@ -200,24 +225,14 @@ impl AnthropicClientBuilder {
     ///
     /// # Panics
     ///
-    /// Panics if the API key is not set.
+    /// Panics if the API key is not set or if the HTTP client fails to build.
     #[must_use]
     pub fn build(self) -> AnthropicClient {
         let api_key = self.api_key.expect("API key is required");
         let base_url = self
             .base_url
             .unwrap_or_else(|| ANTHROPIC_API_BASE_URL.to_string());
-
-        #[allow(unused_mut)]
-        let mut client_builder = reqwest::Client::builder();
-
-        // Timeout is not supported on WASM
-        #[cfg(not(target_arch = "wasm32"))]
-        if let Some(timeout) = self.timeout_secs {
-            client_builder = client_builder.timeout(std::time::Duration::from_secs(timeout));
-        }
-
-        let http_client = client_builder.build().expect("Failed to build HTTP client");
+        let http_client = Self::build_http_client(self.timeout_secs);
 
         AnthropicClient {
             http_client,
@@ -226,6 +241,19 @@ impl AnthropicClientBuilder {
             anthropic_version: self.anthropic_version.into(),
             anthropic_betas: self.anthropic_betas,
         }
+    }
+
+    /// Build the HTTP client with configured settings.
+    fn build_http_client(timeout_secs: Option<u64>) -> reqwest::Client {
+        #[allow(unused_mut)]
+        let mut builder = reqwest::Client::builder();
+
+        #[cfg(not(target_arch = "wasm32"))]
+        if let Some(timeout) = timeout_secs {
+            builder = builder.timeout(std::time::Duration::from_secs(timeout));
+        }
+
+        builder.build().expect("Failed to build HTTP client")
     }
 }
 
