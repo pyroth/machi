@@ -6,8 +6,8 @@
 use std::sync::Arc;
 
 use async_trait::async_trait;
+use futures::lock::Mutex;
 use serde_json::Value;
-use tokio::sync::Mutex;
 
 use crate::tool::{DynTool, ToolDefinition, ToolError};
 

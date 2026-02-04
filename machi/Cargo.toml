@@ -7,10 +7,14 @@ repository.workspace = true
 description = "A Rust implementation of smolagents - lightweight AI agents framework"
 
 [features]
-default = ["mcp", "toolkit", "derive"]
+default = ["mcp", "toolkit", "derive", "native"]
 mcp = ["dep:rmcp"]
 toolkit = ["dep:scraper"]
 derive = ["dep:machi-derive"]
+# Native platform support (tokio runtime, file system, etc.)
+native = ["tokio/full"]
+# WebAssembly support
+wasm = ["getrandom/wasm_js", "chrono/wasmbind", "uuid/js"]
 
 [dependencies]
 anyhow.workspace = true
@@ -32,6 +36,7 @@ minijinja.workspace = true
 async-stream.workspace = true
 thiserror.workspace = true
 tokio.workspace = true
+getrandom = { workspace = true, optional = true }
 tracing.workspace = true
 urlencoding.workspace = true
 uuid.workspace = true

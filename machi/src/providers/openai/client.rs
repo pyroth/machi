@@ -156,8 +156,11 @@ impl OpenAIClientBuilder {
             .base_url
             .unwrap_or_else(|| OPENAI_API_BASE_URL.to_string());
 
+        #[allow(unused_mut)]
         let mut client_builder = reqwest::Client::builder();
 
+        // Timeout is not supported on WASM
+        #[cfg(not(target_arch = "wasm32"))]
         if let Some(timeout) = self.timeout_secs {
             client_builder = client_builder.timeout(std::time::Duration::from_secs(timeout));
         }

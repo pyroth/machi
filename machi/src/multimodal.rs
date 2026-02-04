@@ -203,9 +203,12 @@ impl AgentImage {
 
     /// Load image from file path asynchronously.
     ///
+    /// This method is only available on native platforms (not WASM).
+    ///
     /// # Errors
     ///
     /// Returns an error if the file cannot be read.
+    #[cfg(feature = "native")]
     pub async fn load_from_path(path: impl AsRef<Path>) -> std::io::Result<Self> {
         let path = path.as_ref();
         let bytes = tokio::fs::read(path).await?;
@@ -465,9 +468,12 @@ impl AgentAudio {
 
     /// Load audio from file path asynchronously.
     ///
+    /// This method is only available on native platforms (not WASM).
+    ///
     /// # Errors
     ///
     /// Returns an error if the file cannot be read.
+    #[cfg(feature = "native")]
     pub async fn load_from_path(path: impl AsRef<Path>, sample_rate: u32) -> std::io::Result<Self> {
         let path = path.as_ref();
         let bytes = tokio::fs::read(path).await?;

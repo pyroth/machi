@@ -114,8 +114,13 @@ impl ModelResponse {
 }
 
 /// Stream of model response deltas for streaming generation.
+#[cfg(not(target_arch = "wasm32"))]
 pub type ModelStream =
     Pin<Box<dyn Stream<Item = Result<ChatMessageStreamDelta, AgentError>> + Send>>;
+
+/// Stream of model response deltas for streaming generation (WASM version, not Send).
+#[cfg(target_arch = "wasm32")]
+pub type ModelStream = Pin<Box<dyn Stream<Item = Result<ChatMessageStreamDelta, AgentError>>>>;
 
 /// Options for model generation requests.
 #[derive(Debug, Clone, Default, Serialize, Deserialize)]
@@ -207,7 +212,8 @@ impl GenerateOptions {
 ///     println!("{}", response.text().unwrap_or_default());
 /// }
 /// ```
-#[async_trait]
+#[cfg_attr(not(target_arch = "wasm32"), async_trait)]
+#[cfg_attr(target_arch = "wasm32", async_trait(?Send))]
 pub trait Model: Send + Sync {
     /// Get the model identifier (e.g., "gpt-4o", "claude-3-5-sonnet-latest").
     fn model_id(&self) -> &str;
