@@ -122,6 +122,19 @@ pub type ModelStream =
 #[cfg(target_arch = "wasm32")]
 pub type ModelStream = Pin<Box<dyn Stream<Item = Result<ChatMessageStreamDelta, AgentError>>>>;
 
+/// Tool choice mode for function calling.
+#[derive(Debug, Clone, Copy, Default, Serialize, Deserialize, PartialEq, Eq)]
+#[serde(rename_all = "lowercase")]
+pub enum ToolChoice {
+    /// Model decides whether to call tools.
+    #[default]
+    Auto,
+    /// Model must call at least one tool.
+    Required,
+    /// Model should not call any tools.
+    None,
+}
+
 /// Options for model generation requests.
 #[derive(Debug, Clone, Default, Serialize, Deserialize)]
 pub struct GenerateOptions {
@@ -131,6 +144,9 @@ pub struct GenerateOptions {
     /// Available tools for function calling.
     #[serde(skip_serializing_if = "Option::is_none")]
     pub tools: Option<Vec<ToolDefinition>>,
+    /// Tool choice mode - controls whether model must/can/cannot call tools.
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub tool_choice: Option<ToolChoice>,
     /// Temperature for sampling (0.0 to 2.0).
     #[serde(skip_serializing_if = "Option::is_none")]
     pub temperature: Option<f32>,
@@ -163,6 +179,13 @@ impl GenerateOptions {
     #[must_use]
     pub fn with_tools(mut self, tools: Vec<ToolDefinition>) -> Self {
         self.tools = Some(tools);
+        self
+    }
+
+    /// Set tool choice mode.
+    #[must_use]
+    pub fn with_tool_choice(mut self, choice: ToolChoice) -> Self {
+        self.tool_choice = Some(choice);
         self
     }
 

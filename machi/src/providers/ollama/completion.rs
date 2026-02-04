@@ -201,6 +201,8 @@ impl CompletionModel {
             // Enable thinking mode for models like qwen3 that need it for tool calling
             // When think=true, response has "thinking" field with reasoning and "tool_calls" with calls
             body["think"] = serde_json::json!(true);
+            // Note: Ollama doesn't support tool_choice parameter yet, but we handle
+            // native tool_calls in parse_response() which takes priority over text parsing
         }
 
         body
@@ -209,7 +211,18 @@ impl CompletionModel {
     /// Parse the API response into a `ModelResponse`.
     fn parse_response(&self, json: Value) -> Result<ModelResponse, AgentError> {
         let message_json = &json["message"];
+        
+        // Get content - in think mode, actual response may be in "thinking" field
         let content = message_json["content"].as_str().map(String::from);
+        
+        // If content is empty but thinking exists, log it for debugging
+        // The tool_calls should still be present when think=true
+        if content.as_ref().is_none_or(|c| c.is_empty()) {
+            if let Some(thinking) = message_json["thinking"].as_str() {
+                debug!(thinking_len = thinking.len(), "Model returned thinking content");
+                // Don't use thinking as content - tool_calls should be parsed below
+            }
+        }
 
         // Parse tool calls
         let tool_calls = if message_json["tool_calls"].is_array() {
