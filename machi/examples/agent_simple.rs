@@ -20,7 +20,10 @@ async fn main() {
 
     while let Some(Ok(event)) = stream.next().await {
         match event {
-            StreamEvent::TextDelta(t) => { print!("{t}"); let _ = stdout().flush(); }
+            StreamEvent::TextDelta(t) => {
+                print!("{t}");
+                let _ = stdout().flush();
+            }
             StreamEvent::FinalAnswer { answer } => println!("\n=> {answer}"),
             _ => {}
         }

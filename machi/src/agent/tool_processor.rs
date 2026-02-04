@@ -14,36 +14,23 @@ use crate::{
     tools::FinalAnswerArgs,
 };
 
-use super::events::{StepResult, StreamEvent, StreamItem};
+use super::events::StepResult;
 
 /// Result of processing tool calls.
 pub struct ToolProcessResult {
     /// The step outcome (Continue or FinalAnswer).
     pub outcome: StepResult,
-    /// Streaming events generated during processing (for streaming mode).
-    pub events: Vec<StreamItem>,
 }
 
 /// Unified tool call processor for both sync and streaming execution.
 pub struct ToolProcessor<'a> {
     tools: &'a ToolBox,
-    streaming: bool,
 }
 
 impl<'a> ToolProcessor<'a> {
     /// Create a new tool processor.
-    pub fn new(tools: &'a ToolBox) -> Self {
-        Self {
-            tools,
-            streaming: false,
-        }
-    }
-
-    /// Enable streaming mode to collect events.
-    #[must_use]
-    pub const fn with_streaming(mut self) -> Self {
-        self.streaming = true;
-        self
+    pub const fn new(tools: &'a ToolBox) -> Self {
+        Self { tools }
     }
 
     /// Process tool calls from a model response.
@@ -59,12 +46,9 @@ impl<'a> ToolProcessor<'a> {
         step: &mut ActionStep,
         message: &ChatMessage,
     ) -> Result<ToolProcessResult> {
-        let mut events = Vec::new();
-
         let Some(tool_calls) = Self::extract_tool_calls(step, message) else {
             return Ok(ToolProcessResult {
                 outcome: StepResult::Continue,
-                events,
             });
         };
 
@@ -80,27 +64,11 @@ impl<'a> ToolProcessor<'a> {
                 .get_or_insert_with(Vec::new)
                 .push(ToolCall::new(&tool_id, tool_name, tc.arguments().clone()));
 
-            // Emit tool call start event (streaming mode)
-            if self.streaming {
-                events.push(Ok(StreamEvent::ToolCallStart {
-                    id: tool_id.clone(),
-                    name: tool_name.to_string(),
-                }));
-            }
-
             // Handle final_answer specially
             if tool_name == "final_answer" {
                 let answer = Self::extract_final_answer(tc);
                 final_answer = Some(answer);
                 step.is_final_answer = true;
-
-                if self.streaming {
-                    events.push(Ok(StreamEvent::ToolCallComplete {
-                        id: tool_id,
-                        name: tool_name.to_string(),
-                        result: Ok("Final answer recorded".to_string()),
-                    }));
-                }
                 continue;
             }
 
@@ -110,14 +78,6 @@ impl<'a> ToolProcessor<'a> {
 
             if result_str.is_err() {
                 step.error = Some(observation.clone());
-            }
-
-            if self.streaming {
-                events.push(Ok(StreamEvent::ToolCallComplete {
-                    id: tool_id,
-                    name: tool_name.to_string(),
-                    result: result_str,
-                }));
             }
 
             observations.push(observation);
@@ -137,7 +97,7 @@ impl<'a> ToolProcessor<'a> {
             None => StepResult::Continue,
         };
 
-        Ok(ToolProcessResult { outcome, events })
+        Ok(ToolProcessResult { outcome })
     }
 
     /// Extract tool calls from model response.
