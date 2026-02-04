@@ -23,15 +23,20 @@
 //! telegram.start(&bus).await?;
 //! ```
 
+use crate::agent::confirmation::{
+    ConfirmationManager, ConfirmationRequest, TelegramConfirmationHandler,
+};
 use crate::bus::MessageBus;
 use crate::channel::{Channel, ChannelBase, ChannelState, ChannelStatus};
 use crate::error::{ChannelError, ChannelResult};
 use crate::events::{InboundMessage, MessageFormat, OutboundMessage};
 use async_trait::async_trait;
 use regex::Regex;
-use std::sync::OnceLock;
+use std::sync::{Arc, OnceLock};
 use teloxide::prelude::*;
-use teloxide::types::{MediaKind, MessageKind, ParseMode};
+use teloxide::types::{
+    InlineKeyboardButton, InlineKeyboardMarkup, MediaKind, MessageKind, ParseMode,
+};
 use tokio::sync::{RwLock, mpsc};
 use tracing::{debug, error, info};
 
@@ -128,6 +133,8 @@ pub struct TelegramChannel {
     config: TelegramChannelConfig,
     bot: RwLock<Option<Bot>>,
     shutdown_tx: RwLock<Option<mpsc::Sender<()>>>,
+    /// Confirmation manager for tool execution approval.
+    confirmation_manager: Arc<ConfirmationManager>,
 }
 
 impl std::fmt::Debug for TelegramChannel {
@@ -148,6 +155,22 @@ impl TelegramChannel {
             config,
             bot: RwLock::new(None),
             shutdown_tx: RwLock::new(None),
+            confirmation_manager: Arc::new(ConfirmationManager::new()),
+        }
+    }
+
+    /// Create a new Telegram channel with a shared confirmation manager.
+    #[must_use]
+    pub fn with_confirmation_manager(
+        config: TelegramChannelConfig,
+        manager: Arc<ConfirmationManager>,
+    ) -> Self {
+        Self {
+            base: ChannelBase::new("telegram"),
+            config,
+            bot: RwLock::new(None),
+            shutdown_tx: RwLock::new(None),
+            confirmation_manager: manager,
         }
     }
 
@@ -155,6 +178,48 @@ impl TelegramChannel {
     #[must_use]
     pub fn from_env() -> Self {
         Self::new(TelegramChannelConfig::from_env())
+    }
+
+    /// Get the confirmation handler for this channel.
+    #[must_use]
+    pub fn confirmation_handler(&self) -> TelegramConfirmationHandler {
+        TelegramConfirmationHandler::new(Arc::clone(&self.confirmation_manager))
+    }
+
+    /// Get the confirmation manager.
+    #[must_use]
+    pub fn confirmation_manager(&self) -> &Arc<ConfirmationManager> {
+        &self.confirmation_manager
+    }
+
+    /// Send a confirmation request with inline keyboard buttons.
+    pub async fn send_confirmation_request(
+        &self,
+        chat_id: i64,
+        request: &ConfirmationRequest,
+    ) -> ChannelResult<()> {
+        let bot = self.bot.read().await;
+        let bot = bot.as_ref().ok_or(ChannelError::NotConnected)?;
+
+        // Build inline keyboard
+        let keyboard = InlineKeyboardMarkup::new(vec![vec![
+            InlineKeyboardButton::callback("✅ Yes", format!("confirm:{}:y", request.id)),
+            InlineKeyboardButton::callback("❌ No", format!("confirm:{}:n", request.id)),
+            InlineKeyboardButton::callback("✅ All", format!("confirm:{}:a", request.id)),
+        ]]);
+
+        let message = format!(
+            "🔐 <b>Tool Confirmation Required</b>\n\n{}",
+            Self::markdown_to_telegram_html(&request.description)
+        );
+
+        bot.send_message(ChatId(chat_id), message)
+            .parse_mode(ParseMode::Html)
+            .reply_markup(keyboard)
+            .await
+            .map_err(|e| ChannelError::SendFailed(e.to_string()))?;
+
+        Ok(())
     }
 
     /// Convert Markdown to Telegram-safe HTML.
@@ -357,8 +422,11 @@ impl Channel for TelegramChannel {
             }
         });
 
+        // Clone confirmation manager for callback handler
+        let confirmation_manager = Arc::clone(&self.confirmation_manager);
+
         // Create message handler
-        let handler = Update::filter_message().endpoint(move |_bot: Bot, msg: Message| {
+        let message_handler = Update::filter_message().endpoint(move |_bot: Bot, msg: Message| {
             let bus_handle = bus_handle.clone();
             let allowed_users = allowed_users.clone();
             let allowed_chats = allowed_chats.clone();
@@ -383,15 +451,13 @@ impl Channel for TelegramChannel {
 
                 // Extract message content
                 let content = match &msg.kind {
-                    MessageKind::Common(common) => {
-                        match &common.media_kind {
-                            MediaKind::Text(text) => text.text.clone(),
-                            _ => {
-                                // Handle other media types
-                                "[Media message]".to_string()
-                            }
+                    MessageKind::Common(common) => match &common.media_kind {
+                        MediaKind::Text(text) => text.text.clone(),
+                        _ => {
+                            // Handle other media types
+                            "[Media message]".to_string()
                         }
-                    }
+                    },
                     _ => return Ok(()),
                 };
 
@@ -411,6 +477,74 @@ impl Channel for TelegramChannel {
                 Ok(())
             }
         });
+
+        // Create callback query handler for confirmation buttons
+        let callback_handler =
+            Update::filter_callback_query().endpoint(move |bot: Bot, query: CallbackQuery| {
+                let manager = Arc::clone(&confirmation_manager);
+
+                async move {
+                    let Some(data) = query.data else {
+                        return Ok::<(), teloxide::RequestError>(());
+                    };
+
+                    // Parse callback data: "confirm:<request_id>:<action>"
+                    if !data.starts_with("confirm:") {
+                        return Ok(());
+                    }
+
+                    let parts: Vec<&str> = data.split(':').collect();
+                    if parts.len() != 3 {
+                        return Ok(());
+                    }
+
+                    let request_id = parts[1];
+                    let action = parts[2];
+
+                    // Determine response based on action
+                    let response = match action {
+                        "y" => crate::agent::confirmation::ConfirmationResponse::Approved,
+                        "a" => crate::agent::confirmation::ConfirmationResponse::ApproveAll,
+                        _ => crate::agent::confirmation::ConfirmationResponse::Denied,
+                    };
+
+                    // Send response to pending request
+                    manager.respond(request_id, response).await;
+
+                    // Answer the callback query to remove loading state
+                    let answer_text = match action {
+                        "y" => "✅ Approved",
+                        "a" => "✅ Approved (all future calls)",
+                        _ => "❌ Denied",
+                    };
+
+                    if let Err(e) = bot.answer_callback_query(query.id.clone()).text(answer_text).await {
+                        error!(error = %e, "failed to answer callback query");
+                    }
+
+                    // Edit the original message to show the result
+                    if let Some(msg) = query.message {
+                        let new_text = format!(
+                            "{}",
+                            match action {
+                                "y" => "✅ Tool execution approved",
+                                "a" => "✅ Tool execution approved (all future calls)",
+                                _ => "❌ Tool execution denied",
+                            }
+                        );
+                        let _ = bot
+                            .edit_message_text(msg.chat().id, msg.id(), new_text)
+                            .await;
+                    }
+
+                    Ok(())
+                }
+            });
+
+        // Combine handlers
+        let handler = dptree::entry()
+            .branch(message_handler)
+            .branch(callback_handler);
 
         // Start the dispatcher
         let mut dispatcher = Dispatcher::builder(bot, handler)

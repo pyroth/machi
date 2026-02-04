@@ -9,7 +9,8 @@ mod schema;
 
 pub use schema::{
     AgentConfig, BotConfig, ChannelConfig, ConfigIssue, ExecConfig, GeminiConfig, GroqConfig,
-    IssueLevel, ProviderConfig, TelegramConfig, ToolsConfig, VllmConfig,
+    IssueLevel, ProviderConfig, TelegramConfig, ToolPoliciesConfig, ToolPolicy, ToolsConfig,
+    VllmConfig,
 };
 
 use std::path::PathBuf;

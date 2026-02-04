@@ -199,6 +199,7 @@ impl CompletionModel {
                 .collect();
             body["tools"] = serde_json::json!(tool_defs);
             // Enable thinking mode for models like qwen3 that need it for tool calling
+            // When think=true, response has "thinking" field with reasoning and "tool_calls" with calls
             body["think"] = serde_json::json!(true);
         }
 
@@ -310,6 +311,7 @@ impl Model for CompletionModel {
         }
 
         let json: Value = response.json().await?;
+        debug!(response = %json, "Ollama API response");
         self.parse_response(json)
     }
 

@@ -1,13 +1,22 @@
 //! Agent loop runner - the core message processing engine.
 
+use super::confirmation::{
+    CliConfirmationHandler, ConfirmationHandler, ConfirmationManager, ConfirmationRequest,
+    ConfirmationResponse, TelegramConfirmationHandler,
+};
 use super::context::ContextBuilder;
 use crate::bus::MessageBus;
-use crate::config::ExecConfig;
+use crate::config::{ExecConfig, ToolPoliciesConfig, ToolPolicy};
 use crate::error::{BotError, Result};
 use crate::events::{InboundMessage, OutboundMessage};
 use crate::session::{MemoryStorage, SessionManager};
 
+use async_trait::async_trait;
 use machi::prelude::*;
+use machi::tool::{
+    ConfirmationHandler as MachiConfirmationHandler, ToolConfirmationRequest,
+    ToolConfirmationResponse, ToolExecutionPolicy,
+};
 use std::path::PathBuf;
 use std::sync::Arc;
 use std::time::Duration;
@@ -25,6 +34,8 @@ pub struct AgentLoopConfig {
     pub workspace: PathBuf,
     /// Exec tool configuration.
     pub exec_config: ExecConfig,
+    /// Tool execution policies.
+    pub tool_policies: ToolPoliciesConfig,
 }
 
 impl Default for AgentLoopConfig {
@@ -34,6 +45,7 @@ impl Default for AgentLoopConfig {
             message_timeout: Duration::from_secs(300),
             workspace: default_workspace(),
             exec_config: ExecConfig::default(),
+            tool_policies: ToolPoliciesConfig::default(),
         }
     }
 }
@@ -54,6 +66,7 @@ pub struct AgentLoop<M: Model + Clone + Send + Sync + 'static> {
     #[allow(dead_code)] // Will be used for advanced context building
     context: ContextBuilder,
     running: Arc<RwLock<bool>>,
+    confirmation_manager: Arc<ConfirmationManager>,
 }
 
 impl<M: Model + Clone + Send + Sync + 'static> std::fmt::Debug for AgentLoop<M> {
@@ -75,6 +88,7 @@ impl<M: Model + Clone + Send + Sync + 'static> AgentLoop<M> {
             context: ContextBuilder::new(&config.workspace),
             config,
             running: Arc::new(RwLock::new(false)),
+            confirmation_manager: Arc::new(ConfirmationManager::new()),
         }
     }
 
@@ -87,6 +101,61 @@ impl<M: Model + Clone + Send + Sync + 'static> AgentLoop<M> {
             model,
             config,
             running: Arc::new(RwLock::new(false)),
+            confirmation_manager: Arc::new(ConfirmationManager::new()),
+        }
+    }
+
+    /// Create an agent loop with a shared confirmation manager.
+    pub fn with_confirmation_manager(
+        bus: MessageBus,
+        model: M,
+        config: AgentLoopConfig,
+        manager: Arc<ConfirmationManager>,
+    ) -> Self {
+        Self {
+            sessions: SessionManager::new(MemoryStorage::new()),
+            context: ContextBuilder::new(&config.workspace),
+            bus,
+            model,
+            config,
+            running: Arc::new(RwLock::new(false)),
+            confirmation_manager: manager,
+        }
+    }
+
+    /// Get the confirmation manager.
+    #[must_use]
+    pub fn confirmation_manager(&self) -> &Arc<ConfirmationManager> {
+        &self.confirmation_manager
+    }
+
+    /// Convert bot ToolPolicy to machi ToolExecutionPolicy.
+    fn to_machi_policy(policy: &ToolPolicy) -> ToolExecutionPolicy {
+        match policy {
+            ToolPolicy::Auto => ToolExecutionPolicy::Auto,
+            ToolPolicy::RequireConfirmation => ToolExecutionPolicy::RequireConfirmation,
+            ToolPolicy::Forbidden => ToolExecutionPolicy::Forbidden,
+        }
+    }
+
+    /// Create a confirmation handler for the given channel.
+    fn create_confirmation_handler(
+        &self,
+        channel: &str,
+    ) -> Box<dyn MachiConfirmationHandler> {
+        match channel {
+            "cli" => Box::new(ChannelConfirmationAdapter::new(
+                CliConfirmationHandler,
+                self.config.tool_policies.confirmation_timeout,
+            )),
+            "telegram" => Box::new(ChannelConfirmationAdapter::new(
+                TelegramConfirmationHandler::new(Arc::clone(&self.confirmation_manager)),
+                self.config.tool_policies.confirmation_timeout,
+            )),
+            _ => Box::new(ChannelConfirmationAdapter::new(
+                CliConfirmationHandler,
+                self.config.tool_policies.confirmation_timeout,
+            )),
         }
     }
 
@@ -153,12 +222,24 @@ impl<M: Model + Clone + Send + Sync + 'static> AgentLoop<M> {
             .await
             .map_err(|e| BotError::agent(e.to_string()))?;
 
-        // Build agent with tools
-        let mut agent = Agent::builder()
+        // Build agent with tools and policies
+        let mut builder = Agent::builder()
             .model(self.model.clone())
             .max_steps(self.config.max_iterations)
-            .add_base_tools()
-            .build();
+            .add_base_tools();
+
+        // Apply tool execution policies from config
+        let _default_policy = Self::to_machi_policy(&self.config.tool_policies.default_policy);
+        // TODO: Apply default policy to all tools when machi supports it
+        for (tool_name, policy) in &self.config.tool_policies.tools {
+            builder = builder.tool_policy(tool_name.clone(), Self::to_machi_policy(policy));
+        }
+
+        // Set confirmation handler based on channel
+        let confirmation_handler = self.create_confirmation_handler(&msg.channel);
+        builder = builder.confirmation_handler(confirmation_handler);
+
+        let mut agent = builder.build();
 
         // Run agent with the message
         let result = agent
@@ -269,6 +350,50 @@ impl<M: Model + Clone + Send + Sync + 'static> AgentLoopBuilder<M> {
         let model = self.model.expect("model is required");
 
         AgentLoop::with_config(bus, model, self.config)
+    }
+}
+
+/// Adapter to convert machi-bot's ConfirmationHandler to machi's ConfirmationHandler trait.
+///
+/// This bridges the gap between the two confirmation systems, allowing
+/// channel-specific handlers (CLI, Telegram) to be used with machi's agent.
+struct ChannelConfirmationAdapter<H: ConfirmationHandler + Send + Sync> {
+    handler: H,
+    timeout: u64,
+}
+
+impl<H: ConfirmationHandler + Send + Sync> ChannelConfirmationAdapter<H> {
+    /// Create a new adapter with the given handler and timeout.
+    fn new(handler: H, timeout: u64) -> Self {
+        Self { handler, timeout }
+    }
+}
+
+#[async_trait]
+impl<H: ConfirmationHandler + Send + Sync + 'static> MachiConfirmationHandler
+    for ChannelConfirmationAdapter<H>
+{
+    async fn confirm(&self, request: &ToolConfirmationRequest) -> ToolConfirmationResponse {
+        // Convert machi's request to our request format
+        let our_request = ConfirmationRequest::new(
+            request.name.clone(),
+            request.arguments.clone(),
+            "unknown", // Channel will be determined by the handler
+            "unknown", // Session key
+        )
+        .with_description(&request.description);
+
+        // Call our handler
+        let timeout = Duration::from_secs(self.timeout);
+        let response = self.handler.confirm(&our_request, timeout).await;
+
+        // Convert our response back to machi's format
+        match response {
+            ConfirmationResponse::Approved => ToolConfirmationResponse::Approved,
+            ConfirmationResponse::Denied => ToolConfirmationResponse::Denied,
+            ConfirmationResponse::ApproveAll => ToolConfirmationResponse::ApproveAll,
+            ConfirmationResponse::Timeout => ToolConfirmationResponse::Denied,
+        }
     }
 }
 

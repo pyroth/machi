@@ -4,6 +4,7 @@
 //! and builder patterns for constructing configurations programmatically.
 
 use serde::{Deserialize, Serialize};
+use std::collections::HashMap;
 
 /// Root configuration structure.
 #[derive(Debug, Clone, Default, Serialize, Deserialize)]
@@ -212,6 +213,60 @@ pub struct ToolsConfig {
     /// Exec tool config.
     #[serde(default)]
     pub exec: ExecConfig,
+    /// Tool execution policies.
+    #[serde(default)]
+    pub policies: ToolPoliciesConfig,
+}
+
+/// Tool execution policies configuration.
+#[derive(Debug, Clone, Default, Serialize, Deserialize)]
+pub struct ToolPoliciesConfig {
+    /// Default policy for tools not explicitly configured.
+    #[serde(default)]
+    pub default_policy: ToolPolicy,
+    /// Per-tool policies (tool_name -> policy).
+    #[serde(default)]
+    pub tools: HashMap<String, ToolPolicy>,
+    /// Confirmation timeout in seconds.
+    #[serde(default = "default_confirmation_timeout")]
+    pub confirmation_timeout: u64,
+}
+
+const fn default_confirmation_timeout() -> u64 {
+    60
+}
+
+/// Tool execution policy.
+#[derive(Debug, Clone, Copy, Default, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(rename_all = "snake_case")]
+pub enum ToolPolicy {
+    /// Tool can be executed automatically without confirmation.
+    #[default]
+    Auto,
+    /// Tool requires human confirmation before execution.
+    RequireConfirmation,
+    /// Tool execution is forbidden.
+    Forbidden,
+}
+
+impl ToolPolicy {
+    /// Check if this policy allows automatic execution.
+    #[must_use]
+    pub const fn is_auto(&self) -> bool {
+        matches!(self, Self::Auto)
+    }
+
+    /// Check if this policy requires confirmation.
+    #[must_use]
+    pub const fn requires_confirmation(&self) -> bool {
+        matches!(self, Self::RequireConfirmation)
+    }
+
+    /// Check if this policy forbids execution.
+    #[must_use]
+    pub const fn is_forbidden(&self) -> bool {
+        matches!(self, Self::Forbidden)
+    }
 }
 
 /// Web tools configuration.
