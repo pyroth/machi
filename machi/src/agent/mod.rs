@@ -43,6 +43,7 @@ use serde_json::Value;
 use tracing::{debug, info, instrument, warn};
 
 use crate::{
+    callback::{CallbackContext, CallbackRegistry},
     error::{AgentError, Result},
     managed_agent::{ManagedAgent, ManagedAgentRegistry},
     memory::{ActionStep, AgentMemory, FinalAnswerStep, TaskStep, Timing, ToolCall},
@@ -76,6 +77,7 @@ pub struct Agent {
     pub(crate) custom_instructions: Option<String>,
     pub(crate) final_answer_checks: FinalAnswerChecks,
     pub(crate) telemetry: Telemetry,
+    pub(crate) callbacks: CallbackRegistry,
 }
 
 impl std::fmt::Debug for Agent {
@@ -97,120 +99,341 @@ impl Agent {
         AgentBuilder::new()
     }
 
-    /// Run the agent with a task.
+    /// Run the agent with a task, returning the final answer.
+    ///
+    /// This is the simplest way to execute an agent. For more control,
+    /// use [`run_with_options`] or [`run_detailed`].
     #[inline]
     pub async fn run(&mut self, task: &str) -> Result<Value> {
-        self.run_with_args(task, HashMap::new()).await
+        self.run_with_options(task, Vec::new(), HashMap::new())
+            .await
     }
 
     /// Run the agent with images (for vision models).
     #[inline]
     pub async fn run_with_images(&mut self, task: &str, images: Vec<AgentImage>) -> Result<Value> {
-        self.invoke(task, images, HashMap::new()).await
+        self.run_with_options(task, images, HashMap::new()).await
     }
 
-    /// Run the agent with additional context arguments.
-    #[instrument(skip(self, args), fields(max_steps = self.config.max_steps))]
-    pub async fn run_with_args(
+    /// Run the agent with additional context variables.
+    #[inline]
+    pub async fn run_with_context(
         &mut self,
         task: &str,
-        args: HashMap<String, Value>,
+        context: HashMap<String, Value>,
     ) -> Result<Value> {
-        self.execute_with_args(task, args)
+        self.run_with_options(task, Vec::new(), context).await
+    }
+
+    /// Run the agent with full options: images and context variables.
+    #[instrument(skip(self, images, context), fields(max_steps = self.config.max_steps, image_count = images.len()))]
+    pub async fn run_with_options(
+        &mut self,
+        task: &str,
+        images: Vec<AgentImage>,
+        context: HashMap<String, Value>,
+    ) -> Result<Value> {
+        self.run_detailed_with_options(task, images, context)
             .await
             .into_result(self.config.max_steps)
     }
 
-    /// Run the agent with images and context arguments.
-    #[instrument(skip(self, images, args), fields(max_steps = self.config.max_steps, image_count = images.len()))]
-    pub async fn invoke(
-        &mut self,
-        task: &str,
-        images: Vec<AgentImage>,
-        args: HashMap<String, Value>,
-    ) -> Result<Value> {
-        self.execute_full(task, images, args)
+    /// Run the agent and return detailed [`RunResult`] with metrics.
+    #[inline]
+    pub async fn run_detailed(&mut self, task: &str) -> RunResult {
+        self.run_detailed_with_options(task, Vec::new(), HashMap::new())
             .await
-            .into_result(self.config.max_steps)
     }
 
-    /// Execute and return detailed [`RunResult`].
+    /// Run with images, returning detailed [`RunResult`].
     #[inline]
-    pub async fn execute(&mut self, task: &str) -> RunResult {
-        self.execute_with_args(task, HashMap::new()).await
-    }
-
-    /// Execute with images and return detailed [`RunResult`].
-    #[inline]
-    pub async fn execute_with_images(&mut self, task: &str, images: Vec<AgentImage>) -> RunResult {
-        self.execute_full(task, images, HashMap::new()).await
-    }
-
-    /// Execute with context arguments and return detailed [`RunResult`].
-    #[instrument(skip(self, args), fields(max_steps = self.config.max_steps))]
-    pub async fn execute_with_args(
-        &mut self,
-        task: &str,
-        args: HashMap<String, Value>,
-    ) -> RunResult {
-        self.execute_full(task, Vec::new(), args).await
-    }
-
-    /// Execute with images and context arguments, return detailed [`RunResult`].
-    #[instrument(skip(self, images, args), fields(max_steps = self.config.max_steps, image_count = images.len()))]
-    pub async fn execute_full(
+    pub async fn run_detailed_with_images(
         &mut self,
         task: &str,
         images: Vec<AgentImage>,
-        args: HashMap<String, Value>,
     ) -> RunResult {
-        self.init_run(task, images, args);
+        self.run_detailed_with_options(task, images, HashMap::new())
+            .await
+    }
+
+    /// Run with context variables, returning detailed [`RunResult`].
+    #[inline]
+    pub async fn run_detailed_with_context(
+        &mut self,
+        task: &str,
+        context: HashMap<String, Value>,
+    ) -> RunResult {
+        self.run_detailed_with_options(task, Vec::new(), context)
+            .await
+    }
+
+    /// Run with full options, returning detailed [`RunResult`] with metrics.
+    #[instrument(skip(self, images, context), fields(max_steps = self.config.max_steps, image_count = images.len()))]
+    pub async fn run_detailed_with_options(
+        &mut self,
+        task: &str,
+        images: Vec<AgentImage>,
+        context: HashMap<String, Value>,
+    ) -> RunResult {
+        self.prepare_run(task, images, context);
         info!("Starting agent run");
 
         let timing = Timing::start_now();
-        let result = self.step_loop().await;
+        let result = self.execute_loop().await;
         let mut final_timing = timing;
         final_timing.complete();
 
-        self.finalize(result, final_timing)
+        self.complete_run(result, final_timing)
     }
 
-    /// Stream execution events.
+    /// Stream execution events (step-level streaming).
+    ///
+    /// This streams events at the step level. For token-level streaming,
+    /// see [`stream_tokens`].
     #[instrument(skip(self), fields(max_steps = self.config.max_steps))]
     pub fn stream(&mut self, task: &str) -> impl Stream<Item = StreamItem> + '_ {
-        self.stream_with_args(task, HashMap::new())
+        self.stream_with_options(task, Vec::new(), HashMap::new())
     }
 
-    /// Stream execution events with context arguments.
-    #[instrument(skip(self, args), fields(max_steps = self.config.max_steps))]
+    /// Stream execution events with images.
+    #[instrument(skip(self, images), fields(max_steps = self.config.max_steps, image_count = images.len()))]
+    pub fn stream_with_images(
+        &mut self,
+        task: &str,
+        images: Vec<AgentImage>,
+    ) -> impl Stream<Item = StreamItem> + '_ {
+        self.stream_with_options(task, images, HashMap::new())
+    }
+
+    /// Stream execution events with context variables.
+    #[instrument(skip(self, context), fields(max_steps = self.config.max_steps))]
+    pub fn stream_with_context(
+        &mut self,
+        task: &str,
+        context: HashMap<String, Value>,
+    ) -> impl Stream<Item = StreamItem> + '_ {
+        self.stream_with_options(task, Vec::new(), context)
+    }
+
+    /// Stream execution events with full options.
+    #[instrument(skip(self, images, context), fields(max_steps = self.config.max_steps, image_count = images.len()))]
     #[expect(
         tail_expr_drop_order,
         reason = "stream yields control flow intentionally"
     )]
-    pub fn stream_with_args(
+    pub fn stream_with_options(
         &mut self,
         task: &str,
-        args: HashMap<String, Value>,
+        images: Vec<AgentImage>,
+        context: HashMap<String, Value>,
     ) -> impl Stream<Item = StreamItem> + '_ {
-        self.init_run(task, Vec::new(), args);
+        self.prepare_run(task, images, context);
         info!("Starting streaming agent run");
 
         stream! {
-            loop {
-                match self.poll_event().await {
-                    Some(Ok(event)) => {
-                        let is_final = matches!(event, StreamEvent::FinalAnswer { .. });
-                        yield Ok(event);
-                        if is_final {
-                            break;
+            let mut final_answer: Option<Value> = None;
+
+            while self.step_number < self.config.max_steps {
+                if self.interrupt_flag.load(Ordering::SeqCst) {
+                    yield Err(AgentError::Interrupted);
+                    break;
+                }
+
+                self.step_number += 1;
+                let mut step = ActionStep {
+                    step_number: self.step_number,
+                    timing: Timing::start_now(),
+                    ..Default::default()
+                };
+
+                // Prepare messages and options
+                let messages = self.memory.to_messages(false);
+                step.model_input_messages = Some(messages.clone());
+                let options = GenerateOptions::new().with_tools(self.tools.definitions());
+                debug!(step = step.step_number, "Generating model response");
+
+                // Stream model response with token-level events
+                let model_result = if self.model.supports_streaming() {
+                    let stream_result = self.model.generate_stream(messages, options).await;
+                    match stream_result {
+                        Ok(mut model_stream) => {
+                            let mut deltas = Vec::new();
+                            while let Some(result) = model_stream.next().await {
+                                match result {
+                                    Ok(delta) => {
+                                        // Yield text delta for each token
+                                        if let Some(content) = &delta.content
+                                            && !content.is_empty() {
+                                                yield Ok(StreamEvent::TextDelta(content.clone()));
+                                            }
+                                        if let Some(usage) = &delta.token_usage {
+                                            step.token_usage = Some(*usage);
+                                            yield Ok(StreamEvent::TokenUsage(*usage));
+                                        }
+                                        deltas.push(delta);
+                                    }
+                                    Err(e) => {
+                                        step.error = Some(e.to_string());
+                                        yield Err(e);
+                                        break;
+                                    }
+                                }
+                            }
+                            let message = crate::message::aggregate_stream_deltas(&deltas);
+                            step.model_output_message = Some(message.clone());
+                            step.model_output = message.text_content();
+                            Ok(message)
+                        }
+                        Err(e) => Err(e),
+                    }
+                } else {
+                    match self.model.generate(messages, options).await {
+                        Ok(response) => {
+                            step.model_output_message = Some(response.message.clone());
+                            step.token_usage = response.token_usage;
+                            step.model_output = response.message.text_content();
+                            if let Some(text) = &step.model_output {
+                                yield Ok(StreamEvent::TextDelta(text.clone()));
+                            }
+                            if let Some(usage) = response.token_usage {
+                                yield Ok(StreamEvent::TokenUsage(usage));
+                            }
+                            Ok(response.message)
+                        }
+                        Err(e) => Err(e),
+                    }
+                };
+
+                // Handle model response
+                let step_result = match model_result {
+                    Ok(message) => {
+                        // Process tool calls
+                        match Self::extract_tool_calls(&step, &message) {
+                            Some(tool_calls) => {
+                                let mut observations = Vec::with_capacity(tool_calls.len());
+                                let mut got_final_answer = None;
+
+                                for tc in &tool_calls {
+                                    let tool_name = tc.name();
+                                    let tool_id = tc.id.clone();
+                                    step.tool_calls
+                                        .get_or_insert_with(Vec::new)
+                                        .push(ToolCall::new(&tool_id, tool_name, tc.arguments().clone()));
+
+                                    // Yield tool call start
+                                    yield Ok(StreamEvent::ToolCallStart {
+                                        id: tool_id.clone(),
+                                        name: tool_name.to_string(),
+                                    });
+
+                                    if tool_name == "final_answer" {
+                                        // Try parsing as FinalAnswerArgs, fallback to raw arguments
+                                        let answer = tc.parse_arguments::<crate::tools::FinalAnswerArgs>().map_or_else(|_| tc.arguments().clone(), |args| args.answer);
+                                        got_final_answer = Some(answer);
+                                        step.is_final_answer = true;
+                                        yield Ok(StreamEvent::ToolCallComplete {
+                                            id: tool_id,
+                                            name: tool_name.to_string(),
+                                            result: Ok("Final answer recorded".to_string()),
+                                        });
+                                        continue;
+                                    }
+
+                                    // Execute tool
+                                    let tool_result = self.tools.call(tool_name, tc.arguments().clone()).await;
+                                    let (result_str, tool_output) = match tool_result {
+                                        Ok(output) => {
+                                            let s = format!("Tool '{tool_name}' returned: {output}");
+                                            (Ok(s.clone()), s)
+                                        }
+                                        Err(e) => {
+                                            let s = format!("Tool '{tool_name}' failed: {e}");
+                                            step.error = Some(s.clone());
+                                            (Err(s.clone()), s)
+                                        }
+                                    };
+
+                                    yield Ok(StreamEvent::ToolCallComplete {
+                                        id: tool_id,
+                                        name: tool_name.to_string(),
+                                        result: result_str,
+                                    });
+                                    observations.push(tool_output);
+                                }
+
+                                if !observations.is_empty() {
+                                    step.observations = Some(observations.join("\n"));
+                                }
+
+                                match got_final_answer {
+                                    Some(answer) => {
+                                        step.action_output = Some(answer.clone());
+                                        Ok(StepResult::FinalAnswer(answer))
+                                    }
+                                    None => Ok(StepResult::Continue),
+                                }
+                            }
+                            None => Ok(StepResult::Continue),
                         }
                     }
-                    Some(Err(e)) => {
-                        yield Err(e);
+                    Err(e) => {
+                        step.error = Some(e.to_string());
+                        Err(e)
+                    }
+                };
+
+                // Finalize step
+                step.timing.complete();
+                self.record_telemetry(&step);
+
+                // Invoke callbacks
+                let ctx = self.create_callback_context();
+                self.callbacks.callback(&step, &ctx);
+
+                // Yield step complete
+                let step_clone = step.clone();
+                self.memory.add_step(step);
+                yield Ok(StreamEvent::StepComplete {
+                    step: self.step_number,
+                    action_step: Box::new(step_clone),
+                });
+
+                // Check result
+                match step_result {
+                    Ok(StepResult::FinalAnswer(answer)) => {
+                        // Validate answer
+                        if let Err(e) = self.validate_answer(&answer) {
+                            warn!(error = %e, "Final answer check failed");
+                            yield Ok(StreamEvent::Error(format!("Final answer check failed: {e}")));
+                            continue;
+                        }
+
+                        // Callback for final answer
+                        let final_step = FinalAnswerStep { output: answer.clone() };
+                        self.callbacks.callback(&final_step, &ctx);
+                        self.memory.add_step(FinalAnswerStep { output: answer.clone() });
+
+                        final_answer = Some(answer.clone());
+                        yield Ok(StreamEvent::FinalAnswer { answer });
                         break;
                     }
-                    None => break,
+                    Ok(StepResult::Continue) => {
+                        // Continue to next step
+                    }
+                    Err(e) => {
+                        warn!(step = self.step_number, error = %e, "Step failed");
+                        yield Ok(StreamEvent::Error(e.to_string()));
+                    }
                 }
+            }
+
+            // Handle max steps reached
+            if final_answer.is_none() && self.step_number >= self.config.max_steps {
+                let error_msg = format!("Maximum steps ({}) reached", self.config.max_steps);
+                self.memory.add_step(FinalAnswerStep {
+                    output: Value::String(error_msg.clone()),
+                });
+                yield Err(AgentError::max_steps(self.step_number, self.config.max_steps));
             }
         }
     }
@@ -301,12 +524,24 @@ impl Agent {
     }
 }
 
+// Private implementation details
 impl Agent {
-    fn init_run(&mut self, task: &str, images: Vec<AgentImage>, args: HashMap<String, Value>) {
+    /// Create a callback context for the current state.
+    fn create_callback_context(&self) -> CallbackContext {
+        CallbackContext::new(self.step_number, self.config.max_steps)
+            .with_agent_name(self.config.name.clone().unwrap_or_default())
+    }
+
+    fn prepare_run(
+        &mut self,
+        task: &str,
+        images: Vec<AgentImage>,
+        context: HashMap<String, Value>,
+    ) {
         self.memory.reset();
         self.step_number = 0;
         self.interrupt_flag.store(false, Ordering::SeqCst);
-        self.state = args;
+        self.state = context;
 
         self.system_prompt = self.render_system_prompt();
         self.memory
@@ -336,7 +571,7 @@ impl Agent {
         }
     }
 
-    fn finalize(&mut self, result: Result<Value>, timing: Timing) -> RunResult {
+    fn complete_run(&mut self, result: Result<Value>, timing: Timing) -> RunResult {
         let token_usage = self.memory.total_token_usage();
         let steps_taken = self.step_number;
 
@@ -392,7 +627,7 @@ impl Agent {
 }
 
 impl Agent {
-    async fn step_loop(&mut self) -> Result<Value> {
+    async fn execute_loop(&mut self) -> Result<Value> {
         while self.step_number < self.config.max_steps {
             if self.interrupt_flag.load(Ordering::SeqCst) {
                 return Err(AgentError::Interrupted);
@@ -405,13 +640,17 @@ impl Agent {
                 ..Default::default()
             };
 
-            let result = self.run_step(&mut step).await;
+            let result = self.execute_step(&mut step).await;
             step.timing.complete();
             self.record_telemetry(&step);
 
+            // Invoke callbacks
+            let ctx = self.create_callback_context();
+            self.callbacks.callback(&step, &ctx);
+
             match result {
                 Ok(StepResult::FinalAnswer(answer)) => {
-                    if let Err(e) = self.check_answer(&answer) {
+                    if let Err(e) = self.validate_answer(&answer) {
                         warn!(error = %e, "Final answer check failed");
                         step.error = Some(format!("Final answer check failed: {e}"));
                         self.telemetry.record_error(&e.to_string());
@@ -419,6 +658,13 @@ impl Agent {
                         continue;
                     }
                     self.memory.add_step(step);
+
+                    // Callback for final answer
+                    let final_step = FinalAnswerStep {
+                        output: answer.clone(),
+                    };
+                    self.callbacks.callback(&final_step, &ctx);
+
                     return Ok(answer);
                 }
                 Ok(StepResult::Continue) => {
@@ -440,71 +686,18 @@ impl Agent {
         ))
     }
 
-    async fn run_step(&self, step: &mut ActionStep) -> Result<StepResult> {
+    async fn execute_step(&self, step: &mut ActionStep) -> Result<StepResult> {
         let messages = self.memory.to_messages(false);
         step.model_input_messages = Some(messages.clone());
 
         let options = GenerateOptions::new().with_tools(self.tools.definitions());
         debug!(step = step.step_number, "Generating model response");
 
-        let message = self.call_model(messages, options, step).await?;
-        self.handle_response(step, &message).await
+        let message = self.generate_response(messages, options, step).await?;
+        self.process_response(step, &message).await
     }
 
-    async fn poll_event(&mut self) -> Option<StreamItem> {
-        if self.step_number >= self.config.max_steps {
-            self.memory.add_step(FinalAnswerStep {
-                output: Value::String("Maximum steps reached".into()),
-            });
-            return Some(Err(AgentError::max_steps(
-                self.step_number,
-                self.config.max_steps,
-            )));
-        }
-
-        if self.interrupt_flag.load(Ordering::SeqCst) {
-            return Some(Err(AgentError::Interrupted));
-        }
-
-        self.step_number += 1;
-        let mut step = ActionStep {
-            step_number: self.step_number,
-            timing: Timing::start_now(),
-            ..Default::default()
-        };
-
-        let result = self.run_step(&mut step).await;
-        step.timing.complete();
-
-        match result {
-            Ok(StepResult::Continue) => {
-                let step_clone = step.clone();
-                self.memory.add_step(step);
-                Some(Ok(StreamEvent::StepComplete {
-                    step: self.step_number,
-                    action_step: Box::new(step_clone),
-                }))
-            }
-            Ok(StepResult::FinalAnswer(answer)) => {
-                step.is_final_answer = true;
-                step.action_output = Some(answer.clone());
-                self.memory.add_step(step);
-                self.memory.add_step(FinalAnswerStep {
-                    output: answer.clone(),
-                });
-                info!("Agent completed successfully");
-                Some(Ok(StreamEvent::FinalAnswer { answer }))
-            }
-            Err(e) => {
-                step.error = Some(e.to_string());
-                self.memory.add_step(step);
-                warn!(step = self.step_number, error = %e, "Step failed");
-                Some(Ok(StreamEvent::Error(e.to_string())))
-            }
-        }
-    }
-
-    fn check_answer(&self, answer: &Value) -> Result<()> {
+    fn validate_answer(&self, answer: &Value) -> Result<()> {
         if self.final_answer_checks.is_empty() {
             return Ok(());
         }
@@ -523,7 +716,7 @@ impl Agent {
 }
 
 impl Agent {
-    async fn call_model(
+    async fn generate_response(
         &self,
         messages: Vec<ChatMessage>,
         options: GenerateOptions,
@@ -558,12 +751,12 @@ impl Agent {
         }
     }
 
-    async fn handle_response(
+    async fn process_response(
         &self,
         step: &mut ActionStep,
         message: &ChatMessage,
     ) -> Result<StepResult> {
-        let Some(tool_calls) = Self::get_tool_calls(step, message) else {
+        let Some(tool_calls) = Self::extract_tool_calls(step, message) else {
             return Ok(StepResult::Continue);
         };
 
@@ -577,14 +770,16 @@ impl Agent {
                 .push(ToolCall::new(&tc.id, tool_name, tc.arguments().clone()));
 
             if tool_name == "final_answer" {
-                if let Ok(args) = tc.parse_arguments::<crate::tools::FinalAnswerArgs>() {
-                    final_answer = Some(args.answer);
-                    step.is_final_answer = true;
-                }
+                // Try parsing as FinalAnswerArgs, fallback to raw arguments
+                let answer = tc
+                    .parse_arguments::<crate::tools::FinalAnswerArgs>()
+                    .map_or_else(|_| tc.arguments().clone(), |args| args.answer);
+                final_answer = Some(answer);
+                step.is_final_answer = true;
                 continue;
             }
 
-            let observation = self.call_tool(tool_name, tc.arguments().clone()).await;
+            let observation = self.execute_tool(tool_name, tc.arguments().clone()).await;
             if let Err(ref e) = observation {
                 step.error = Some(e.clone());
             }
@@ -604,7 +799,7 @@ impl Agent {
         }
     }
 
-    fn get_tool_calls(
+    fn extract_tool_calls(
         step: &ActionStep,
         message: &ChatMessage,
     ) -> Option<Vec<ChatMessageToolCall>> {
@@ -625,7 +820,7 @@ impl Agent {
         None
     }
 
-    async fn call_tool(&self, name: &str, args: Value) -> std::result::Result<String, String> {
+    async fn execute_tool(&self, name: &str, args: Value) -> std::result::Result<String, String> {
         match self.tools.call(name, args).await {
             Ok(result) => Ok(format!("Tool '{name}' returned: {result}")),
             Err(e) => Err(format!("Tool '{name}' failed: {e}")),
@@ -680,11 +875,11 @@ impl Agent {
             .render(&self.prompt_templates.system_prompt, &ctx)
             .unwrap_or_else(|e| {
                 warn!(error = %e, "Failed to render system prompt template, using fallback");
-                self.fallback_prompt()
+                self.default_system_prompt()
             })
     }
 
-    fn fallback_prompt(&self) -> String {
+    fn default_system_prompt(&self) -> String {
         let defs = self.tools.definitions();
         let mut result = String::with_capacity(512 + defs.len() * 64);
 

@@ -48,7 +48,7 @@ pub type BoxedCallback = Box<dyn Fn(&dyn MemoryStep, &CallbackContext) + Send + 
 // to avoid lifetime issues with borrowed references in async contexts.
 
 /// Internal handler wrapper that stores callback with metadata.
-pub(crate) struct CallbackHandler {
+pub struct CallbackHandler {
     /// The callback function.
     pub callback: Arc<BoxedCallback>,
     /// Priority for ordering.
@@ -136,7 +136,7 @@ mod tests {
 
     #[test]
     fn test_priority_ordering() {
-        let mut priorities = vec![
+        let mut priorities = [
             Priority::LOW,
             Priority::HIGHEST,
             Priority::NORMAL,

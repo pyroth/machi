@@ -22,7 +22,7 @@ pub struct CallbackContext {
 impl CallbackContext {
     /// Create a new callback context.
     #[must_use]
-    pub fn new(step_number: usize, max_steps: usize) -> Self {
+    pub const fn new(step_number: usize, max_steps: usize) -> Self {
         Self {
             agent_name: None,
             step_number,

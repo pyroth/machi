@@ -114,7 +114,7 @@ impl CallbackRegistry {
         }
 
         // Sort by priority (higher first)
-        matching_handlers.sort_by(|a, b| a.priority.cmp(&b.priority));
+        matching_handlers.sort_by_key(|a| a.priority);
 
         // Invoke all matching handlers
         for handler in matching_handlers {

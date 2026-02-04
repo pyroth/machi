@@ -2,7 +2,7 @@
 //!
 //! ```bash
 //! ollama pull qwen3
-//! cargo run --example agent_buildin_tools
+//! cargo run --example agent_tools
 //! ```
 
 #![allow(clippy::print_stdout, clippy::print_stderr)]

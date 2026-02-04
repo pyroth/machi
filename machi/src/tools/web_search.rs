@@ -2,9 +2,26 @@
 
 use crate::tool::{Tool, ToolError};
 use async_trait::async_trait;
+use regex::Regex;
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
 use std::fmt::Write;
+use std::sync::LazyLock;
+
+// Pre-compiled regex patterns for parsing search results
+static DUCKDUCKGO_LINK_RE: LazyLock<Regex> = LazyLock::new(|| {
+    Regex::new(r#"class="result-link"[^>]*href="([^"]+)"[^>]*>([^<]+)</a>"#).expect("valid regex")
+});
+
+static DUCKDUCKGO_SNIPPET_RE: LazyLock<Regex> =
+    LazyLock::new(|| Regex::new(r#"class="result-snippet"[^>]*>([^<]+)"#).expect("valid regex"));
+
+static RSS_ITEM_RE: LazyLock<Regex> = LazyLock::new(|| {
+    Regex::new(
+        r"<item>.*?<title>([^<]*)</title>.*?<link>([^<]*)</link>.*?<description>([^<]*)</description>.*?</item>",
+    )
+    .expect("valid regex")
+});
 
 /// Generic web search tool with configurable backend.
 #[derive(Debug, Clone, Copy)]
@@ -19,10 +36,10 @@ pub struct WebSearchTool {
 /// Supported search engines.
 #[derive(Debug, Clone, Copy, Default)]
 pub enum SearchEngine {
-    /// `DuckDuckGo` search engine (default).
-    #[default]
+    /// `DuckDuckGo` search engine (may trigger CAPTCHA).
     DuckDuckGo,
-    /// Bing search engine.
+    /// Bing search engine (default, uses RSS feed).
+    #[default]
     Bing,
 }
 
@@ -96,7 +113,6 @@ impl WebSearchTool {
     /// Perform `DuckDuckGo` search using lite HTML interface.
     async fn search_duckduckgo(&self, query: &str) -> Result<Vec<SearchResult>, ToolError> {
         let client = reqwest::Client::builder()
-            .timeout(std::time::Duration::from_secs(30))
             .user_agent("Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36")
             .build()
             .map_err(|e| ToolError::ExecutionError(e.to_string()))?;
@@ -125,46 +141,37 @@ impl WebSearchTool {
 
     /// Parse `DuckDuckGo` Lite HTML response.
     fn parse_duckduckgo_html(html: &str) -> Vec<SearchResult> {
-        let mut results = Vec::new();
+        let links: Vec<_> = DUCKDUCKGO_LINK_RE.captures_iter(html).collect();
+        let snippets: Vec<_> = DUCKDUCKGO_SNIPPET_RE.captures_iter(html).collect();
 
-        // Simple regex-based parsing for result links
-        let link_re =
-            regex::Regex::new(r#"class="result-link"[^>]*href="([^"]+)"[^>]*>([^<]+)</a>"#).ok();
-        let snippet_re = regex::Regex::new(r#"class="result-snippet"[^>]*>([^<]+)"#).ok();
-
-        if let (Some(link_regex), Some(snippet_regex)) = (link_re, snippet_re) {
-            let links: Vec<_> = link_regex.captures_iter(html).collect();
-            let snippets: Vec<_> = snippet_regex.captures_iter(html).collect();
-
-            for (i, link_cap) in links.iter().enumerate() {
+        links
+            .iter()
+            .enumerate()
+            .filter_map(|(i, link_cap)| {
                 let url = link_cap.get(1).map(|m| m.as_str()).unwrap_or_default();
                 let title = link_cap.get(2).map(|m| m.as_str()).unwrap_or_default();
                 let description = snippets
                     .get(i)
                     .and_then(|c| c.get(1))
-                    .map(|m| m.as_str())
+                    .map(|m| m.as_str().trim())
                     .unwrap_or_default();
 
-                if !url.is_empty() && !title.is_empty() {
-                    results.push(SearchResult {
+                if url.is_empty() || title.is_empty() {
+                    None
+                } else {
+                    Some(SearchResult {
                         title: title.trim().to_string(),
                         link: url.to_string(),
-                        description: description.trim().to_string(),
-                    });
+                        description: description.to_string(),
+                    })
                 }
-            }
-        }
-
-        results
+            })
+            .collect()
     }
 
     /// Perform Bing search using RSS feed.
     async fn search_bing(&self, query: &str) -> Result<Vec<SearchResult>, ToolError> {
-        let client = reqwest::Client::builder()
-            .timeout(std::time::Duration::from_secs(30))
-            .user_agent("Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36")
-            .build()
-            .map_err(|e| ToolError::ExecutionError(e.to_string()))?;
+        let client = reqwest::Client::new();
         let url = format!(
             "https://www.bing.com/search?q={}&format=rss",
             urlencoding::encode(query)
@@ -189,36 +196,26 @@ impl WebSearchTool {
 
     /// Parse RSS XML response.
     fn parse_rss_xml(xml: &str) -> Vec<SearchResult> {
-        let mut results = Vec::new();
-
-        // Simple regex-based parsing for RSS items
-        let item_re = regex::Regex::new(
-            r"<item>.*?<title>([^<]*)</title>.*?<link>([^<]*)</link>.*?<description>([^<]*)</description>.*?</item>"
-        ).ok();
-
-        if let Some(regex) = item_re {
-            for cap in regex.captures_iter(xml) {
-                results.push(SearchResult {
-                    title: cap
-                        .get(1)
-                        .map(|m| m.as_str())
-                        .unwrap_or_default()
-                        .to_string(),
-                    link: cap
-                        .get(2)
-                        .map(|m| m.as_str())
-                        .unwrap_or_default()
-                        .to_string(),
-                    description: cap
-                        .get(3)
-                        .map(|m| m.as_str())
-                        .unwrap_or_default()
-                        .to_string(),
-                });
-            }
-        }
-
-        results
+        RSS_ITEM_RE
+            .captures_iter(xml)
+            .map(|cap| SearchResult {
+                title: cap
+                    .get(1)
+                    .map(|m| m.as_str())
+                    .unwrap_or_default()
+                    .to_string(),
+                link: cap
+                    .get(2)
+                    .map(|m| m.as_str())
+                    .unwrap_or_default()
+                    .to_string(),
+                description: cap
+                    .get(3)
+                    .map(|m| m.as_str())
+                    .unwrap_or_default()
+                    .to_string(),
+            })
+            .collect()
     }
 }
 
@@ -243,8 +240,7 @@ impl Tool for WebSearchTool {
             "properties": {
                 "query": {
                     "type": "string",
-                    "minLength": 1,
-                    "description": "The search query to perform (non-empty string)"
+                    "description": "The search query to perform"
                 }
             },
             "required": ["query"]
@@ -256,13 +252,6 @@ impl Tool for WebSearchTool {
     }
 
     async fn call(&self, args: Self::Args) -> Result<Self::Output, Self::Error> {
-        // Validate query is not empty
-        if args.query.trim().is_empty() {
-            return Err(ToolError::InvalidArguments(
-                "Search query cannot be empty".to_string(),
-            ));
-        }
-
         let results = match self.engine {
             SearchEngine::DuckDuckGo => self.search_duckduckgo(&args.query).await?,
             SearchEngine::Bing => self.search_bing(&args.query).await?,

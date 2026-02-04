@@ -2,7 +2,7 @@
 //!
 //! ```bash
 //! ollama pull qwen3
-//! cargo run --example agent_run_result
+//! cargo run --example agent_detailed
 //! ```
 
 #![allow(clippy::print_stdout, clippy::print_stderr, clippy::unused_async)]
@@ -30,7 +30,7 @@ async fn main() -> std::result::Result<(), Box<dyn std::error::Error>> {
         .final_answer_checks(FinalAnswerChecks::new().not_null().not_empty())
         .build();
 
-    let result = agent.execute("What is 100 divided by 4?").await;
+    let result = agent.run_detailed("What is 100 divided by 4?").await;
 
     println!("{}", result.summary());
 

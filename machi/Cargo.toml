@@ -16,6 +16,7 @@ convert_case.workspace = true
 futures.workspace = true
 machi-derive.workspace = true
 regex.workspace = true
+scraper.workspace = true
 reqwest.workspace = true
 rmcp.workspace = true
 serde.workspace = true
@@ -28,6 +29,7 @@ tokio.workspace = true
 tracing.workspace = true
 urlencoding.workspace = true
 uuid.workspace = true
+html-escape.workspace = true
 
 [dev-dependencies]
 tokio-test.workspace = true

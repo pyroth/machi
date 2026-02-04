@@ -1,6 +1,7 @@
 //! Agent builder for constructing agents with a fluent API.
 
 use crate::{
+    callback::CallbackRegistry,
     error::{AgentError, Result},
     managed_agent::{BoxedManagedAgent, ManagedAgentRegistry},
     memory::AgentMemory,
@@ -35,6 +36,7 @@ pub struct AgentBuilder {
     prompt_templates: Option<PromptTemplates>,
     custom_instructions: Option<String>,
     final_answer_checks: FinalAnswerChecks,
+    callbacks: CallbackRegistry,
 }
 
 impl std::fmt::Debug for AgentBuilder {
@@ -60,6 +62,7 @@ impl AgentBuilder {
             prompt_templates: None,
             custom_instructions: None,
             final_answer_checks: FinalAnswerChecks::new(),
+            callbacks: CallbackRegistry::new(),
         }
     }
 
@@ -183,6 +186,34 @@ impl AgentBuilder {
         self
     }
 
+    /// Set callback registry for step events.
+    ///
+    /// Callbacks are invoked when steps complete, allowing for monitoring,
+    /// logging, and custom event handling.
+    ///
+    /// # Example
+    ///
+    /// ```rust,ignore
+    /// use machi::callback::{CallbackRegistry, CallbackContext};
+    /// use machi::memory::ActionStep;
+    ///
+    /// let agent = Agent::builder()
+    ///     .model(model)
+    ///     .callbacks(
+    ///         CallbackRegistry::builder()
+    ///             .on_action(|step, ctx| {
+    ///                 println!("Step {} completed", step.step_number);
+    ///             })
+    ///             .build()
+    ///     )
+    ///     .build();
+    /// ```
+    #[must_use]
+    pub fn callbacks(mut self, registry: CallbackRegistry) -> Self {
+        self.callbacks = registry;
+        self
+    }
+
     /// Build the agent.
     ///
     /// # Panics
@@ -248,6 +279,7 @@ impl AgentBuilder {
             custom_instructions: self.custom_instructions,
             final_answer_checks: self.final_answer_checks,
             telemetry: Telemetry::new(),
+            callbacks: self.callbacks,
         })
     }
 }

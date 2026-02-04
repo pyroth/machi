@@ -157,7 +157,7 @@ impl AsyncCallbackRegistry {
         }
 
         // Sort by priority
-        matching_handlers.sort_by(|a, b| a.priority.cmp(&b.priority));
+        matching_handlers.sort_by_key(|a| a.priority);
 
         // Execute callbacks sequentially (to maintain order)
         // For parallel execution, users can spawn tasks inside their callbacks
@@ -192,7 +192,7 @@ impl AsyncCallbackRegistry {
         }
 
         // Sort by priority
-        matching_handlers.sort_by(|a, b| a.priority.cmp(&b.priority));
+        matching_handlers.sort_by_key(|a| a.priority);
 
         // Execute callbacks sequentially
         for handler in matching_handlers {

@@ -1,13 +1,18 @@
 //! Tool for visiting and reading webpage content.
+//!
+//! Ported from smolagents' VisitWebpageTool implementation.
 
 use crate::tool::{Tool, ToolError};
 use async_trait::async_trait;
 use regex::Regex;
+use scraper::{Html, Selector};
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
+use std::fmt::Write;
 use std::sync::LazyLock;
 
-/// Tool for visiting a webpage and extracting its content as text.
+/// Tool for visiting a webpage and extracting its content as markdown.
+/// Ported from smolagents' VisitWebpageTool.
 #[derive(Debug, Clone, Copy)]
 #[non_exhaustive]
 pub struct VisitWebpageTool {
@@ -34,63 +39,9 @@ pub struct VisitWebpageArgs {
     pub url: String,
 }
 
-// Pre-compiled regex patterns for HTML to text conversion
-static SCRIPT_RE: LazyLock<Regex> =
-    LazyLock::new(|| Regex::new(r"(?is)<script[^>]*>.*?</script>").expect("valid regex"));
-static STYLE_RE: LazyLock<Regex> =
-    LazyLock::new(|| Regex::new(r"(?is)<style[^>]*>.*?</style>").expect("valid regex"));
-static TAG_RE: LazyLock<Regex> = LazyLock::new(|| Regex::new(r"<[^>]+>").expect("valid regex"));
+// Pre-compiled regex for cleaning up multiple newlines
 static MULTILINE_RE: LazyLock<Regex> =
     LazyLock::new(|| Regex::new(r"\n{3,}").expect("valid regex"));
-
-// HTML element conversion patterns
-static HTML_PATTERNS: LazyLock<Vec<(Regex, &'static str)>> = LazyLock::new(|| {
-    vec![
-        (
-            Regex::new(r"<h1[^>]*>([^<]*)</h1>").expect("valid regex"),
-            "\n# $1\n",
-        ),
-        (
-            Regex::new(r"<h2[^>]*>([^<]*)</h2>").expect("valid regex"),
-            "\n## $1\n",
-        ),
-        (
-            Regex::new(r"<h3[^>]*>([^<]*)</h3>").expect("valid regex"),
-            "\n### $1\n",
-        ),
-        (
-            Regex::new(r"<h4[^>]*>([^<]*)</h4>").expect("valid regex"),
-            "\n#### $1\n",
-        ),
-        (Regex::new(r"<p[^>]*>").expect("valid regex"), "\n"),
-        (Regex::new(r"<br\s*/?>").expect("valid regex"), "\n"),
-        (Regex::new(r"<li[^>]*>").expect("valid regex"), "\n- "),
-        (
-            Regex::new(r#"<a[^>]*href=["']([^"']*)["'][^>]*>([^<]*)</a>"#).expect("valid regex"),
-            "[$2]($1)",
-        ),
-        (
-            Regex::new(r"<strong[^>]*>([^<]*)</strong>").expect("valid regex"),
-            "**$1**",
-        ),
-        (
-            Regex::new(r"<b[^>]*>([^<]*)</b>").expect("valid regex"),
-            "**$1**",
-        ),
-        (
-            Regex::new(r"<em[^>]*>([^<]*)</em>").expect("valid regex"),
-            "*$1*",
-        ),
-        (
-            Regex::new(r"<i[^>]*>([^<]*)</i>").expect("valid regex"),
-            "*$1*",
-        ),
-        (
-            Regex::new(r"<code[^>]*>([^<]*)</code>").expect("valid regex"),
-            "`$1`",
-        ),
-    ]
-});
 
 impl VisitWebpageTool {
     /// Create a new webpage visitor tool.
@@ -113,51 +64,205 @@ impl VisitWebpageTool {
         self
     }
 
-    /// Truncate content to max length.
+    /// Truncate content to max length (same as smolagents' _truncate_content).
+    /// Uses char boundary to avoid splitting multi-byte characters.
     fn truncate_content(&self, content: &str) -> String {
         if content.len() <= self.max_output_length {
             content.to_string()
         } else {
+            // Find a valid char boundary to avoid splitting multi-byte characters
+            let truncate_at = content
+                .char_indices()
+                .take_while(|(i, _)| *i < self.max_output_length)
+                .last()
+                .map_or(0, |(i, c)| i + c.len_utf8());
             format!(
-                "{}...\n\n_Content truncated to {} characters_",
-                &content[..self.max_output_length],
+                "{}\n..._This content has been truncated to stay below {} characters_...\n",
+                &content[..truncate_at],
                 self.max_output_length
             )
         }
     }
 
-    /// Convert HTML to simple text/markdown.
-    fn html_to_text(html: &str) -> String {
-        // Remove scripts and styles
-        let text = SCRIPT_RE.replace_all(html, "");
-        let text = STYLE_RE.replace_all(&text, "");
-        let mut text = text.into_owned();
+    /// Convert HTML to markdown using DOM parsing (similar to markdownify).
+    fn html_to_markdown(html: &str) -> String {
+        let document = Html::parse_document(html);
+        let mut output = String::new();
 
-        // Convert common HTML elements to markdown using pre-compiled patterns
-        for (re, replacement) in HTML_PATTERNS.iter() {
-            text = re.replace_all(&text, *replacement).into_owned();
+        // Remove script, style, noscript, and other non-content elements
+        let body_selector = Selector::parse("body").ok();
+        let root = body_selector
+            .as_ref()
+            .and_then(|s| document.select(s).next())
+            .map_or_else(|| html.to_string(), |el| el.html());
+
+        // Parse the body content
+        let body_doc = Html::parse_fragment(&root);
+
+        // Process elements recursively
+        Self::process_node(&body_doc.root_element(), &mut output, 0);
+
+        // Clean up the output
+        let cleaned = MULTILINE_RE.replace_all(&output, "\n\n");
+        cleaned.trim().to_string()
+    }
+
+    /// Process a DOM node and convert to markdown.
+    /// Note: `_depth` is preserved for potential future use (e.g., nested list indentation).
+    fn process_node(element: &scraper::ElementRef<'_>, output: &mut String, _depth: usize) {
+        use scraper::Node;
+
+        for child in element.children() {
+            match child.value() {
+                Node::Text(text) => {
+                    let text_str = text.text.trim();
+                    if !text_str.is_empty() {
+                        output.push_str(text_str);
+                        output.push(' ');
+                    }
+                }
+                Node::Element(el) => {
+                    let tag = el.name();
+                    let child_ref = scraper::ElementRef::wrap(child);
+
+                    if let Some(child_el) = child_ref {
+                        match tag {
+                            // Skip non-content elements
+                            "script" | "style" | "noscript" | "iframe" | "svg" | "path" => {}
+
+                            // Headings
+                            "h1" => {
+                                output.push_str("\n\n# ");
+                                Self::process_node(&child_el, output, 0);
+                                output.push_str("\n\n");
+                            }
+                            "h2" => {
+                                output.push_str("\n\n## ");
+                                Self::process_node(&child_el, output, 0);
+                                output.push_str("\n\n");
+                            }
+                            "h3" => {
+                                output.push_str("\n\n### ");
+                                Self::process_node(&child_el, output, 0);
+                                output.push_str("\n\n");
+                            }
+                            "h4" => {
+                                output.push_str("\n\n#### ");
+                                Self::process_node(&child_el, output, 0);
+                                output.push_str("\n\n");
+                            }
+                            "h5" => {
+                                output.push_str("\n\n##### ");
+                                Self::process_node(&child_el, output, 0);
+                                output.push_str("\n\n");
+                            }
+                            "h6" => {
+                                output.push_str("\n\n###### ");
+                                Self::process_node(&child_el, output, 0);
+                                output.push_str("\n\n");
+                            }
+
+                            // Paragraphs, divs, and tables (block-level elements)
+                            "p" | "div" | "section" | "article" | "main" | "header" | "footer"
+                            | "table" => {
+                                output.push_str("\n\n");
+                                Self::process_node(&child_el, output, 0);
+                                output.push_str("\n\n");
+                            }
+
+                            // Line breaks
+                            "br" => {
+                                output.push('\n');
+                            }
+                            "hr" => {
+                                output.push_str("\n\n---\n\n");
+                            }
+
+                            // Lists
+                            "ul" | "ol" => {
+                                output.push('\n');
+                                Self::process_node(&child_el, output, 1);
+                                output.push('\n');
+                            }
+                            "li" => {
+                                output.push_str("\n- ");
+                                Self::process_node(&child_el, output, 0);
+                            }
+
+                            // Links
+                            "a" => {
+                                let href = el.attr("href").unwrap_or("#");
+                                let mut link_text = String::new();
+                                Self::process_node(&child_el, &mut link_text, 0);
+                                let link_text = link_text.trim();
+                                if !link_text.is_empty() && href != "#" {
+                                    let _ = write!(output, "[{link_text}]({href})");
+                                } else if !link_text.is_empty() {
+                                    output.push_str(link_text);
+                                }
+                            }
+
+                            // Images
+                            "img" => {
+                                let alt = el.attr("alt").unwrap_or("image");
+                                let src = el.attr("src").unwrap_or("");
+                                if !src.is_empty() {
+                                    let _ = write!(output, "![{alt}]({src})");
+                                }
+                            }
+
+                            // Text formatting
+                            "strong" | "b" => {
+                                output.push_str("**");
+                                Self::process_node(&child_el, output, 0);
+                                output.push_str("**");
+                            }
+                            "em" | "i" => {
+                                output.push('*');
+                                Self::process_node(&child_el, output, 0);
+                                output.push('*');
+                            }
+                            "code" => {
+                                output.push('`');
+                                Self::process_node(&child_el, output, 0);
+                                output.push('`');
+                            }
+                            "pre" => {
+                                output.push_str("\n\n```\n");
+                                Self::process_node(&child_el, output, 0);
+                                output.push_str("\n```\n\n");
+                            }
+
+                            // Blockquotes
+                            "blockquote" => {
+                                output.push_str("\n\n> ");
+                                let mut quote_text = String::new();
+                                Self::process_node(&child_el, &mut quote_text, 0);
+                                output.push_str(&quote_text.replace('\n', "\n> "));
+                                output.push_str("\n\n");
+                            }
+
+                            // Table rows
+                            "tr" => {
+                                output.push_str("| ");
+                                Self::process_node(&child_el, output, 0);
+                                output.push('\n');
+                            }
+                            "th" | "td" => {
+                                Self::process_node(&child_el, output, 0);
+                                output.push_str(" | ");
+                            }
+
+                            // Default: just process children (includes thead, tbody, tfoot, etc.)
+                            _ => {
+                                Self::process_node(&child_el, output, 0);
+                            }
+                        }
+                    }
+                }
+                _ => {}
+            }
         }
-
-        // Handle trivial closing tags with simple string replacement
-        text = text.replace("</p>", "\n").replace("</li>", "");
-
-        // Remove remaining HTML tags
-        text = TAG_RE.replace_all(&text, "").into_owned();
-
-        // Decode common HTML entities
-        text = text
-            .replace("&amp;", "&")
-            .replace("&lt;", "<")
-            .replace("&gt;", ">")
-            .replace("&quot;", "\"")
-            .replace("&apos;", "'")
-            .replace("&nbsp;", " ")
-            .replace("&#39;", "'");
-
-        // Clean up whitespace
-        text = MULTILINE_RE.replace_all(&text, "\n\n").into_owned();
-
-        text.trim().to_string()
     }
 }
 
@@ -228,7 +333,7 @@ impl Tool for VisitWebpageTool {
             .await
             .map_err(|e| ToolError::ExecutionError(format!("Failed to read response: {e}")))?;
 
-        let text = Self::html_to_text(&html);
-        Ok(self.truncate_content(&text))
+        let markdown = Self::html_to_markdown(&html);
+        Ok(self.truncate_content(&markdown))
     }
 }

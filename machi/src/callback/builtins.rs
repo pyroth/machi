@@ -39,7 +39,7 @@ impl Default for LoggingConfig {
 impl LoggingConfig {
     /// Create a minimal logging config (only errors and final answers).
     #[must_use]
-    pub fn minimal() -> Self {
+    pub const fn minimal() -> Self {
         Self {
             log_tasks: false,
             log_actions: false,
@@ -52,7 +52,7 @@ impl LoggingConfig {
 
     /// Create a verbose logging config.
     #[must_use]
-    pub fn verbose() -> Self {
+    pub const fn verbose() -> Self {
         Self {
             log_tasks: true,
             log_actions: true,
@@ -141,16 +141,16 @@ pub fn logging_handler(
                     "[{prefix}] Planning step completed"
                 );
             }
-        } else if let Some(final_answer) = step.as_any().downcast_ref::<FinalAnswerStep>() {
-            if config.log_final_answers {
-                info!(
-                    target: "machi::callback",
-                    prefix = prefix,
-                    step = ctx.step_number,
-                    output_type = std::any::type_name_of_val(&final_answer.output),
-                    "[{prefix}] Final answer provided"
-                );
-            }
+        } else if let Some(final_answer) = step.as_any().downcast_ref::<FinalAnswerStep>()
+            && config.log_final_answers
+        {
+            info!(
+                target: "machi::callback",
+                prefix = prefix,
+                step = ctx.step_number,
+                output_type = std::any::type_name_of_val(&final_answer.output),
+                "[{prefix}] Final answer provided"
+            );
         }
     }
 }
@@ -290,14 +290,14 @@ pub fn tracing_handler() -> impl Fn(&dyn MemoryStep, &CallbackContext) + Send + 
 
         let _guard = span.enter();
 
-        if let Some(action) = step.as_any().downcast_ref::<ActionStep>() {
-            if let Some(usage) = &action.token_usage {
-                tracing::info!(
-                    input_tokens = usage.input_tokens,
-                    output_tokens = usage.output_tokens,
-                    "Token usage recorded"
-                );
-            }
+        if let Some(action) = step.as_any().downcast_ref::<ActionStep>()
+            && let Some(usage) = &action.token_usage
+        {
+            tracing::info!(
+                input_tokens = usage.input_tokens,
+                output_tokens = usage.output_tokens,
+                "Token usage recorded"
+            );
         }
     }
 }
