@@ -240,7 +240,7 @@ impl MetricsSnapshot {
 
     /// Convert to `RunMetrics` with duration.
     #[must_use]
-    pub fn to_run_metrics(self, duration: std::time::Duration) -> RunMetrics {
+    pub const fn to_run_metrics(self, duration: std::time::Duration) -> RunMetrics {
         RunMetrics {
             steps: self.steps,
             input_tokens: self.input_tokens,
