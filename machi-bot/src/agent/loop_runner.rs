@@ -157,11 +157,7 @@ impl<M: Model + Clone + Send + Sync + 'static> AgentLoop<M> {
         let mut agent = Agent::builder()
             .model(self.model.clone())
             .max_steps(self.config.max_iterations)
-            .tool(Box::new(FinalAnswerTool))
-            .tool(Box::new(ReadFileTool::default()))
-            .tool(Box::new(WriteFileTool))
-            .tool(Box::new(ListDirTool::default()))
-            .tool(Box::new(VisitWebpageTool::default()))
+            .add_base_tools()
             .build();
 
         // Run agent with the message

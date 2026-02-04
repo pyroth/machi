@@ -116,21 +116,6 @@ pub fn default_tools() -> Vec<BoxedTool> {
 
 /// Get base tools commonly used by agents.
 ///
-/// Similar to smolagents' `add_base_tools=True` option, this provides:
-/// - `FinalAnswerTool` - for providing final answers
-/// - `VisitWebpageTool` - for reading webpage content
-///
-/// Does NOT include `WebSearchTool` by default as it may require API keys.
-#[must_use]
-pub fn base_tools() -> Vec<BoxedTool> {
-    vec![
-        Box::new(FinalAnswerTool),
-        Box::new(VisitWebpageTool::default()),
-    ]
-}
-
-/// Get all available built-in tools.
-///
 /// Returns a vector containing all built-in tools:
 /// - `FinalAnswerTool` - for providing final answers
 /// - `WebSearchTool` - for web searches
@@ -141,8 +126,10 @@ pub fn base_tools() -> Vec<BoxedTool> {
 /// - `EditFileTool` - for editing files
 /// - `ListDirTool` - for listing directories
 /// - `ExecTool` - for executing shell commands
+///
+/// Does NOT include `WebSearchTool` by default as it may require API keys.
 #[must_use]
-pub fn all_tools() -> Vec<BoxedTool> {
+pub fn base_tools() -> Vec<BoxedTool> {
     vec![
         Box::new(FinalAnswerTool),
         Box::new(WebSearchTool::default()),
