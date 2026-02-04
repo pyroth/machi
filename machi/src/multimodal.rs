@@ -323,8 +323,8 @@ impl std::fmt::Display for AgentImage {
                     self.format.mime_type()
                 )
             }
-            ImageSource::Url { url } => write!(f, "[Image: {}]", url),
-            ImageSource::Path { path } => write!(f, "[Image: {}]", path),
+            ImageSource::Url { url } => write!(f, "[Image: {url}]"),
+            ImageSource::Path { path } => write!(f, "[Image: {path}]"),
         }
     }
 }
@@ -420,7 +420,7 @@ impl AgentAudio {
 
     /// Create audio from raw bytes.
     #[must_use]
-    pub fn from_bytes(bytes: Vec<u8>, format: AudioFormat, sample_rate: u32) -> Self {
+    pub const fn from_bytes(bytes: Vec<u8>, format: AudioFormat, sample_rate: u32) -> Self {
         Self {
             source: AudioSource::Bytes { data: bytes },
             format,
@@ -430,7 +430,7 @@ impl AgentAudio {
 
     /// Create audio from raw bytes with default sample rate.
     #[must_use]
-    pub fn from_bytes_default(bytes: Vec<u8>, format: AudioFormat) -> Self {
+    pub const fn from_bytes_default(bytes: Vec<u8>, format: AudioFormat) -> Self {
         Self::from_bytes(bytes, format, Self::DEFAULT_SAMPLE_RATE)
     }
 
@@ -645,10 +645,10 @@ impl AgentOutput {
 impl std::fmt::Display for AgentOutput {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match self {
-            Self::Text { value } => write!(f, "{}", value),
-            Self::Image { value } => write!(f, "{}", value),
-            Self::Audio { value } => write!(f, "{}", value),
-            Self::Object { value } => write!(f, "{}", value),
+            Self::Text { value } => write!(f, "{value}"),
+            Self::Image { value } => write!(f, "{value}"),
+            Self::Audio { value } => write!(f, "{value}"),
+            Self::Object { value } => write!(f, "{value}"),
         }
     }
 }

@@ -183,7 +183,7 @@ impl MemoryStep for TaskStep {
         serde_json::json!({
             "task": self.task,
             "has_images": self.has_images(),
-            "image_count": self.task_images.as_ref().map(|i| i.len()).unwrap_or(0)
+            "image_count": self.task_images.as_ref().map_or(0, Vec::len)
         })
     }
 

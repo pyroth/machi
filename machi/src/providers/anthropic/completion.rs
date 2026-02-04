@@ -58,6 +58,72 @@ impl CompletionModel {
         self
     }
 
+    /// Convert MessageContent to Anthropic API format.
+    fn convert_content_to_anthropic(content: &crate::message::MessageContent) -> Option<Value> {
+        use crate::message::MessageContent;
+        match content {
+            MessageContent::Text { text } => Some(serde_json::json!({
+                "type": "text",
+                "text": text
+            })),
+            MessageContent::Image { image, format } => {
+                let media_type = format.as_deref().unwrap_or("jpeg");
+                Some(serde_json::json!({
+                    "type": "image",
+                    "source": {
+                        "type": "base64",
+                        "media_type": format!("image/{}", media_type),
+                        "data": image
+                    }
+                }))
+            }
+            MessageContent::ImageUrl { image_url } => {
+                // Extract base64 from data URL if present
+                let url = &image_url.url;
+                if let Some(pos) = url.find(";base64,") {
+                    let media_type = url[5..pos].to_string(); // Extract "image/jpeg" etc
+                    let data = &url[pos + 8..];
+                    Some(serde_json::json!({
+                        "type": "image",
+                        "source": {
+                            "type": "base64",
+                            "media_type": media_type,
+                            "data": data
+                        }
+                    }))
+                } else if url.starts_with("http") {
+                    // URL-based image
+                    Some(serde_json::json!({
+                        "type": "image",
+                        "source": {
+                            "type": "url",
+                            "url": url
+                        }
+                    }))
+                } else {
+                    None
+                }
+            }
+            MessageContent::Audio { .. } => None, // Anthropic doesn't support audio input yet
+        }
+    }
+
+    /// Convert message content array to Anthropic format, handling multimodal.
+    fn convert_user_content(msg: &ChatMessage) -> Value {
+        if let Some(contents) = &msg.content {
+            let has_media = contents.iter().any(crate::message::MessageContent::is_image);
+            if has_media {
+                let content_array: Vec<Value> = contents
+                    .iter()
+                    .filter_map(Self::convert_content_to_anthropic)
+                    .collect();
+                return serde_json::json!(content_array);
+            }
+        }
+        // Text only
+        serde_json::json!(msg.text_content().unwrap_or_default())
+    }
+
     /// Build the request body for the API.
     fn build_request_body(&self, messages: &[ChatMessage], options: &GenerateOptions) -> Value {
         // Extract system message and convert other messages
@@ -75,12 +141,10 @@ impl CompletionModel {
                     }
                 }
                 MessageRole::User => {
-                    if let Some(text) = msg.text_content() {
-                        api_messages.push(serde_json::json!({
-                            "role": "user",
-                            "content": text
-                        }));
-                    }
+                    api_messages.push(serde_json::json!({
+                        "role": "user",
+                        "content": Self::convert_user_content(msg)
+                    }));
                 }
                 MessageRole::Assistant => {
                     if let Some(text) = msg.text_content() {

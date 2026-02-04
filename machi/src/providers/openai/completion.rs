@@ -62,6 +62,38 @@ impl CompletionModel {
         self
     }
 
+    /// Convert MessageContent to OpenAI API format.
+    fn convert_content_to_openai(content: &crate::message::MessageContent) -> Option<Value> {
+        use crate::message::MessageContent;
+        match content {
+            MessageContent::Text { text } => Some(serde_json::json!({
+                "type": "text",
+                "text": text
+            })),
+            MessageContent::Image { image, .. } => Some(serde_json::json!({
+                "type": "image_url",
+                "image_url": { "url": format!("data:image/jpeg;base64,{}", image) }
+            })),
+            MessageContent::ImageUrl { image_url } => Some(serde_json::json!({
+                "type": "image_url",
+                "image_url": {
+                    "url": image_url.url,
+                    "detail": image_url.detail.as_deref().unwrap_or("auto")
+                }
+            })),
+            MessageContent::Audio { audio, format, .. } => {
+                let fmt = format.as_deref().unwrap_or("wav");
+                Some(serde_json::json!({
+                    "type": "input_audio",
+                    "input_audio": {
+                        "data": audio,
+                        "format": fmt
+                    }
+                }))
+            }
+        }
+    }
+
     /// Build the request body for the API.
     fn build_request_body(&self, messages: &[ChatMessage], options: &GenerateOptions) -> Value {
         let mut body = serde_json::json!({
@@ -129,9 +161,21 @@ impl CompletionModel {
 
                 let mut obj = serde_json::json!({ "role": role });
 
-                // Content
-                if let Some(content) = msg.text_content() {
-                    obj["content"] = serde_json::json!(content);
+                // Content - check for multimodal content first
+                if let Some(contents) = &msg.content {
+                    let has_media = contents.iter().any(|c| c.is_image() || c.is_audio());
+                    if has_media {
+                        // Multimodal: convert to array format
+                        let content_array: Vec<Value> = contents
+                            .iter()
+                            .filter_map(Self::convert_content_to_openai)
+                            .collect();
+                        obj["content"] = serde_json::json!(content_array);
+                    } else if let Some(text) = msg.text_content() {
+                        obj["content"] = serde_json::json!(text);
+                    }
+                } else if let Some(text) = msg.text_content() {
+                    obj["content"] = serde_json::json!(text);
                 }
 
                 // Tool calls

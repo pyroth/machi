@@ -69,6 +69,20 @@ impl CompletionModel {
         self
     }
 
+    /// Extract base64 image data from MessageContent for Ollama's images field.
+    fn extract_base64_image(content: &crate::message::MessageContent) -> Option<String> {
+        use crate::message::MessageContent;
+        match content {
+            MessageContent::Image { image, .. } => Some(image.clone()),
+            MessageContent::ImageUrl { image_url } => {
+                // Extract base64 from data URL: data:image/...;base64,<data>
+                let url = &image_url.url;
+                url.find(";base64,").map(|pos| url[pos + 8..].to_string())
+            }
+            _ => None,
+        }
+    }
+
     /// Build the request body for the API.
     fn build_request_body(&self, messages: &[ChatMessage], options: &GenerateOptions) -> Value {
         let api_messages: Vec<Value> = messages
@@ -87,6 +101,17 @@ impl CompletionModel {
                 // Content (optional for tool call messages)
                 if let Some(content) = msg.text_content() {
                     obj["content"] = serde_json::json!(content);
+                }
+
+                // Extract images from content for Ollama's format
+                if let Some(contents) = &msg.content {
+                    let images: Vec<String> = contents
+                        .iter()
+                        .filter_map(Self::extract_base64_image)
+                        .collect();
+                    if !images.is_empty() {
+                        obj["images"] = serde_json::json!(images);
+                    }
                 }
 
                 // Tool calls - Ollama format requires type and index
