@@ -180,48 +180,178 @@ impl TemplateContext {
 
     /// Convert context to minijinja Value for rendering.
     fn to_value(&self) -> Value {
-        // Create a HashMap that acts like Python dict with .values()
-        let tools_map: HashMap<String, Value> = self
-            .tools
-            .iter()
-            .map(|t| {
-                (
-                    t.name.clone(),
-                    Value::from_object(ToolValue {
-                        name: t.name.clone(),
-                        description: t.description.clone(),
-                        inputs: t.inputs.clone(),
-                        output_type: t.output_type.clone(),
-                    }),
-                )
-            })
-            .collect();
+        // Create tools dict with .values() support
+        let tools_dict = ToolsDict {
+            tools: self
+                .tools
+                .iter()
+                .map(|t| ToolValue {
+                    name: t.name.clone(),
+                    description: t.description.clone(),
+                    inputs: t.inputs.clone(),
+                    output_type: t.output_type.clone(),
+                })
+                .collect(),
+        };
 
-        let agents_map: HashMap<String, Value> = self
-            .managed_agents
-            .iter()
-            .map(|a| {
-                (
-                    a.name.clone(),
-                    Value::from_serialize(&serde_json::json!({
-                        "name": a.name,
-                        "description": a.description,
-                        "inputs": a.inputs,
-                        "output_type": a.output_type,
-                    })),
-                )
-            })
-            .collect();
+        // Create managed_agents dict with .values() support
+        let agents_dict = ManagedAgentsDict {
+            agents: self
+                .managed_agents
+                .iter()
+                .map(|a| ManagedAgentValue {
+                    name: a.name.clone(),
+                    description: a.description.clone(),
+                    inputs: a.inputs.clone(),
+                    output_type: a.output_type.clone(),
+                })
+                .collect(),
+        };
 
         context! {
-            tools => tools_map,
-            managed_agents => agents_map,
+            tools => Value::from_object(tools_dict),
+            managed_agents => Value::from_object(agents_dict),
             task => self.task,
             custom_instructions => self.custom_instructions,
             name => self.name,
             remaining_steps => self.remaining_steps,
             final_answer => self.final_answer,
             ..Value::from_serialize(&self.extra)
+        }
+    }
+}
+
+/// Dict-like container for tools that supports `.values()` method.
+#[derive(Debug, Clone)]
+struct ToolsDict {
+    tools: Vec<ToolValue>,
+}
+
+impl minijinja::value::Object for ToolsDict {
+    fn get_value(self: &std::sync::Arc<Self>, key: &Value) -> Option<Value> {
+        // Support access by tool name
+        let name = key.as_str()?;
+        self.tools
+            .iter()
+            .find(|t| t.name == name)
+            .map(|t| Value::from_object(t.clone()))
+    }
+
+    fn call_method(
+        self: &std::sync::Arc<Self>,
+        _state: &minijinja::State<'_, '_>,
+        name: &str,
+        _args: &[Value],
+    ) -> Result<Value, minijinja::Error> {
+        match name {
+            "values" => {
+                // Return an iterator over all tool values
+                let values: Vec<Value> = self
+                    .tools
+                    .iter()
+                    .map(|t| Value::from_object(t.clone()))
+                    .collect();
+                Ok(Value::from(values))
+            }
+            "keys" => {
+                let keys: Vec<Value> = self
+                    .tools
+                    .iter()
+                    .map(|t| Value::from(t.name.clone()))
+                    .collect();
+                Ok(Value::from(keys))
+            }
+            _ => Err(minijinja::Error::new(
+                minijinja::ErrorKind::UnknownMethod,
+                format!("tools dict has no method named {name}"),
+            )),
+        }
+    }
+
+    fn enumerate(self: &std::sync::Arc<Self>) -> minijinja::value::Enumerator {
+        minijinja::value::Enumerator::Iter(Box::new(
+            self.tools
+                .iter()
+                .map(|t| Value::from_object(t.clone()))
+                .collect::<Vec<_>>()
+                .into_iter(),
+        ))
+    }
+}
+
+/// Dict-like container for managed agents that supports `.values()` method.
+#[derive(Debug, Clone)]
+struct ManagedAgentsDict {
+    agents: Vec<ManagedAgentValue>,
+}
+
+/// Managed agent value for template rendering.
+#[derive(Debug, Clone)]
+struct ManagedAgentValue {
+    name: String,
+    description: String,
+    inputs: String,
+    output_type: String,
+}
+
+impl minijinja::value::Object for ManagedAgentsDict {
+    fn get_value(self: &std::sync::Arc<Self>, key: &Value) -> Option<Value> {
+        let name = key.as_str()?;
+        self.agents
+            .iter()
+            .find(|a| a.name == name)
+            .map(|a| Value::from_object(a.clone()))
+    }
+
+    fn call_method(
+        self: &std::sync::Arc<Self>,
+        _state: &minijinja::State<'_, '_>,
+        name: &str,
+        _args: &[Value],
+    ) -> Result<Value, minijinja::Error> {
+        match name {
+            "values" => {
+                let values: Vec<Value> = self
+                    .agents
+                    .iter()
+                    .map(|a| Value::from_object(a.clone()))
+                    .collect();
+                Ok(Value::from(values))
+            }
+            "keys" => {
+                let keys: Vec<Value> = self
+                    .agents
+                    .iter()
+                    .map(|a| Value::from(a.name.clone()))
+                    .collect();
+                Ok(Value::from(keys))
+            }
+            _ => Err(minijinja::Error::new(
+                minijinja::ErrorKind::UnknownMethod,
+                format!("managed_agents dict has no method named {name}"),
+            )),
+        }
+    }
+
+    fn enumerate(self: &std::sync::Arc<Self>) -> minijinja::value::Enumerator {
+        minijinja::value::Enumerator::Iter(Box::new(
+            self.agents
+                .iter()
+                .map(|a| Value::from_object(a.clone()))
+                .collect::<Vec<_>>()
+                .into_iter(),
+        ))
+    }
+}
+
+impl minijinja::value::Object for ManagedAgentValue {
+    fn get_value(self: &std::sync::Arc<Self>, key: &Value) -> Option<Value> {
+        match key.as_str()? {
+            "name" => Some(Value::from(&self.name)),
+            "description" => Some(Value::from(&self.description)),
+            "inputs" => Some(Value::from(&self.inputs)),
+            "output_type" => Some(Value::from(&self.output_type)),
+            _ => None,
         }
     }
 }
