@@ -52,7 +52,7 @@ use crate::{
     multimodal::AgentImage,
     prompts::PromptRender,
     providers::common::Model,
-    tool::ToolBox,
+    tool::{BoxedConfirmationHandler, ToolBox},
 };
 
 /// AI agent that uses LLM function calling to execute tasks with tools.
@@ -77,6 +77,8 @@ pub struct Agent {
     pub(crate) final_answer_checks: FinalAnswerChecks,
     pub(crate) callbacks: CallbackRegistry,
     pub(crate) run_start: std::time::Instant,
+    /// Optional confirmation handler for tools requiring human approval.
+    pub(crate) confirmation_handler: Option<BoxedConfirmationHandler>,
 }
 
 impl std::fmt::Debug for Agent {

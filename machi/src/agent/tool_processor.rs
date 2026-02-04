@@ -8,18 +8,35 @@
 //! Tool calls can be executed in parallel when multiple tools are invoked
 //! in a single step. Use `process_parallel` for concurrent execution with
 //! optional concurrency limits.
+//!
+//! # Execution Policies
+//!
+//! Tool execution can be controlled via policies:
+//! - `Auto`: Execute without confirmation
+//! - `RequireConfirmation`: Request human approval before execution
+//! - `Forbidden`: Block execution entirely
 
 use serde_json::Value;
-use tracing::debug;
+use tracing::{debug, warn};
 
 use crate::{
     error::Result,
     memory::{ActionStep, ToolCall},
     message::{ChatMessage, ChatMessageToolCall},
-    tool::{FinalAnswerArgs, ToolBox},
+    tool::{
+        BoxedConfirmationHandler, FinalAnswerArgs, ToolBox, ToolConfirmationRequest,
+        ToolConfirmationResponse, ToolError,
+    },
 };
 
 use super::events::StepResult;
+
+/// Internal result of confirmation request.
+enum ConfirmationResult {
+    Approved,
+    ApprovedAll,
+    Denied,
+}
 
 /// Result of processing tool calls.
 pub struct ToolProcessResult {
@@ -29,9 +46,11 @@ pub struct ToolProcessResult {
 
 /// Unified tool call processor for both sync and streaming execution.
 pub struct ToolProcessor<'a> {
-    tools: &'a ToolBox,
+    tools: &'a mut ToolBox,
     /// Maximum concurrent tool calls (None = unlimited).
     max_concurrent: Option<usize>,
+    /// Optional confirmation handler for RequireConfirmation policy.
+    confirmation_handler: Option<&'a BoxedConfirmationHandler>,
 }
 
 impl<'a> ToolProcessor<'a> {
@@ -44,11 +63,19 @@ impl<'a> ToolProcessor<'a> {
     ///   - `None` = unlimited parallelism (default)
     ///   - `Some(1)` = sequential execution
     ///   - `Some(n)` = up to n concurrent executions
-    pub const fn with_concurrency(tools: &'a ToolBox, max_concurrent: Option<usize>) -> Self {
+    pub fn with_concurrency(tools: &'a mut ToolBox, max_concurrent: Option<usize>) -> Self {
         Self {
             tools,
             max_concurrent,
+            confirmation_handler: None,
         }
+    }
+
+    /// Set the confirmation handler for tools requiring human approval.
+    #[must_use]
+    pub fn with_confirmation_handler(mut self, handler: &'a BoxedConfirmationHandler) -> Self {
+        self.confirmation_handler = Some(handler);
+        self
     }
 
     /// Process tool calls from a model response with parallel execution.
@@ -58,16 +85,17 @@ impl<'a> ToolProcessor<'a> {
     ///
     /// 1. Extract tool calls from native format or parse from text
     /// 2. Record all tool calls in the action step
-    /// 3. Handle `final_answer` specially (not executed, just recorded)
-    /// 4. Execute remaining tools in parallel
-    /// 5. Collect observations and determine outcome
+    /// 3. Check execution policies (Forbidden, RequireConfirmation, Auto)
+    /// 4. Handle `final_answer` specially (not executed, just recorded)
+    /// 5. Execute remaining tools in parallel
+    /// 6. Collect observations and determine outcome
     ///
     /// # Arguments
     ///
     /// * `step` - The action step to record tool calls and observations
     /// * `message` - The model response message containing tool calls
     pub async fn process_parallel(
-        &self,
+        &mut self,
         step: &mut ActionStep,
         message: &ChatMessage,
     ) -> Result<ToolProcessResult> {
@@ -80,31 +108,69 @@ impl<'a> ToolProcessor<'a> {
         // Separate final_answer from regular tool calls
         let mut final_answer = None;
         let mut regular_calls: Vec<(&str, String, Value)> = Vec::new();
+        let mut observations: Vec<String> = Vec::new();
 
         for tc in &tool_calls {
             let tool_name = tc.name();
             let tool_id = tc.id.clone();
+            let tool_args = tc.arguments().clone();
 
             // Record tool call in step
             step.tool_calls
                 .get_or_insert_with(Vec::new)
-                .push(ToolCall::new(&tool_id, tool_name, tc.arguments().clone()));
+                .push(ToolCall::new(&tool_id, tool_name, tool_args.clone()));
 
             // Handle final_answer specially - don't execute, just record
             if tool_name == "final_answer" {
                 let answer = Self::extract_final_answer(tc);
                 final_answer = Some(answer);
                 step.is_final_answer = true;
+                continue;
+            }
+
+            // Check execution policy
+            if self.tools.is_forbidden(tool_name) {
+                warn!(tool = tool_name, "Tool execution forbidden by policy");
+                let err = ToolError::forbidden(tool_name);
+                observations.push(format!("Tool '{tool_name}' failed: {err}"));
+                step.error = Some(err.to_string());
+                continue;
+            }
+
+            // Check if confirmation is required
+            if self.tools.requires_confirmation(tool_name) {
+                let approved = self
+                    .request_confirmation(&tool_id, tool_name, &tool_args)
+                    .await;
+
+                match approved {
+                    ConfirmationResult::Approved => {
+                        debug!(tool = tool_name, "Tool execution approved");
+                        regular_calls.push((tool_name, tool_id, tool_args));
+                    }
+                    ConfirmationResult::ApprovedAll => {
+                        debug!(
+                            tool = tool_name,
+                            "Tool execution approved (all future calls)"
+                        );
+                        self.tools.mark_auto_approved(tool_name);
+                        regular_calls.push((tool_name, tool_id, tool_args));
+                    }
+                    ConfirmationResult::Denied => {
+                        warn!(tool = tool_name, "Tool execution denied by user");
+                        let err = ToolError::confirmation_denied(tool_name);
+                        observations.push(format!("Tool '{tool_name}' failed: {err}"));
+                        step.error = Some(err.to_string());
+                    }
+                }
             } else {
-                // Queue for parallel execution
-                regular_calls.push((tool_name, tool_id, tc.arguments().clone()));
+                // Auto policy - queue for execution
+                regular_calls.push((tool_name, tool_id, tool_args));
             }
         }
 
         // Execute regular tools in parallel
-        let observations = if regular_calls.is_empty() {
-            Vec::new()
-        } else {
+        if !regular_calls.is_empty() {
             debug!(
                 count = regular_calls.len(),
                 max_concurrent = ?self.max_concurrent,
@@ -116,7 +182,6 @@ impl<'a> ToolProcessor<'a> {
                 .call_parallel(regular_calls, self.max_concurrent)
                 .await;
 
-            let mut obs = Vec::with_capacity(results.len());
             for result in results {
                 let observation = result.to_observation();
 
@@ -124,10 +189,9 @@ impl<'a> ToolProcessor<'a> {
                     step.error = Some(observation.clone());
                 }
 
-                obs.push(observation);
+                observations.push(observation);
             }
-            obs
-        };
+        }
 
         // Store observations
         if !observations.is_empty() {
@@ -144,6 +208,33 @@ impl<'a> ToolProcessor<'a> {
         };
 
         Ok(ToolProcessResult { outcome })
+    }
+
+    /// Request confirmation from the handler.
+    async fn request_confirmation(
+        &self,
+        tool_id: &str,
+        tool_name: &str,
+        tool_args: &Value,
+    ) -> ConfirmationResult {
+        let Some(handler) = self.confirmation_handler else {
+            // No handler configured, auto-approve
+            return ConfirmationResult::Approved;
+        };
+
+        let request = ToolConfirmationRequest::new(
+            tool_id.to_string(),
+            tool_name.to_string(),
+            tool_args.clone(),
+        );
+
+        let response = handler.confirm(&request).await;
+
+        match response {
+            ToolConfirmationResponse::Approved => ConfirmationResult::Approved,
+            ToolConfirmationResponse::ApproveAll => ConfirmationResult::ApprovedAll,
+            ToolConfirmationResponse::Denied => ConfirmationResult::Denied,
+        }
     }
 
     /// Extract tool calls from model response.

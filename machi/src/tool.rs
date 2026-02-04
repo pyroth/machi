@@ -45,6 +45,10 @@ pub enum ToolError {
     NotFound(String),
     /// Tool is not initialized.
     NotInitialized,
+    /// Tool execution is forbidden by policy.
+    Forbidden(String),
+    /// Tool execution was denied by human confirmation.
+    ConfirmationDenied(String),
     /// Generic error.
     Other(String),
 }
@@ -56,6 +60,10 @@ impl fmt::Display for ToolError {
             Self::InvalidArguments(msg) => write!(f, "Invalid arguments: {msg}"),
             Self::NotFound(name) => write!(f, "Tool not found: {name}"),
             Self::NotInitialized => write!(f, "Tool not initialized"),
+            Self::Forbidden(name) => write!(f, "Tool '{name}' is forbidden by policy"),
+            Self::ConfirmationDenied(name) => {
+                write!(f, "Tool '{name}' execution denied by human confirmation")
+            }
             Self::Other(msg) => write!(f, "Tool error: {msg}"),
         }
     }
@@ -92,6 +100,221 @@ impl ToolError {
     #[must_use]
     pub fn invalid_args(msg: impl Into<String>) -> Self {
         Self::InvalidArguments(msg.into())
+    }
+
+    /// Create a forbidden error.
+    #[must_use]
+    pub fn forbidden(tool_name: impl Into<String>) -> Self {
+        Self::Forbidden(tool_name.into())
+    }
+
+    /// Create a confirmation denied error.
+    #[must_use]
+    pub fn confirmation_denied(tool_name: impl Into<String>) -> Self {
+        Self::ConfirmationDenied(tool_name.into())
+    }
+}
+
+/// Execution policy for a tool.
+///
+/// Controls how a tool can be executed by the agent:
+/// - `Auto`: Agent can execute the tool autonomously (default)
+/// - `RequireConfirmation`: Requires human confirmation before execution
+/// - `Forbidden`: Tool execution is prohibited
+///
+/// # Example
+///
+/// ```rust,ignore
+/// use machi::tool::{ToolBox, ToolExecutionPolicy};
+///
+/// let mut toolbox = ToolBox::new();
+/// toolbox.add(MyTool);
+///
+/// // Require confirmation for sensitive operations
+/// toolbox.set_policy("delete_file", ToolExecutionPolicy::RequireConfirmation);
+///
+/// // Forbid certain tools entirely
+/// toolbox.set_policy("dangerous_tool", ToolExecutionPolicy::Forbidden);
+/// ```
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Default, Serialize, Deserialize)]
+#[non_exhaustive]
+pub enum ToolExecutionPolicy {
+    /// Agent can execute the tool autonomously without confirmation.
+    #[default]
+    Auto,
+    /// Requires human confirmation before execution.
+    RequireConfirmation,
+    /// Tool execution is forbidden.
+    Forbidden,
+}
+
+impl ToolExecutionPolicy {
+    /// Check if the policy allows autonomous execution.
+    #[must_use]
+    pub const fn is_auto(&self) -> bool {
+        matches!(self, Self::Auto)
+    }
+
+    /// Check if the policy requires confirmation.
+    #[must_use]
+    pub const fn requires_confirmation(&self) -> bool {
+        matches!(self, Self::RequireConfirmation)
+    }
+
+    /// Check if the policy forbids execution.
+    #[must_use]
+    pub const fn is_forbidden(&self) -> bool {
+        matches!(self, Self::Forbidden)
+    }
+}
+
+impl fmt::Display for ToolExecutionPolicy {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        match self {
+            Self::Auto => write!(f, "auto"),
+            Self::RequireConfirmation => write!(f, "require_confirmation"),
+            Self::Forbidden => write!(f, "forbidden"),
+        }
+    }
+}
+
+/// Request for human confirmation before tool execution.
+///
+/// This struct contains all the information needed to present a confirmation
+/// dialog to the user.
+#[derive(Debug, Clone)]
+pub struct ToolConfirmationRequest {
+    /// The tool call ID.
+    pub id: String,
+    /// The tool name.
+    pub name: String,
+    /// The tool arguments as JSON.
+    pub arguments: Value,
+    /// Human-readable description of what the tool will do.
+    pub description: String,
+}
+
+impl ToolConfirmationRequest {
+    /// Create a new confirmation request.
+    #[must_use]
+    pub fn new(id: String, name: String, arguments: Value) -> Self {
+        let description = format!(
+            "Tool '{}' wants to execute with arguments: {}",
+            name,
+            serde_json::to_string_pretty(&arguments).unwrap_or_else(|_| arguments.to_string())
+        );
+        Self {
+            id,
+            name,
+            arguments,
+            description,
+        }
+    }
+
+    /// Create with a custom description.
+    #[must_use]
+    pub fn with_description(mut self, description: impl Into<String>) -> Self {
+        self.description = description.into();
+        self
+    }
+}
+
+/// Response to a tool confirmation request.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum ToolConfirmationResponse {
+    /// User approved the tool execution.
+    Approved,
+    /// User denied the tool execution.
+    Denied,
+    /// User approved this and all future calls to this tool.
+    ApproveAll,
+}
+
+impl ToolConfirmationResponse {
+    /// Check if the response approves execution.
+    #[must_use]
+    pub const fn is_approved(&self) -> bool {
+        matches!(self, Self::Approved | Self::ApproveAll)
+    }
+
+    /// Check if future calls should be auto-approved.
+    #[must_use]
+    pub const fn should_approve_all(&self) -> bool {
+        matches!(self, Self::ApproveAll)
+    }
+}
+
+/// Handler for tool execution confirmation requests.
+///
+/// Implement this trait to provide custom confirmation logic, such as:
+/// - CLI prompts
+/// - GUI dialogs
+/// - Web API callbacks
+/// - Automated approval based on rules
+///
+/// # Example
+///
+/// ```rust,ignore
+/// use machi::tool::{ConfirmationHandler, ToolConfirmationRequest, ToolConfirmationResponse};
+/// use std::io::{self, Write};
+///
+/// struct CliConfirmationHandler;
+///
+/// #[async_trait::async_trait]
+/// impl ConfirmationHandler for CliConfirmationHandler {
+///     async fn confirm(&self, request: &ToolConfirmationRequest) -> ToolConfirmationResponse {
+///         println!("{}", request.description);
+///         print!("Allow execution? [y/n/a(ll)]: ");
+///         io::stdout().flush().unwrap();
+///
+///         let mut input = String::new();
+///         io::stdin().read_line(&mut input).unwrap();
+///
+///         match input.trim().to_lowercase().as_str() {
+///             "y" | "yes" => ToolConfirmationResponse::Approved,
+///             "a" | "all" => ToolConfirmationResponse::ApproveAll,
+///             _ => ToolConfirmationResponse::Denied,
+///         }
+///     }
+/// }
+/// ```
+#[async_trait]
+pub trait ConfirmationHandler: Send + Sync {
+    /// Request confirmation for a tool execution.
+    ///
+    /// This method is called when a tool with `RequireConfirmation` policy
+    /// is about to be executed. The implementation should present the request
+    /// to the user and return their decision.
+    async fn confirm(&self, request: &ToolConfirmationRequest) -> ToolConfirmationResponse;
+}
+
+/// A boxed confirmation handler for dynamic dispatch.
+pub type BoxedConfirmationHandler = Box<dyn ConfirmationHandler>;
+
+/// Default confirmation handler that auto-approves all requests.
+///
+/// This is used when no confirmation handler is configured.
+/// **Warning**: This bypasses all confirmation checks.
+#[derive(Debug, Clone, Copy, Default)]
+pub struct AutoApproveHandler;
+
+#[async_trait]
+impl ConfirmationHandler for AutoApproveHandler {
+    async fn confirm(&self, _request: &ToolConfirmationRequest) -> ToolConfirmationResponse {
+        ToolConfirmationResponse::Approved
+    }
+}
+
+/// Confirmation handler that always denies execution.
+///
+/// Useful for testing or strict security policies.
+#[derive(Debug, Clone, Copy, Default)]
+pub struct AlwaysDenyHandler;
+
+#[async_trait]
+impl ConfirmationHandler for AlwaysDenyHandler {
+    async fn confirm(&self, _request: &ToolConfirmationRequest) -> ToolConfirmationResponse {
+        ToolConfirmationResponse::Denied
     }
 }
 
@@ -282,6 +505,10 @@ where
 pub struct ToolBox {
     /// Map of tool names to tool instances.
     tools: std::collections::HashMap<String, BoxedTool>,
+    /// Map of tool names to execution policies.
+    policies: std::collections::HashMap<String, ToolExecutionPolicy>,
+    /// Tools that have been auto-approved (via ApproveAll response).
+    auto_approved: std::collections::HashSet<String>,
 }
 
 impl ToolBox {
@@ -338,6 +565,87 @@ impl ToolBox {
     #[must_use]
     pub fn is_empty(&self) -> bool {
         self.tools.is_empty()
+    }
+
+    /// Set the execution policy for a tool.
+    ///
+    /// # Example
+    ///
+    /// ```rust,ignore
+    /// use machi::tool::{ToolBox, ToolExecutionPolicy};
+    ///
+    /// let mut toolbox = ToolBox::new();
+    /// toolbox.set_policy("delete_file", ToolExecutionPolicy::RequireConfirmation);
+    /// ```
+    pub fn set_policy(&mut self, tool_name: impl Into<String>, policy: ToolExecutionPolicy) {
+        self.policies.insert(tool_name.into(), policy);
+    }
+
+    /// Set execution policies for multiple tools at once.
+    pub fn set_policies(
+        &mut self,
+        policies: impl IntoIterator<Item = (impl Into<String>, ToolExecutionPolicy)>,
+    ) {
+        for (name, policy) in policies {
+            self.policies.insert(name.into(), policy);
+        }
+    }
+
+    /// Get the execution policy for a tool.
+    ///
+    /// Returns `ToolExecutionPolicy::Auto` if no policy is explicitly set.
+    #[must_use]
+    pub fn get_policy(&self, tool_name: &str) -> ToolExecutionPolicy {
+        // Check if tool was auto-approved via ApproveAll
+        if self.auto_approved.contains(tool_name) {
+            return ToolExecutionPolicy::Auto;
+        }
+        self.policies
+            .get(tool_name)
+            .copied()
+            .unwrap_or(ToolExecutionPolicy::Auto)
+    }
+
+    /// Mark a tool as auto-approved (from ApproveAll confirmation response).
+    pub fn mark_auto_approved(&mut self, tool_name: impl Into<String>) {
+        self.auto_approved.insert(tool_name.into());
+    }
+
+    /// Check if a tool has been auto-approved.
+    #[must_use]
+    pub fn is_auto_approved(&self, tool_name: &str) -> bool {
+        self.auto_approved.contains(tool_name)
+    }
+
+    /// Clear all auto-approved tools.
+    pub fn clear_auto_approved(&mut self) {
+        self.auto_approved.clear();
+    }
+
+    /// Check if a tool can be executed without confirmation.
+    ///
+    /// Returns `true` if the tool policy is `Auto` or has been auto-approved.
+    #[must_use]
+    pub fn can_execute_auto(&self, tool_name: &str) -> bool {
+        self.get_policy(tool_name).is_auto()
+    }
+
+    /// Check if a tool requires confirmation before execution.
+    #[must_use]
+    pub fn requires_confirmation(&self, tool_name: &str) -> bool {
+        !self.auto_approved.contains(tool_name)
+            && self
+                .policies
+                .get(tool_name)
+                .is_some_and(ToolExecutionPolicy::requires_confirmation)
+    }
+
+    /// Check if a tool is forbidden from execution.
+    #[must_use]
+    pub fn is_forbidden(&self, tool_name: &str) -> bool {
+        self.policies
+            .get(tool_name)
+            .is_some_and(ToolExecutionPolicy::is_forbidden)
     }
 
     /// Call a tool by name with JSON arguments.

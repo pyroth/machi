@@ -7,7 +7,7 @@ use crate::{
     memory::AgentMemory,
     prompts::{PromptRender, PromptTemplates},
     providers::common::Model,
-    tool::{BoxedTool, FinalAnswerTool, ToolBox},
+    tool::{BoxedConfirmationHandler, BoxedTool, FinalAnswerTool, ToolBox, ToolExecutionPolicy},
 };
 
 use std::{collections::HashMap, sync::Arc};
@@ -35,6 +35,8 @@ pub struct AgentBuilder {
     custom_instructions: Option<String>,
     final_answer_checks: FinalAnswerChecks,
     callbacks: CallbackRegistry,
+    confirmation_handler: Option<BoxedConfirmationHandler>,
+    tool_policies: Vec<(String, ToolExecutionPolicy)>,
 }
 
 impl std::fmt::Debug for AgentBuilder {
@@ -61,6 +63,8 @@ impl AgentBuilder {
             custom_instructions: None,
             final_answer_checks: FinalAnswerChecks::new(),
             callbacks: CallbackRegistry::new(),
+            confirmation_handler: None,
+            tool_policies: Vec::new(),
         }
     }
 
@@ -269,6 +273,72 @@ impl AgentBuilder {
         self
     }
 
+    /// Set the confirmation handler for tools requiring human approval.
+    ///
+    /// This handler is called when a tool with `RequireConfirmation` policy
+    /// is about to be executed.
+    ///
+    /// # Example
+    ///
+    /// ```rust,ignore
+    /// use machi::tool::{ConfirmationHandler, ToolConfirmationRequest, ToolConfirmationResponse};
+    ///
+    /// struct MyHandler;
+    ///
+    /// #[async_trait::async_trait]
+    /// impl ConfirmationHandler for MyHandler {
+    ///     async fn confirm(&self, req: &ToolConfirmationRequest) -> ToolConfirmationResponse {
+    ///         println!("Tool '{}' wants to execute", req.name);
+    ///         ToolConfirmationResponse::Approved
+    ///     }
+    /// }
+    ///
+    /// let agent = Agent::builder()
+    ///     .model(model)
+    ///     .confirmation_handler(Box::new(MyHandler))
+    ///     .build();
+    /// ```
+    #[must_use]
+    pub fn confirmation_handler(mut self, handler: BoxedConfirmationHandler) -> Self {
+        self.confirmation_handler = Some(handler);
+        self
+    }
+
+    /// Set the execution policy for a specific tool.
+    ///
+    /// # Example
+    ///
+    /// ```rust,ignore
+    /// use machi::tool::ToolExecutionPolicy;
+    ///
+    /// let agent = Agent::builder()
+    ///     .model(model)
+    ///     .tool_policy("delete_file", ToolExecutionPolicy::RequireConfirmation)
+    ///     .tool_policy("dangerous_tool", ToolExecutionPolicy::Forbidden)
+    ///     .build();
+    /// ```
+    #[must_use]
+    pub fn tool_policy(
+        mut self,
+        tool_name: impl Into<String>,
+        policy: ToolExecutionPolicy,
+    ) -> Self {
+        self.tool_policies.push((tool_name.into(), policy));
+        self
+    }
+
+    /// Set execution policies for multiple tools at once.
+    #[must_use]
+    pub fn tool_policies(
+        mut self,
+        policies: impl IntoIterator<Item = (impl Into<String>, ToolExecutionPolicy)>,
+    ) -> Self {
+        for (name, policy) in policies {
+            self.tool_policies.push((name.into(), policy));
+        }
+        self
+    }
+
     /// Build the agent.
     ///
     /// # Panics
@@ -315,6 +385,11 @@ impl AgentBuilder {
             tools.add_boxed(tool);
         }
 
+        // Apply tool execution policies
+        for (name, policy) in self.tool_policies {
+            tools.set_policy(name, policy);
+        }
+
         let prompt_renderer = self
             .prompt_templates
             .map_or_else(PromptRender::default, PromptRender::new);
@@ -334,6 +409,7 @@ impl AgentBuilder {
             final_answer_checks: self.final_answer_checks,
             callbacks: self.callbacks,
             run_start: std::time::Instant::now(),
+            confirmation_handler: self.confirmation_handler,
         })
     }
 }

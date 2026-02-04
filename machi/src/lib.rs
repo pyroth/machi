@@ -105,7 +105,22 @@ pub mod prelude {
         },
     };
     pub use crate::tool::{
-        BoxedTool, DynTool, Tool, ToolBox, ToolCallResult, ToolDefinition, ToolError, ToolResult,
+        // Tool execution policy types
+        AlwaysDenyHandler,
+        AutoApproveHandler,
+        BoxedConfirmationHandler,
+        BoxedTool,
+        ConfirmationHandler,
+        DynTool,
+        Tool,
+        ToolBox,
+        ToolCallResult,
+        ToolConfirmationRequest,
+        ToolConfirmationResponse,
+        ToolDefinition,
+        ToolError,
+        ToolExecutionPolicy,
+        ToolResult,
     };
     #[cfg(feature = "toolkit")]
     pub use crate::tools::{FinalAnswerTool, UserInputTool, VisitWebpageTool, WebSearchTool};

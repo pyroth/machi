@@ -77,7 +77,7 @@ impl Agent {
     }
 
     /// Execute a single step: generate response and process tool calls.
-    async fn execute_step(&self, step: &mut ActionStep) -> Result<StepResult> {
+    async fn execute_step(&mut self, step: &mut ActionStep) -> Result<StepResult> {
         let messages = self.memory.to_messages(false);
         step.model_input_messages = Some(messages.clone());
 
@@ -86,9 +86,15 @@ impl Agent {
 
         let message = self.generate_response(messages, options, step).await?;
 
-        // Use unified tool processor with parallel execution support
-        let processor =
-            ToolProcessor::with_concurrency(&self.tools, self.config.max_parallel_tool_calls);
+        // Use unified tool processor with parallel execution support and policy enforcement
+        let mut processor =
+            ToolProcessor::with_concurrency(&mut self.tools, self.config.max_parallel_tool_calls);
+
+        // Add confirmation handler if configured
+        if let Some(ref handler) = self.confirmation_handler {
+            processor = processor.with_confirmation_handler(handler);
+        }
+
         let result = processor.process_parallel(step, &message).await?;
         Ok(result.outcome)
     }
