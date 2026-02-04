@@ -145,20 +145,30 @@ fn test_agent_memory() {
 }
 
 #[test]
-fn test_callback_manager() {
+fn test_callback_registry() {
+    use machi::callback::{CallbackContext, CallbackRegistry};
+    use machi::memory::{ActionStep, Timing};
     use std::sync::Arc;
     use std::sync::atomic::{AtomicUsize, Ordering};
 
     let counter = Arc::new(AtomicUsize::new(0));
-    let counter_clone = counter.clone();
+    let counter_clone = Arc::clone(&counter);
 
-    let mut manager = CallbackManager::new();
-    manager.add(move |_| {
-        counter_clone.fetch_add(1, Ordering::SeqCst);
-    });
+    let registry = CallbackRegistry::builder()
+        .on_action(move |step: &ActionStep, _ctx| {
+            counter_clone.fetch_add(step.step_number, Ordering::SeqCst);
+        })
+        .build();
 
-    manager.emit(&StepEvent::ActionStarting { step_number: 1 });
-    assert_eq!(counter.load(Ordering::SeqCst), 1);
+    let ctx = CallbackContext::new(1, 10);
+    let step = ActionStep {
+        step_number: 5,
+        timing: Timing::start_now(),
+        ..Default::default()
+    };
+
+    registry.callback(&step, &ctx);
+    assert_eq!(counter.load(Ordering::SeqCst), 5);
 }
 
 #[test]

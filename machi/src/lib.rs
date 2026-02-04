@@ -50,7 +50,24 @@ pub mod prelude {
         Agent, AgentBuilder, AgentConfig, AgentStream, FinalAnswerChecks, RunResult, RunState,
         StreamEvent, StreamItem,
     };
-    pub use crate::callback::{CallbackManager, StepEvent};
+    // Callback system
+    pub use crate::callback::{
+        // Async callbacks
+        AsyncCallbackRegistry,
+        AsyncCallbackRegistryBuilder,
+        // Sync callbacks
+        CallbackContext,
+        CallbackRegistry,
+        CallbackRegistryBuilder,
+        // Utils
+        LoggingConfig,
+        MetricsCollector,
+        MetricsSnapshot,
+        Priority,
+        logging_handler,
+        metrics_handler,
+        tracing_handler,
+    };
     pub use crate::error::{AgentError, Result};
     pub use crate::managed_agent::{
         BoxedManagedAgent, ManagedAgent, ManagedAgentArgs, ManagedAgentInfo, ManagedAgentRegistry,
