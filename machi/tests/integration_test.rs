@@ -163,7 +163,7 @@ fn test_callback_manager() {
 
 #[test]
 fn test_prompt_templates() {
-    let prompts = PromptTemplates::tool_calling_agent();
+    let prompts = PromptTemplates::toolcalling_agent();
     assert!(!prompts.system_prompt.is_empty());
 
     let code_prompts = PromptTemplates::code_agent();

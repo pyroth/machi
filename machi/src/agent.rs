@@ -28,6 +28,7 @@ use tracing::{debug, info, instrument, warn};
 use crate::{
     error::{AgentError, Result},
     memory::{ActionStep, AgentMemory, FinalAnswerStep, TaskStep, Timing, ToolCall},
+    prompts::{PromptEngine, PromptTemplates, TemplateContext},
     providers::common::{GenerateOptions, Model},
     tool::{BoxedTool, ToolBox},
     tools::FinalAnswerTool,
@@ -73,9 +74,12 @@ pub struct Agent {
     config: AgentConfig,
     memory: AgentMemory,
     system_prompt: String,
+    prompt_templates: PromptTemplates,
+    prompt_engine: PromptEngine,
     interrupt_flag: Arc<AtomicBool>,
     step_number: usize,
     state: HashMap<String, Value>,
+    custom_instructions: Option<String>,
 }
 
 impl std::fmt::Debug for Agent {
@@ -96,8 +100,30 @@ impl Agent {
         AgentBuilder::new()
     }
 
-    /// Build the system prompt from available tools.
+    /// Build the system prompt from available tools using Jinja2 templates.
+    ///
+    /// This method renders the system_prompt template with the current context,
+    /// including tool definitions and custom instructions.
     fn build_system_prompt(&self) -> String {
+        let defs = self.tools.definitions();
+        let ctx = TemplateContext::new()
+            .with_tools(&defs)
+            .with_custom_instructions_opt(self.custom_instructions.as_deref());
+
+        match self
+            .prompt_engine
+            .render(&self.prompt_templates.system_prompt, &ctx)
+        {
+            Ok(rendered) => rendered,
+            Err(e) => {
+                warn!(error = %e, "Failed to render system prompt template, using fallback");
+                self.build_fallback_system_prompt()
+            }
+        }
+    }
+
+    /// Fallback system prompt when template rendering fails.
+    fn build_fallback_system_prompt(&self) -> String {
         let tools = self
             .tools
             .definitions()
@@ -337,6 +363,8 @@ pub struct AgentBuilder {
     model: Option<Box<dyn Model>>,
     tools: Vec<BoxedTool>,
     config: AgentConfig,
+    prompt_templates: Option<PromptTemplates>,
+    custom_instructions: Option<String>,
 }
 
 impl std::fmt::Debug for AgentBuilder {
@@ -408,6 +436,22 @@ impl AgentBuilder {
         self
     }
 
+    /// Set custom prompt templates.
+    ///
+    /// By default, uses the built-in tool-calling agent templates.
+    #[must_use]
+    pub fn prompt_templates(mut self, templates: PromptTemplates) -> Self {
+        self.prompt_templates = Some(templates);
+        self
+    }
+
+    /// Set custom instructions to be included in the system prompt.
+    #[must_use]
+    pub fn instructions(mut self, instructions: impl Into<String>) -> Self {
+        self.custom_instructions = Some(instructions.into());
+        self
+    }
+
     /// Build the agent.
     ///
     /// # Panics
@@ -431,15 +475,22 @@ impl AgentBuilder {
         }
         tools.add(FinalAnswerTool);
 
+        let prompt_templates = self
+            .prompt_templates
+            .unwrap_or_else(PromptTemplates::toolcalling_agent);
+
         Ok(Agent {
             model,
             tools,
             config: self.config,
             memory: AgentMemory::default(),
             system_prompt: String::new(),
+            prompt_templates,
+            prompt_engine: PromptEngine::new(),
             interrupt_flag: Arc::default(),
             step_number: 0,
             state: HashMap::new(),
+            custom_instructions: self.custom_instructions,
         })
     }
 }
