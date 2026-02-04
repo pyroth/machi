@@ -105,25 +105,15 @@ pub mod prelude {
         },
     };
     pub use crate::tool::{
-        // Tool execution policy types
-        AlwaysDenyHandler,
-        AutoApproveHandler,
-        BoxedConfirmationHandler,
-        BoxedTool,
-        ConfirmationHandler,
-        DynTool,
-        Tool,
-        ToolBox,
-        ToolCallResult,
-        ToolConfirmationRequest,
-        ToolConfirmationResponse,
-        ToolDefinition,
-        ToolError,
-        ToolExecutionPolicy,
-        ToolResult,
+        AlwaysDenyHandler, AutoApproveHandler, BoxedConfirmationHandler, BoxedTool,
+        ConfirmationHandler, DynTool, Tool, ToolBox, ToolCallResult, ToolConfirmationRequest,
+        ToolConfirmationResponse, ToolDefinition, ToolError, ToolExecutionPolicy, ToolResult,
     };
     #[cfg(feature = "toolkit")]
-    pub use crate::tools::{FinalAnswerTool, UserInputTool, VisitWebpageTool, WebSearchTool};
+    pub use crate::tools::{
+        EditFileTool, ExecTool, FinalAnswerTool, ListDirTool, ReadFileTool, UserInputTool,
+        VisitWebpageTool, WebSearchTool, WriteFileTool,
+    };
 
     // Re-export derive macro
     #[cfg(feature = "derive")]

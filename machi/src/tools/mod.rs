@@ -8,6 +8,8 @@
 //! - **Essential**: `FinalAnswerTool` - Required for all agents
 //! - **Web**: `WebSearchTool`, `VisitWebpageTool` - Web browsing capabilities
 //! - **Interactive**: `UserInputTool` - Human-in-the-loop support
+//! - **Filesystem**: `ReadFileTool`, `WriteFileTool`, `EditFileTool`, `ListDirTool`
+//! - **Shell**: `ExecTool` - Command execution
 //!
 //! # Example
 //!
@@ -21,11 +23,18 @@
 //! let search = create_tool("web_search").unwrap();
 //! ```
 
+mod filesystem;
+mod shell;
 mod user_input;
 mod visit_webpage;
 mod web_search;
 
 pub use crate::tool::{FinalAnswerArgs, FinalAnswerTool};
+pub use filesystem::{
+    EditFileArgs, EditFileTool, ListDirArgs, ListDirTool, ReadFileArgs, ReadFileTool,
+    WriteFileArgs, WriteFileTool,
+};
+pub use shell::{ExecArgs, ExecTool};
 pub use user_input::{UserInputArgs, UserInputTool};
 pub use visit_webpage::{VisitWebpageArgs, VisitWebpageTool};
 pub use web_search::{
@@ -42,6 +51,11 @@ pub const BUILTIN_TOOL_NAMES: &[&str] = &[
     "visit_webpage",
     "user_input",
     "duckduckgo_search",
+    "read_file",
+    "write_file",
+    "edit_file",
+    "list_dir",
+    "exec",
 ];
 
 /// Create a tool by name.
@@ -55,6 +69,11 @@ pub const BUILTIN_TOOL_NAMES: &[&str] = &[
 /// - `"duckduckgo_search"` - Web search using DuckDuckGo
 /// - `"visit_webpage"` - Visit and read webpage content
 /// - `"user_input"` - Request input from user
+/// - `"read_file"` - Read file contents
+/// - `"write_file"` - Write content to file
+/// - `"edit_file"` - Edit file with find-and-replace
+/// - `"list_dir"` - List directory contents
+/// - `"exec"` - Execute shell commands
 #[must_use]
 pub fn create_tool(name: &str) -> Option<BoxedTool> {
     match name {
@@ -63,6 +82,11 @@ pub fn create_tool(name: &str) -> Option<BoxedTool> {
         "duckduckgo_search" => Some(Box::new(DuckDuckGoSearchTool::new())),
         "visit_webpage" => Some(Box::new(VisitWebpageTool::default())),
         "user_input" => Some(Box::new(UserInputTool)),
+        "read_file" => Some(Box::new(ReadFileTool::default())),
+        "write_file" => Some(Box::new(WriteFileTool)),
+        "edit_file" => Some(Box::new(EditFileTool)),
+        "list_dir" => Some(Box::new(ListDirTool::default())),
+        "exec" => Some(Box::new(ExecTool::default())),
         _ => None,
     }
 }
@@ -112,6 +136,11 @@ pub fn base_tools() -> Vec<BoxedTool> {
 /// - `WebSearchTool` - for web searches
 /// - `VisitWebpageTool` - for visiting webpages
 /// - `UserInputTool` - for interactive user input
+/// - `ReadFileTool` - for reading files
+/// - `WriteFileTool` - for writing files
+/// - `EditFileTool` - for editing files
+/// - `ListDirTool` - for listing directories
+/// - `ExecTool` - for executing shell commands
 #[must_use]
 pub fn all_tools() -> Vec<BoxedTool> {
     vec![
@@ -119,6 +148,11 @@ pub fn all_tools() -> Vec<BoxedTool> {
         Box::new(WebSearchTool::default()),
         Box::new(VisitWebpageTool::default()),
         Box::new(UserInputTool),
+        Box::new(ReadFileTool::default()),
+        Box::new(WriteFileTool),
+        Box::new(EditFileTool),
+        Box::new(ListDirTool::default()),
+        Box::new(ExecTool::default()),
     ]
 }
 

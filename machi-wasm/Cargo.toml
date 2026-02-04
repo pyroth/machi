@@ -1,10 +1,10 @@
 [package]
-name = "machi-cli"
+name = "machi-wasm"
 version.workspace = true
 edition.workspace = true
 license.workspace = true
 repository.workspace = true
-description = "Command-line interface for Machi"
+description = "Machi WebAssembly bindings"
 
 [dependencies]
 
