@@ -1,90 +1,23 @@
-//! Memory system for tracking agent steps and state.
+//! Memory step types for different agent actions.
 //!
-//! This module provides the memory infrastructure for agents, allowing them
-//! to track their execution history, tool calls, and observations.
+//! This module defines all the step types that can be stored in agent memory:
+//! - `SystemPromptStep` - The initial system prompt
+//! - `TaskStep` - A new task submitted to the agent
+//! - `ActionStep` - An action taken by the agent
+//! - `PlanningStep` - A planning step
+//! - `FinalAnswerStep` - The final answer
+
+use std::any::Any;
+
+use serde::{Deserialize, Serialize};
+use serde_json::Value;
 
 use crate::message::{ChatMessage, MessageContent, MessageRole};
 use crate::multimodal::AgentImage;
-use chrono::{DateTime, Utc};
-use serde::{Deserialize, Serialize};
-use serde_json::Value;
-use std::any::Any;
+use crate::providers::common::TokenUsage;
 
-pub use crate::providers::common::TokenUsage;
-
-/// Timing information for a step.
-#[derive(Debug, Clone, Copy, Serialize, Deserialize)]
-pub struct Timing {
-    /// Start time of the step.
-    pub start_time: DateTime<Utc>,
-    /// End time of the step (if completed).
-    #[serde(skip_serializing_if = "Option::is_none")]
-    pub end_time: Option<DateTime<Utc>>,
-}
-
-impl Timing {
-    /// Create a new timing starting now.
-    #[must_use]
-    pub fn start_now() -> Self {
-        Self {
-            start_time: Utc::now(),
-            end_time: None,
-        }
-    }
-
-    /// Mark the timing as complete.
-    pub fn complete(&mut self) {
-        self.end_time = Some(Utc::now());
-    }
-
-    /// Get the duration in seconds.
-    #[must_use]
-    pub fn duration_secs(&self) -> Option<f64> {
-        self.end_time
-            .map(|end| (end - self.start_time).num_milliseconds() as f64 / 1000.0)
-    }
-}
-
-impl Default for Timing {
-    fn default() -> Self {
-        Self::start_now()
-    }
-}
-
-/// A tool call made during execution.
-#[derive(Debug, Clone, Serialize, Deserialize)]
-pub struct ToolCall {
-    /// Unique identifier for the tool call.
-    pub id: String,
-    /// Name of the tool.
-    pub name: String,
-    /// Arguments passed to the tool.
-    pub arguments: Value,
-}
-
-impl ToolCall {
-    /// Create a new tool call.
-    #[must_use]
-    pub fn new(id: impl Into<String>, name: impl Into<String>, arguments: Value) -> Self {
-        Self {
-            id: id.into(),
-            name: name.into(),
-            arguments,
-        }
-    }
-}
-
-/// Base trait for memory steps.
-pub trait MemoryStep: Send + Sync + std::fmt::Debug {
-    /// Convert the step to messages for the model.
-    fn to_messages(&self, summary_mode: bool) -> Vec<ChatMessage>;
-
-    /// Get the step as a serializable value.
-    fn to_value(&self) -> Value;
-
-    /// Downcast to Any for type checking.
-    fn as_any(&self) -> &dyn Any;
-}
+use super::timing::Timing;
+use super::types::{MemoryStep, ToolCall};
 
 /// System prompt step.
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -384,91 +317,5 @@ impl MemoryStep for FinalAnswerStep {
 
     fn as_any(&self) -> &dyn Any {
         self
-    }
-}
-
-/// Agent memory containing system prompt and all steps.
-#[derive(Debug)]
-pub struct AgentMemory {
-    /// System prompt step.
-    pub system_prompt: SystemPromptStep,
-    /// List of steps taken by the agent.
-    pub steps: Vec<Box<dyn MemoryStep>>,
-}
-
-impl AgentMemory {
-    /// Create a new agent memory with the given system prompt.
-    #[must_use]
-    pub fn new(system_prompt: impl Into<String>) -> Self {
-        Self {
-            system_prompt: SystemPromptStep {
-                system_prompt: system_prompt.into(),
-            },
-            steps: Vec::new(),
-        }
-    }
-
-    /// Reset the memory, clearing all steps.
-    pub fn reset(&mut self) {
-        self.steps.clear();
-    }
-
-    /// Add a step to memory.
-    pub fn add_step<S: MemoryStep + 'static>(&mut self, step: S) {
-        self.steps.push(Box::new(step));
-    }
-
-    /// Convert memory to messages for the model.
-    #[must_use]
-    pub fn to_messages(&self, summary_mode: bool) -> Vec<ChatMessage> {
-        let mut messages = self.system_prompt.to_messages(summary_mode);
-        for step in &self.steps {
-            messages.extend(step.to_messages(summary_mode));
-        }
-        messages
-    }
-
-    /// Get all steps as values.
-    #[must_use]
-    pub fn get_steps(&self) -> Vec<Value> {
-        self.steps.iter().map(|s| s.to_value()).collect()
-    }
-
-    /// Get total token usage.
-    #[must_use]
-    pub fn total_token_usage(&self) -> TokenUsage {
-        let mut total = TokenUsage::default();
-        for step in &self.steps {
-            if let Some(action) = step.as_any().downcast_ref::<ActionStep>() {
-                if let Some(usage) = action.token_usage {
-                    total += usage;
-                }
-            } else if let Some(planning) = step.as_any().downcast_ref::<PlanningStep>()
-                && let Some(usage) = planning.token_usage
-            {
-                total += usage;
-            }
-        }
-        total
-    }
-
-    /// Get all code actions concatenated.
-    #[must_use]
-    pub fn return_full_code(&self) -> String {
-        self.steps
-            .iter()
-            .filter_map(|s| {
-                s.as_any()
-                    .downcast_ref::<ActionStep>()
-                    .and_then(|a| a.code_action.clone())
-            })
-            .collect::<Vec<_>>()
-            .join("\n\n")
-    }
-}
-
-impl Default for AgentMemory {
-    fn default() -> Self {
-        Self::new("")
     }
 }
