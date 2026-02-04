@@ -33,9 +33,11 @@ use crate::{
     error::{AgentError, Result},
     managed_agent::{BoxedManagedAgent, ManagedAgent, ManagedAgentRegistry},
     memory::{ActionStep, AgentMemory, FinalAnswerStep, TaskStep, Timing, ToolCall},
+    message::ChatMessageToolCall,
     multimodal::AgentImage,
     prompts::{PromptEngine, PromptTemplates, TemplateContext},
     providers::common::{GenerateOptions, Model, TokenUsage},
+    telemetry::{RunMetrics, Telemetry},
     tool::{BoxedTool, ToolBox},
     tools::FinalAnswerTool,
 };
@@ -345,6 +347,7 @@ pub struct Agent {
     state: HashMap<String, Value>,
     custom_instructions: Option<String>,
     final_answer_checks: FinalAnswerChecks,
+    telemetry: Telemetry,
 }
 
 impl std::fmt::Debug for Agent {
@@ -390,6 +393,52 @@ impl Agent {
         }
     }
 
+    /// Parse tool call from text output (for models that output JSON as text).
+    ///
+    /// Supports formats like:
+    /// - `Action: {"name": "tool", "arguments": {...}}`
+    /// - `{"name": "tool", "arguments": {...}}`
+    fn parse_tool_call_from_text(text: &str) -> Option<ChatMessageToolCall> {
+        // Try to find JSON in the text
+        let json_str = if let Some(start) = text.find('{') {
+            // Find matching closing brace
+            let mut depth = 0;
+            let mut end = start;
+            for (i, c) in text[start..].char_indices() {
+                match c {
+                    '{' => depth += 1,
+                    '}' => {
+                        depth -= 1;
+                        if depth == 0 {
+                            end = start + i + 1;
+                            break;
+                        }
+                    }
+                    _ => {}
+                }
+            }
+            &text[start..end]
+        } else {
+            return None;
+        };
+
+        // Parse the JSON
+        let json: Value = serde_json::from_str(json_str).ok()?;
+
+        // Extract name and arguments
+        let name = json.get("name")?.as_str()?;
+        let arguments = json
+            .get("arguments")
+            .cloned()
+            .unwrap_or(Value::Object(Default::default()));
+
+        Some(ChatMessageToolCall::new(
+            format!("text_parsed_{}", uuid::Uuid::new_v4().simple()),
+            name.to_string(),
+            arguments,
+        ))
+    }
+
     /// Fallback system prompt when template rendering fails.
     fn build_fallback_system_prompt(&self) -> String {
         let defs = self.tools.definitions();
@@ -426,8 +475,20 @@ impl Agent {
         step.token_usage = response.token_usage;
         step.model_output = response.message.text_content();
 
-        // Early return using let-else pattern
-        let Some(tool_calls) = &response.message.tool_calls else {
+        // Try native tool calls first, then fall back to text parsing
+        let tool_calls = if let Some(tc) = &response.message.tool_calls {
+            tc.clone()
+        } else if let Some(text) = &step.model_output {
+            // Try to parse tool call from text output (for models like qwen3)
+            if let Some(parsed) = Self::parse_tool_call_from_text(text) {
+                debug!(step = step.step_number, tool = %parsed.name(), "Parsed tool call from text");
+                vec![parsed]
+            } else {
+                debug!(step = step.step_number, output = %text, "Model returned text without tool call");
+                return Ok(None);
+            }
+        } else {
+            debug!(step = step.step_number, "Model returned empty response");
             return Ok(None);
         };
 
@@ -679,6 +740,13 @@ impl Agent {
             let result = self.execute_step(&mut step).await;
             step.timing.complete();
 
+            // Record telemetry for tool calls
+            if let Some(ref tool_calls) = step.tool_calls {
+                for tc in tool_calls {
+                    self.telemetry.record_tool_call(&tc.name);
+                }
+            }
+
             match result {
                 Ok(Some(answer)) => {
                     // Run final answer checks
@@ -687,16 +755,29 @@ impl Agent {
                     {
                         warn!(error = %e, "Final answer check failed");
                         step.error = Some(format!("Final answer check failed: {e}"));
+                        self.telemetry.record_error(&e.to_string());
+                        self.telemetry
+                            .record_step(self.step_number, step.token_usage.as_ref());
                         self.memory.add_step(step);
                         // Continue to next step instead of failing
                         continue;
                     }
+                    self.telemetry
+                        .record_step(self.step_number, step.token_usage.as_ref());
                     self.memory.add_step(step);
                     return Ok(answer);
                 }
-                Ok(None) => self.memory.add_step(step),
+                Ok(None) => {
+                    self.telemetry
+                        .record_step(self.step_number, step.token_usage.as_ref());
+                    self.memory.add_step(step);
+                }
                 Err(e) => {
-                    step.error = Some(e.to_string());
+                    let err_msg = e.to_string();
+                    step.error = Some(err_msg.clone());
+                    self.telemetry.record_error(&err_msg);
+                    self.telemetry
+                        .record_step(self.step_number, step.token_usage.as_ref());
                     self.memory.add_step(step);
                     warn!(step = self.step_number, error = %e, "Step failed");
                 }
@@ -1012,6 +1093,20 @@ impl Agent {
         self.step_number = 0;
         self.state.clear();
         self.interrupt_flag.store(false, Ordering::SeqCst);
+        self.telemetry.reset();
+    }
+
+    /// Get the telemetry metrics for the current/last run.
+    #[inline]
+    #[must_use]
+    pub fn metrics(&mut self) -> RunMetrics {
+        self.telemetry.complete()
+    }
+
+    /// Get a reference to the telemetry collector.
+    #[inline]
+    pub const fn telemetry(&self) -> &Telemetry {
+        &self.telemetry
     }
 
     /// Get the current step number.
@@ -1374,6 +1469,7 @@ impl AgentBuilder {
             state: HashMap::new(),
             custom_instructions: self.custom_instructions,
             final_answer_checks: self.final_answer_checks,
+            telemetry: Telemetry::new(),
         })
     }
 }

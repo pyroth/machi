@@ -198,6 +198,8 @@ impl CompletionModel {
                 })
                 .collect();
             body["tools"] = serde_json::json!(tool_defs);
+            // Enable thinking mode for models like qwen3 that need it for tool calling
+            body["think"] = serde_json::json!(true);
         }
 
         body
@@ -282,7 +284,12 @@ impl Model for CompletionModel {
     ) -> Result<ModelResponse, AgentError> {
         let body = self.build_request_body(&messages, &options);
 
-        debug!("Sending request to Ollama API");
+        // Log tools being sent to help debug tool calling issues
+        if let Some(tools) = body.get("tools") {
+            debug!(tools = %tools, "Sending request with tools");
+        } else {
+            debug!("Sending request to Ollama API");
+        }
 
         let response = self
             .client

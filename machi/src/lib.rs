@@ -40,6 +40,7 @@ pub mod message;
 pub mod multimodal;
 pub mod prompts;
 pub mod providers;
+pub mod telemetry;
 pub mod tool;
 pub mod tools;
 
@@ -82,6 +83,7 @@ pub mod prelude {
             GPT_4O_MINI, GPT_5, GPT_5_MINI, O3, O3_MINI, O3_PRO, O4_MINI, OpenAIClient,
         },
     };
+    pub use crate::telemetry::{RunMetrics, Telemetry};
     pub use crate::tool::{BoxedTool, DynTool, Tool, ToolBox, ToolDefinition, ToolError};
     pub use crate::tools::{FinalAnswerTool, UserInputTool, VisitWebpageTool, WebSearchTool};
 

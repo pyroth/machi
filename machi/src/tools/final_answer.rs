@@ -15,7 +15,7 @@ pub struct FinalAnswerTool;
 #[derive(Debug, Clone, Serialize, Deserialize)]
 #[non_exhaustive]
 pub struct FinalAnswerArgs {
-    /// The final answer to the problem.
+    /// The final answer to the problem. Can be any JSON value.
     pub answer: Value,
 }
 
@@ -39,11 +39,15 @@ impl Tool for FinalAnswerTool {
             "type": "object",
             "properties": {
                 "answer": {
-                    "description": "The final answer to the problem. Can be any type.",
+                    "description": "The final answer to the problem. Can be any JSON type (string, number, object, array, boolean, or null)."
                 }
             },
             "required": ["answer"]
         })
+    }
+
+    fn output_type(&self) -> &'static str {
+        "any"
     }
 
     async fn call(&self, args: Self::Args) -> Result<Self::Output, Self::Error> {

@@ -14,6 +14,7 @@ pub struct UserInputTool;
 
 /// Arguments for the user input tool.
 #[derive(Debug, Clone, Serialize, Deserialize)]
+#[non_exhaustive]
 pub struct UserInputArgs {
     /// The question to ask the user.
     pub question: String,
@@ -45,6 +46,10 @@ impl Tool for UserInputTool {
             },
             "required": ["question"]
         })
+    }
+
+    fn output_type(&self) -> &'static str {
+        "string"
     }
 
     async fn call(&self, args: Self::Args) -> Result<Self::Output, Self::Error> {

@@ -37,6 +37,7 @@ impl Default for WebSearchTool {
 
 /// Arguments for web search.
 #[derive(Debug, Clone, Serialize, Deserialize)]
+#[non_exhaustive]
 pub struct WebSearchArgs {
     /// The search query to perform.
     pub query: String,
@@ -44,6 +45,7 @@ pub struct WebSearchArgs {
 
 /// A single search result.
 #[derive(Debug, Clone, Serialize, Deserialize)]
+#[non_exhaustive]
 pub struct SearchResult {
     /// Title of the result.
     pub title: String,
@@ -94,6 +96,7 @@ impl WebSearchTool {
     /// Perform `DuckDuckGo` search using lite HTML interface.
     async fn search_duckduckgo(&self, query: &str) -> Result<Vec<SearchResult>, ToolError> {
         let client = reqwest::Client::builder()
+            .timeout(std::time::Duration::from_secs(30))
             .user_agent("Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36")
             .build()
             .map_err(|e| ToolError::ExecutionError(e.to_string()))?;
@@ -157,7 +160,11 @@ impl WebSearchTool {
 
     /// Perform Bing search using RSS feed.
     async fn search_bing(&self, query: &str) -> Result<Vec<SearchResult>, ToolError> {
-        let client = reqwest::Client::new();
+        let client = reqwest::Client::builder()
+            .timeout(std::time::Duration::from_secs(30))
+            .user_agent("Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36")
+            .build()
+            .map_err(|e| ToolError::ExecutionError(e.to_string()))?;
         let url = format!(
             "https://www.bing.com/search?q={}&format=rss",
             urlencoding::encode(query)
@@ -236,14 +243,26 @@ impl Tool for WebSearchTool {
             "properties": {
                 "query": {
                     "type": "string",
-                    "description": "The search query to perform"
+                    "minLength": 1,
+                    "description": "The search query to perform (non-empty string)"
                 }
             },
             "required": ["query"]
         })
     }
 
+    fn output_type(&self) -> &'static str {
+        "string"
+    }
+
     async fn call(&self, args: Self::Args) -> Result<Self::Output, Self::Error> {
+        // Validate query is not empty
+        if args.query.trim().is_empty() {
+            return Err(ToolError::InvalidArguments(
+                "Search query cannot be empty".to_string(),
+            ));
+        }
+
         let results = match self.engine {
             SearchEngine::DuckDuckGo => self.search_duckduckgo(&args.query).await?,
             SearchEngine::Bing => self.search_bing(&args.query).await?,

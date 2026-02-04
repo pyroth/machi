@@ -2,8 +2,10 @@
 
 use crate::tool::{Tool, ToolError};
 use async_trait::async_trait;
+use regex::Regex;
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
+use std::sync::LazyLock;
 
 /// Tool for visiting a webpage and extracting its content as text.
 #[derive(Debug, Clone, Copy)]
@@ -26,10 +28,46 @@ impl Default for VisitWebpageTool {
 
 /// Arguments for visiting a webpage.
 #[derive(Debug, Clone, Serialize, Deserialize)]
+#[non_exhaustive]
 pub struct VisitWebpageArgs {
     /// The URL of the webpage to visit.
     pub url: String,
 }
+
+// Pre-compiled regex patterns for HTML to text conversion
+static SCRIPT_RE: LazyLock<Regex> =
+    LazyLock::new(|| Regex::new(r"(?is)<script[^>]*>.*?</script>").unwrap());
+static STYLE_RE: LazyLock<Regex> =
+    LazyLock::new(|| Regex::new(r"(?is)<style[^>]*>.*?</style>").unwrap());
+static TAG_RE: LazyLock<Regex> = LazyLock::new(|| Regex::new(r"<[^>]+>").unwrap());
+static MULTILINE_RE: LazyLock<Regex> = LazyLock::new(|| Regex::new(r"\n{3,}").unwrap());
+
+// HTML element conversion patterns
+static HTML_PATTERNS: LazyLock<Vec<(Regex, &'static str)>> = LazyLock::new(|| {
+    vec![
+        (Regex::new(r"<h1[^>]*>([^<]*)</h1>").unwrap(), "\n# $1\n"),
+        (Regex::new(r"<h2[^>]*>([^<]*)</h2>").unwrap(), "\n## $1\n"),
+        (Regex::new(r"<h3[^>]*>([^<]*)</h3>").unwrap(), "\n### $1\n"),
+        (Regex::new(r"<h4[^>]*>([^<]*)</h4>").unwrap(), "\n#### $1\n"),
+        (Regex::new(r"<p[^>]*>").unwrap(), "\n"),
+        (Regex::new(r"</p>").unwrap(), "\n"),
+        (Regex::new(r"<br\s*/?>").unwrap(), "\n"),
+        (Regex::new(r"<li[^>]*>").unwrap(), "\n- "),
+        (Regex::new(r"</li>").unwrap(), ""),
+        (
+            Regex::new(r#"<a[^>]*href=["']([^"']*)["'][^>]*>([^<]*)</a>"#).unwrap(),
+            "[$2]($1)",
+        ),
+        (
+            Regex::new(r"<strong[^>]*>([^<]*)</strong>").unwrap(),
+            "**$1**",
+        ),
+        (Regex::new(r"<b[^>]*>([^<]*)</b>").unwrap(), "**$1**"),
+        (Regex::new(r"<em[^>]*>([^<]*)</em>").unwrap(), "*$1*"),
+        (Regex::new(r"<i[^>]*>([^<]*)</i>").unwrap(), "*$1*"),
+        (Regex::new(r"<code[^>]*>([^<]*)</code>").unwrap(), "`$1`"),
+    ]
+});
 
 impl VisitWebpageTool {
     /// Create a new webpage visitor tool.
@@ -67,51 +105,18 @@ impl VisitWebpageTool {
 
     /// Convert HTML to simple text/markdown.
     fn html_to_text(html: &str) -> String {
-        let mut text = html.to_string();
-
         // Remove scripts and styles
-        let script_re = regex::Regex::new(r"(?is)<script[^>]*>.*?</script>").ok();
-        let style_re = regex::Regex::new(r"(?is)<style[^>]*>.*?</style>").ok();
+        let text = SCRIPT_RE.replace_all(html, "");
+        let text = STYLE_RE.replace_all(&text, "");
+        let mut text = text.into_owned();
 
-        if let Some(re) = script_re {
-            text = re.replace_all(&text, "").to_string();
-        }
-        if let Some(re) = style_re {
-            text = re.replace_all(&text, "").to_string();
-        }
-
-        // Convert common HTML elements to markdown
-        let replacements = [
-            (r"<h1[^>]*>([^<]*)</h1>", "\n# $1\n"),
-            (r"<h2[^>]*>([^<]*)</h2>", "\n## $1\n"),
-            (r"<h3[^>]*>([^<]*)</h3>", "\n### $1\n"),
-            (r"<h4[^>]*>([^<]*)</h4>", "\n#### $1\n"),
-            (r"<p[^>]*>", "\n"),
-            (r"</p>", "\n"),
-            (r"<br\s*/?>", "\n"),
-            (r"<li[^>]*>", "\n- "),
-            (r"</li>", ""),
-            (
-                r#"<a[^>]*href=["']([^"']*)["'][^>]*>([^<]*)</a>"#,
-                "[$2]($1)",
-            ),
-            (r"<strong[^>]*>([^<]*)</strong>", "**$1**"),
-            (r"<b[^>]*>([^<]*)</b>", "**$1**"),
-            (r"<em[^>]*>([^<]*)</em>", "*$1*"),
-            (r"<i[^>]*>([^<]*)</i>", "*$1*"),
-            (r"<code[^>]*>([^<]*)</code>", "`$1`"),
-        ];
-
-        for (pattern, replacement) in replacements {
-            if let Ok(re) = regex::Regex::new(pattern) {
-                text = re.replace_all(&text, replacement).to_string();
-            }
+        // Convert common HTML elements to markdown using pre-compiled patterns
+        for (re, replacement) in HTML_PATTERNS.iter() {
+            text = re.replace_all(&text, *replacement).into_owned();
         }
 
         // Remove remaining HTML tags
-        if let Ok(re) = regex::Regex::new(r"<[^>]+>") {
-            text = re.replace_all(&text, "").to_string();
-        }
+        text = TAG_RE.replace_all(&text, "").into_owned();
 
         // Decode common HTML entities
         text = text
@@ -124,10 +129,7 @@ impl VisitWebpageTool {
             .replace("&#39;", "'");
 
         // Clean up whitespace
-        let multiline_re = regex::Regex::new(r"\n{3,}").ok();
-        if let Some(re) = multiline_re {
-            text = re.replace_all(&text, "\n\n").to_string();
-        }
+        text = MULTILINE_RE.replace_all(&text, "\n\n").into_owned();
 
         text.trim().to_string()
     }
@@ -154,14 +156,26 @@ impl Tool for VisitWebpageTool {
             "properties": {
                 "url": {
                     "type": "string",
-                    "description": "The URL of the webpage to visit"
+                    "format": "uri",
+                    "description": "The URL of the webpage to visit (must be a valid HTTP/HTTPS URL)"
                 }
             },
             "required": ["url"]
         })
     }
 
+    fn output_type(&self) -> &'static str {
+        "string"
+    }
+
     async fn call(&self, args: Self::Args) -> Result<Self::Output, Self::Error> {
+        // Validate URL format
+        if !args.url.starts_with("http://") && !args.url.starts_with("https://") {
+            return Err(ToolError::InvalidArguments(
+                "URL must start with http:// or https://".to_string(),
+            ));
+        }
+
         let client = reqwest::Client::builder()
             .timeout(std::time::Duration::from_secs(self.timeout_secs))
             .user_agent("Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36")
