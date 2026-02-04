@@ -410,9 +410,8 @@ impl machi::prelude::Model for ModelProvider {
     async fn generate(
         &self,
         messages: Vec<machi::message::ChatMessage>,
-        options: machi::providers::common::GenerateOptions,
-    ) -> std::result::Result<machi::providers::common::ModelResponse, machi::error::AgentError>
-    {
+        options: machi::providers::GenerateOptions,
+    ) -> std::result::Result<machi::providers::ModelResponse, machi::error::AgentError> {
         match self {
             Self::Ollama(m) => m.generate(messages, options).await,
             Self::Anthropic(m) => m.generate(messages, options).await,

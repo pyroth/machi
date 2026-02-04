@@ -3,7 +3,7 @@
 //! This module provides a simple mock model that returns predefined responses,
 //! useful for unit testing without making real API calls.
 
-use super::common::{GenerateOptions, Model, ModelResponse};
+use super::{GenerateOptions, Model, ModelResponse};
 use crate::error::AgentError;
 use crate::message::ChatMessage;
 use async_trait::async_trait;

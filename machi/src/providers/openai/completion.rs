@@ -7,7 +7,7 @@ use super::client::OpenAIClient;
 use super::streaming::StreamingResponse;
 use crate::error::AgentError;
 use crate::message::{ChatMessage, ChatMessageToolCall, MessageRole};
-use crate::providers::common::{
+use crate::providers::{
     ApiClient, GenerateOptions, Model, ModelResponse, ModelStream, TokenUsage,
     model_requires_max_completion_tokens, model_supports_stop_parameter, saturating_u32,
 };

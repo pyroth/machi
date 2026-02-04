@@ -51,7 +51,7 @@ use crate::{
     memory::{AgentMemory, FinalAnswerStep, TaskStep, Timing},
     multimodal::AgentImage,
     prompts::PromptRender,
-    providers::common::Model,
+    providers::Model,
     tool::{BoxedConfirmationHandler, ToolBox},
 };
 

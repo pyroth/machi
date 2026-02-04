@@ -6,7 +6,7 @@ use crate::{
     managed::{BoxedManagedAgent, ManagedAgentRegistry},
     memory::AgentMemory,
     prompts::{PromptRender, PromptTemplates},
-    providers::common::Model,
+    providers::Model,
     tool::{BoxedConfirmationHandler, BoxedTool, FinalAnswerTool, ToolBox, ToolExecutionPolicy},
 };
 

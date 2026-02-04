@@ -7,7 +7,7 @@ use super::client::OllamaClient;
 use super::streaming::StreamingResponse;
 use crate::error::AgentError;
 use crate::message::{ChatMessage, ChatMessageToolCall, MessageRole};
-use crate::providers::common::{
+use crate::providers::{
     ApiClient, GenerateOptions, Model, ModelResponse, ModelStream, TokenUsage, saturating_u32,
 };
 use async_trait::async_trait;

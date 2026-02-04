@@ -4,7 +4,7 @@
 //! supporting models like Llama, Qwen, Mistral, DeepSeek, and more.
 
 use super::completion::CompletionModel;
-use crate::providers::common::ApiClient;
+use crate::providers::ApiClient;
 use reqwest::header::{CONTENT_TYPE, HeaderMap, HeaderValue};
 use std::sync::Arc;
 

@@ -28,7 +28,7 @@ pub use steps::{ActionStep, FinalAnswerStep, PlanningStep, SystemPromptStep, Tas
 pub use timing::Timing;
 pub use types::{MemoryStep, ToolCall};
 
-pub use crate::providers::common::TokenUsage;
+pub use crate::providers::TokenUsage;
 
 use crate::message::ChatMessage;
 use serde_json::Value;

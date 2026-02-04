@@ -6,7 +6,7 @@ use crate::error::AgentError;
 use crate::message::{
     ChatMessageStreamDelta, ChatMessageToolCallFunction, ChatMessageToolCallStreamDelta,
 };
-use crate::providers::common::TokenUsage;
+use crate::providers::TokenUsage;
 use bytes::Bytes;
 use futures::Stream;
 use serde::Deserialize;

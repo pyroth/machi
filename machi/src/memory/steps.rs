@@ -14,7 +14,7 @@ use serde_json::Value;
 
 use crate::message::{ChatMessage, MessageContent, MessageRole};
 use crate::multimodal::AgentImage;
-use crate::providers::common::TokenUsage;
+use crate::providers::TokenUsage;
 
 use super::timing::Timing;
 use super::types::{MemoryStep, ToolCall};

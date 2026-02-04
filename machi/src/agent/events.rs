@@ -5,7 +5,7 @@ use std::pin::Pin;
 use futures::Stream;
 use serde_json::Value;
 
-use crate::{error::AgentError, memory::ActionStep, providers::common::TokenUsage};
+use crate::{error::AgentError, memory::ActionStep, providers::TokenUsage};
 
 /// Events emitted during streaming agent execution.
 ///

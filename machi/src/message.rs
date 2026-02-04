@@ -414,7 +414,7 @@ pub struct ChatMessageStreamDelta {
     pub tool_calls: Option<Vec<ChatMessageToolCallStreamDelta>>,
     /// Token usage information (usually only in final delta).
     #[serde(skip_serializing_if = "Option::is_none")]
-    pub token_usage: Option<crate::providers::common::TokenUsage>,
+    pub token_usage: Option<crate::providers::TokenUsage>,
 }
 
 /// Type alias for backwards compatibility.

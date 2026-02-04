@@ -24,7 +24,7 @@ use crate::{
     error::AgentError,
     memory::{ActionStep, FinalAnswerStep, Timing, ToolCall},
     message::ChatMessageStreamDelta,
-    providers::common::GenerateOptions,
+    providers::GenerateOptions,
     tool::FinalAnswerArgs,
 };
 

@@ -13,7 +13,7 @@ use crate::{
     error::{AgentError, Result},
     memory::{ActionStep, FinalAnswerStep, Timing},
     message::ChatMessage,
-    providers::common::GenerateOptions,
+    providers::GenerateOptions,
 };
 
 use super::{Agent, events::StepResult, tool_processor::ToolProcessor};

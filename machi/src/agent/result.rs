@@ -4,7 +4,7 @@ use std::fmt::Write as _;
 
 use serde_json::Value;
 
-use crate::{memory::Timing, providers::common::TokenUsage};
+use crate::{memory::Timing, providers::TokenUsage};
 
 use super::RunState;
 

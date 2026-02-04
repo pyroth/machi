@@ -5,7 +5,7 @@
 
 use super::ANTHROPIC_VERSION_LATEST;
 use super::completion::CompletionModel;
-use crate::providers::common::{ApiClient, FromEnv};
+use crate::providers::{ApiClient, FromEnv};
 use reqwest::header::{CONTENT_TYPE, HeaderMap, HeaderValue};
 use std::sync::Arc;
 

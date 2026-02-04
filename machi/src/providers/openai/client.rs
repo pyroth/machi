@@ -4,7 +4,7 @@
 //! supporting GPT-4, GPT-5, O-series, and compatible APIs.
 
 use super::completion::CompletionModel;
-use crate::providers::common::{ApiClient, FromEnv};
+use crate::providers::{ApiClient, FromEnv};
 use reqwest::header::{AUTHORIZATION, CONTENT_TYPE, HeaderMap, HeaderValue};
 use std::sync::Arc;
 

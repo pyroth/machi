@@ -85,16 +85,14 @@ pub mod prelude {
     pub use crate::multimodal::{AgentAudio, AgentImage, AgentOutput, AudioFormat, ImageFormat};
     pub use crate::prompts::{PromptRender, PromptTemplates};
     pub use crate::providers::{
+        FromEnv, GenerateOptions, Model, ModelResponse, ModelStream, TokenUsage,
         anthropic::{
             AnthropicClient, CLAUDE_3_5_SONNET, CLAUDE_4_OPUS, CLAUDE_4_SONNET, CLAUDE_OPUS_4_5,
             CLAUDE_OPUS_4_5_LATEST, CLAUDE_SONNET_4_5, CLAUDE_SONNET_4_5_LATEST,
             CompletionModel as AnthropicModel,
         },
-        common::{
-            FromEnv, GenerateOptions, Model, ModelResponse, ModelStream, TokenUsage,
-            model_requires_max_completion_tokens, model_supports_stop_parameter,
-        },
         mock::MockModel,
+        model_requires_max_completion_tokens, model_supports_stop_parameter,
         ollama::{
             CompletionModel as OllamaModel, DEEPSEEK_R1, LLAMA3_2, LLAMA3_3, MISTRAL, OllamaClient,
             QWEN2_5,
