@@ -32,6 +32,9 @@ pub use crate::embedding::{
     Embedding, EmbeddingProvider, EmbeddingRequest, EmbeddingResponse, EmbeddingUsage,
     EncodingFormat,
 };
+#[cfg(feature = "memory-sqlite")]
+pub use crate::memory::SqliteSession;
+pub use crate::memory::{BoxedSession, InMemorySession, MemoryError, Session, SharedSession};
 pub use crate::message::{
     Annotation, Content, ContentPart, FunctionCall, ImageDetail, ImageMime, InputAudio, Message,
     MessageAggregator, MessageBuilder, MessageDelta, Role, ThinkingBlock, ToolCall, ToolCallDelta,

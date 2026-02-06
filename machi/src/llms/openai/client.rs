@@ -615,9 +615,10 @@ mod tests {
             let converted = OpenAI::convert_message(&msg);
 
             if let Some(OpenAIContent::Array(parts)) = converted.content
-                && let OpenAIContentPart::ImageUrl { image_url } = &parts[0] {
-                    assert!(image_url.url.starts_with("data:image/png;base64,"));
-                }
+                && let OpenAIContentPart::ImageUrl { image_url } = &parts[0]
+            {
+                assert!(image_url.url.starts_with("data:image/png;base64,"));
+            }
         }
 
         #[test]

@@ -15,7 +15,8 @@ ollama = []
 derive = ["machi-derive"]
 mcp = ["rmcp"]
 toolkit = []
-full = ["openai", "ollama", "derive", "mcp", "toolkit"]
+memory-sqlite = ["dep:rusqlite"]
+full = ["openai", "ollama", "derive", "mcp", "toolkit", "memory-sqlite"]
 
 [dependencies]
 # Core dependencies
@@ -34,6 +35,7 @@ uuid.workspace = true
 # Optional dependencies
 machi-derive = { workspace = true, optional = true }
 rmcp = { workspace = true, optional = true }
+rusqlite = { workspace = true, optional = true }
 
 # Template rendering
 minijinja.workspace = true

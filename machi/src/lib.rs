@@ -43,6 +43,7 @@ pub mod chat;
 pub mod embedding;
 pub mod error;
 pub mod llms;
+pub mod memory;
 pub mod message;
 pub mod prelude;
 pub mod stream;
