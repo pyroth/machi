@@ -16,6 +16,10 @@ pub use crate::llms::{OpenAI, OpenAIConfig};
 #[cfg(feature = "derive")]
 pub use machi_derive::tool;
 
+pub use crate::agent::{
+    Agent, Instructions, ManagedAgentTool, NextStep, RunConfig, RunResult, Runner, StepInfo,
+    ToolCallRecord, ToolCallRequest,
+};
 pub use crate::callback::{
     AgentHooks, BoxedAgentHooks, BoxedRunHooks, LoggingAgentHooks, LoggingRunHooks, NoopAgentHooks,
     NoopRunHooks, RunContext, RunHooks, SharedAgentHooks, SharedRunHooks,
@@ -45,7 +49,8 @@ pub use crate::message::{
 pub use crate::stream::{StopReason, StreamAggregator, StreamChunk};
 pub use crate::tool::{
     AlwaysDenyHandler, AutoApproveHandler, BoxedConfirmationHandler, BoxedTool,
-    ConfirmationHandler, DynTool, Tool, ToolBox, ToolCallResult, ToolConfirmationRequest,
-    ToolConfirmationResponse, ToolDefinition, ToolExecutionPolicy, ToolResult, ToolType,
+    ConfirmationHandler, DynTool, SharedConfirmationHandler, Tool, ToolBox, ToolCallResult,
+    ToolConfirmationRequest, ToolConfirmationResponse, ToolDefinition, ToolExecutionPolicy,
+    ToolResult, ToolType,
 };
 pub use crate::usage::{CompletionTokensDetails, PromptTokensDetails, Usage, UsageTracker};

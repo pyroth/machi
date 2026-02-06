@@ -413,6 +413,9 @@ pub trait ConfirmationHandler: Send + Sync {
 /// A boxed confirmation handler for dynamic dispatch.
 pub type BoxedConfirmationHandler = Box<dyn ConfirmationHandler>;
 
+/// A shared confirmation handler for use across cloneable contexts.
+pub type SharedConfirmationHandler = std::sync::Arc<dyn ConfirmationHandler>;
+
 /// Default confirmation handler that auto-approves all requests.
 #[derive(Debug, Clone, Copy, Default)]
 pub struct AutoApproveHandler;
