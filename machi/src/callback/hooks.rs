@@ -91,11 +91,6 @@ pub trait RunHooks: Send + Sync {
     ) {
     }
 
-    /// Called when control is handed off from one agent to another.
-    ///
-    /// This is a forward-looking hook for multi-agent orchestration.
-    async fn on_handoff(&self, _ctx: &RunContext, _from_agent: &str, _to_agent: &str) {}
-
     /// Called when an error occurs during the agent run.
     async fn on_error(&self, _ctx: &RunContext, _agent_name: &str, _error: &Error) {}
 }
@@ -138,9 +133,6 @@ pub trait AgentHooks: Send + Sync {
     /// Called immediately after a tool completes for this agent.
     async fn on_tool_end(&self, _ctx: &RunContext, _tool_name: &str, _result: &str) {}
 
-    /// Called when this agent hands off control to another agent.
-    async fn on_handoff(&self, _ctx: &RunContext, _to_agent: &str) {}
-
     /// Called when an error occurs during this agent's execution.
     async fn on_error(&self, _ctx: &RunContext, _error: &Error) {}
 }
@@ -181,7 +173,6 @@ mod tests {
         llm_end: CallCounter,
         tool_start: CallCounter,
         tool_end: CallCounter,
-        handoff: CallCounter,
         error: CallCounter,
     }
 
@@ -194,7 +185,6 @@ mod tests {
                 llm_end: CallCounter::new(),
                 tool_start: CallCounter::new(),
                 tool_end: CallCounter::new(),
-                handoff: CallCounter::new(),
                 error: CallCounter::new(),
             }
         }
@@ -232,9 +222,6 @@ mod tests {
         ) {
             self.tool_end.increment();
         }
-        async fn on_handoff(&self, _ctx: &RunContext, _from: &str, _to: &str) {
-            self.handoff.increment();
-        }
         async fn on_error(&self, _ctx: &RunContext, _agent_name: &str, _error: &Error) {
             self.error.increment();
         }
@@ -248,7 +235,6 @@ mod tests {
         llm_end: CallCounter,
         tool_start: CallCounter,
         tool_end: CallCounter,
-        handoff: CallCounter,
         error: CallCounter,
     }
 
@@ -261,7 +247,6 @@ mod tests {
                 llm_end: CallCounter::new(),
                 tool_start: CallCounter::new(),
                 tool_end: CallCounter::new(),
-                handoff: CallCounter::new(),
                 error: CallCounter::new(),
             }
         }
@@ -291,9 +276,6 @@ mod tests {
         }
         async fn on_tool_end(&self, _ctx: &RunContext, _tool_name: &str, _result: &str) {
             self.tool_end.increment();
-        }
-        async fn on_handoff(&self, _ctx: &RunContext, _to_agent: &str) {
-            self.handoff.increment();
         }
         async fn on_error(&self, _ctx: &RunContext, _error: &Error) {
             self.error.increment();
@@ -325,7 +307,6 @@ mod tests {
             hooks.on_llm_end(&ctx, "test", &response).await;
             hooks.on_tool_start(&ctx, "test", "my_tool").await;
             hooks.on_tool_end(&ctx, "test", "my_tool", "ok").await;
-            hooks.on_handoff(&ctx, "a", "b").await;
             hooks.on_error(&ctx, "test", &error).await;
 
             assert_eq!(hooks.agent_start.count(), 1);
@@ -334,7 +315,6 @@ mod tests {
             assert_eq!(hooks.llm_end.count(), 1);
             assert_eq!(hooks.tool_start.count(), 1);
             assert_eq!(hooks.tool_end.count(), 1);
-            assert_eq!(hooks.handoff.count(), 1);
             assert_eq!(hooks.error.count(), 1);
         }
 
@@ -401,7 +381,6 @@ mod tests {
             hooks.on_llm_end(&ctx, &response).await;
             hooks.on_tool_start(&ctx, "tool").await;
             hooks.on_tool_end(&ctx, "tool", "ok").await;
-            hooks.on_handoff(&ctx, "other").await;
             hooks.on_error(&ctx, &error).await;
 
             assert_eq!(hooks.start.count(), 1);
@@ -410,7 +389,6 @@ mod tests {
             assert_eq!(hooks.llm_end.count(), 1);
             assert_eq!(hooks.tool_start.count(), 1);
             assert_eq!(hooks.tool_end.count(), 1);
-            assert_eq!(hooks.handoff.count(), 1);
             assert_eq!(hooks.error.count(), 1);
         }
 

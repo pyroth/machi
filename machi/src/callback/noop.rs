@@ -119,7 +119,6 @@ mod tests {
             hooks.on_llm_end(&ctx, "agent", &response).await;
             hooks.on_tool_start(&ctx, "agent", "tool").await;
             hooks.on_tool_end(&ctx, "agent", "tool", "ok").await;
-            hooks.on_handoff(&ctx, "a", "b").await;
             hooks.on_error(&ctx, "agent", &error).await;
         }
 
@@ -177,7 +176,6 @@ mod tests {
             hooks.on_llm_end(&ctx, &response).await;
             hooks.on_tool_start(&ctx, "tool").await;
             hooks.on_tool_end(&ctx, "tool", "ok").await;
-            hooks.on_handoff(&ctx, "other").await;
             hooks.on_error(&ctx, &error).await;
         }
 

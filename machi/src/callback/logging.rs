@@ -160,16 +160,6 @@ impl RunHooks for LoggingRunHooks {
         );
     }
 
-    async fn on_handoff(&self, ctx: &RunContext, from_agent: &str, to_agent: &str) {
-        log_at_level!(
-            self.level,
-            from = from_agent,
-            to = to_agent,
-            step = ctx.step(),
-            "Agent handoff"
-        );
-    }
-
     async fn on_error(&self, ctx: &RunContext, agent_name: &str, error: &Error) {
         // Errors always log at WARN or above regardless of configured level.
         tracing::warn!(
@@ -270,15 +260,6 @@ impl AgentHooks for LoggingAgentHooks {
             tool = tool_name,
             result_len = result.len(),
             "Tool execution completed"
-        );
-    }
-
-    async fn on_handoff(&self, ctx: &RunContext, to_agent: &str) {
-        log_at_level!(
-            self.level,
-            to = to_agent,
-            step = ctx.step(),
-            "Agent handoff"
         );
     }
 
@@ -408,7 +389,6 @@ mod tests {
             hooks
                 .on_tool_end(&ctx, "test", "calculator", "result: 42")
                 .await;
-            hooks.on_handoff(&ctx, "agent_a", "agent_b").await;
             hooks.on_error(&ctx, "test", &error).await;
         }
 
@@ -500,7 +480,6 @@ mod tests {
             hooks.on_llm_end(&ctx, &response).await;
             hooks.on_tool_start(&ctx, "search").await;
             hooks.on_tool_end(&ctx, "search", "found 3 results").await;
-            hooks.on_handoff(&ctx, "other_agent").await;
             hooks.on_error(&ctx, &error).await;
         }
 

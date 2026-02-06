@@ -37,7 +37,7 @@
 //! - **Tool System** (`tool`): Framework for defining and executing tools
 //! - **Agent** (`agent`): High-level agent abstraction (coming soon)
 
-pub mod agent;
+// pub mod agent;
 pub mod audio;
 pub mod callback;
 pub mod chat;

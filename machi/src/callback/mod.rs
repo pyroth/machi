@@ -16,7 +16,6 @@
 //! - `on_agent_start` / `on_agent_end`
 //! - `on_llm_start` / `on_llm_end`
 //! - `on_tool_start` / `on_tool_end`
-//! - `on_handoff`
 //! - `on_error`
 //!
 //! **`AgentHooks`** (per-agent, one instance per agent):
@@ -24,7 +23,6 @@
 //! - `on_start` / `on_end`
 //! - `on_llm_start` / `on_llm_end`
 //! - `on_tool_start` / `on_tool_end`
-//! - `on_handoff`
 //! - `on_error`
 //!
 //! At each lifecycle point, both layers fire in parallel via `tokio::join!`:
