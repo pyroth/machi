@@ -274,6 +274,8 @@ pub struct ToolCallRecord {
     pub result: String,
     /// Whether the call succeeded.
     pub success: bool,
+    /// Token usage from managed sub-agent runs (zero for regular tools).
+    pub sub_usage: Usage,
 }
 
 /// An observable event emitted during a streamed agent run.

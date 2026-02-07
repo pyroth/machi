@@ -172,6 +172,16 @@ impl<'a> RunState<'a> {
         }
     }
 
+    /// Accumulate sub-agent usage from tool call records into the running totals.
+    fn accumulate_tool_usage(&mut self, records: &[ToolCallRecord]) {
+        for record in records {
+            if record.sub_usage.total_tokens > 0 {
+                self.cumulative_usage += record.sub_usage;
+                self.context.add_usage(record.sub_usage);
+            }
+        }
+    }
+
     /// Process a completed LLM response — the shared core of both paths.
     ///
     /// Classifies the response, applies tool policies, runs output
@@ -251,6 +261,7 @@ impl<'a> RunState<'a> {
                 )
                 .await?;
 
+                self.accumulate_tool_usage(&tool_records);
                 self.step_history.push(StepInfo {
                     step,
                     response,
@@ -300,6 +311,7 @@ impl<'a> RunState<'a> {
                     .await?
                 };
 
+                self.accumulate_tool_usage(&tool_records);
                 self.step_history.push(StepInfo {
                     step,
                     response,
@@ -677,14 +689,19 @@ impl Runner {
         async {
             hooks.tool_start(context, &call.name).await;
 
-            let (result_str, success) =
+            let (result_str, success, sub_usage) =
                 if let Some(sub) = agent.managed_agents.iter().find(|a| a.name == call.name) {
                     Self::dispatch_managed_agent(sub, &call.arguments).await
                 } else if let Some(tool) = agent.tools.iter().find(|t| t.name() == call.name) {
-                    Self::dispatch_tool(tool, call).await
+                    let (r, s) = Self::dispatch_tool(tool, call).await;
+                    (r, s, Usage::zero())
                 } else {
                     warn!(tool = %call.name, "Tool not found");
-                    (format!("Tool '{}' not found", call.name), false)
+                    (
+                        format!("Tool '{}' not found", call.name),
+                        false,
+                        Usage::zero(),
+                    )
                 };
 
             let current = tracing::Span::current();
@@ -701,6 +718,7 @@ impl Runner {
                 arguments: call.arguments.clone(),
                 result: result_str,
                 success,
+                sub_usage,
             }
         }
         .instrument(tool_span)
@@ -708,7 +726,10 @@ impl Runner {
     }
 
     /// Dispatch a managed sub-agent with the given task arguments.
-    async fn dispatch_managed_agent(sub_agent: &Agent, args: &Value) -> (String, bool) {
+    ///
+    /// Returns `(output, success, sub_agent_usage)` so the parent can
+    /// accumulate the child's token consumption.
+    async fn dispatch_managed_agent(sub_agent: &Agent, args: &Value) -> (String, bool, Usage) {
         let task = args.get("task").and_then(Value::as_str).unwrap_or_default();
         info!(
             from_agent = tracing::field::Empty,
@@ -719,11 +740,12 @@ impl Runner {
             Ok(result) => {
                 let output = serde_json::to_string(&result.output)
                     .unwrap_or_else(|_| result.output.to_string());
-                (output, true)
+                (output, true, result.usage)
             }
             Err(e) => (
                 format!("Managed agent '{}' failed: {e}", sub_agent.name),
                 false,
+                Usage::zero(),
             ),
         }
     }

@@ -4,14 +4,14 @@ default-members = ["machi"]
 resolver = "3"
 
 [workspace.package]
-version = "0.7.0"
+version = "0.7.1"
 edition = "2024"
 license = "MIT OR Apache-2.0"
 repository = "https://github.com/qntx/machi"
 
 [workspace.dependencies]
-machi = { version = "0.7.0", path = "machi" }
-machi-derive = { version = "0.7.0", path = "machi-derive" }
+machi = { version = "0.7.1", path = "machi" }
+machi-derive = { version = "0.7.1", path = "machi-derive" }
 
 alloy = { version = "1", default-features = false, features = ["signers", "signer-local", "provider-http", "network", "consensus", "sol-types", "rpc-types", "k256"] }
 async-stream = "0.3"

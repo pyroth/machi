@@ -1078,8 +1078,8 @@ mod tests {
         fn extracts_large_token_counts() {
             let msg = "This model's maximum context length is 128000 tokens. However, your messages resulted in 200000 tokens.";
             let (used, max) = parse_context_length_tokens(msg);
-            assert_eq!(max, 128000);
-            assert_eq!(used, 200000);
+            assert_eq!(max, 128_000);
+            assert_eq!(used, 200_000);
         }
 
         #[test]
