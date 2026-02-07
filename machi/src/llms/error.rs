@@ -1,137 +1,146 @@
 //! Error types for LLM provider operations.
 //!
-//! [`LlmError`] and [`LlmErrorKind`] cover all failure modes when communicating
-//! with language model backends (authentication, rate limiting, network issues, etc.).
-//! They integrate into the global [`Error`](crate::Error) hierarchy via `Error::Llm`.
-
-use std::fmt;
+//! [`LlmError`] covers all failure modes when communicating with language model
+//! backends (authentication, rate limiting, network issues, etc.).
+//! It integrates into the global [`Error`](crate::Error) hierarchy via `Error::Llm`.
 
 /// Error type for LLM provider operations.
-#[derive(Debug, Clone)]
+///
+/// Each variant represents a distinct failure mode, enabling callers to
+/// pattern-match on specific cases (e.g., retrying transient errors).
+#[derive(Debug, Clone, thiserror::Error)]
 #[non_exhaustive]
-pub struct LlmError {
-    /// The error kind.
-    pub kind: LlmErrorKind,
-    /// The provider name (e.g., "openai", "ollama").
-    pub provider: Option<String>,
-    /// Additional error message.
-    pub message: String,
-    /// Optional error code from the provider.
-    pub code: Option<String>,
-}
-
-/// Categories of LLM errors.
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
-#[non_exhaustive]
-pub enum LlmErrorKind {
+pub enum LlmError {
     /// Authentication or authorization failure.
-    Auth,
+    #[error("[{provider}] {message}")]
+    Auth {
+        /// Provider name (e.g., "openai", "ollama").
+        provider: String,
+        /// Error description.
+        message: String,
+    },
+
     /// Rate limit exceeded.
-    RateLimited,
+    #[error("[{provider}] Rate limit exceeded. Please retry after some time.")]
+    RateLimited {
+        /// Provider name.
+        provider: String,
+    },
+
     /// Context length exceeded.
-    ContextExceeded,
-    /// Invalid request parameters.
-    InvalidRequest,
+    #[error("Context length exceeded: used {used}, max {max}")]
+    ContextExceeded {
+        /// Tokens used.
+        used: usize,
+        /// Maximum allowed tokens.
+        max: usize,
+    },
+
     /// Response format error.
-    ResponseFormat,
+    #[error("Expected {expected}, got {got}")]
+    ResponseFormat {
+        /// Expected format description.
+        expected: String,
+        /// Actual format received.
+        got: String,
+    },
+
     /// Network or connection error.
-    Network,
+    #[error("{0}")]
+    Network(String),
+
     /// Streaming error.
-    Stream,
+    #[error("{0}")]
+    Stream(String),
+
     /// HTTP status error.
-    HttpStatus,
+    #[error("HTTP {status}: {body}")]
+    HttpStatus {
+        /// HTTP status code.
+        status: u16,
+        /// Response body.
+        body: String,
+    },
+
     /// Provider-specific error.
-    Provider,
+    #[error("[{provider}] {message}")]
+    Provider {
+        /// Provider name.
+        provider: String,
+        /// Error description.
+        message: String,
+        /// Optional error code from the provider.
+        code: Option<String>,
+    },
+
     /// Internal error.
-    Internal,
+    #[error("{0}")]
+    Internal(String),
+
     /// Feature not supported.
-    NotSupported,
+    #[error("Feature not supported: {0}")]
+    NotSupported(String),
 }
 
 impl LlmError {
     /// Create an authentication error.
     #[must_use]
     pub fn auth(provider: impl Into<String>, message: impl Into<String>) -> Self {
-        Self {
-            kind: LlmErrorKind::Auth,
-            provider: Some(provider.into()),
+        Self::Auth {
+            provider: provider.into(),
             message: message.into(),
-            code: None,
         }
     }
 
     /// Create a rate limit error.
     #[must_use]
     pub fn rate_limited(provider: impl Into<String>) -> Self {
-        Self {
-            kind: LlmErrorKind::RateLimited,
-            provider: Some(provider.into()),
-            message: "Rate limit exceeded. Please retry after some time.".into(),
-            code: None,
+        Self::RateLimited {
+            provider: provider.into(),
         }
     }
 
     /// Create a context exceeded error.
     #[must_use]
     pub fn context_exceeded(used: usize, max: usize) -> Self {
-        Self {
-            kind: LlmErrorKind::ContextExceeded,
-            provider: None,
-            message: format!("Context length exceeded: used {used}, max {max}"),
-            code: None,
-        }
+        Self::ContextExceeded { used, max }
     }
 
     /// Create a response format error.
     #[must_use]
     pub fn response_format(expected: impl Into<String>, got: impl Into<String>) -> Self {
-        Self {
-            kind: LlmErrorKind::ResponseFormat,
-            provider: None,
-            message: format!("Expected {}, got {}", expected.into(), got.into()),
-            code: None,
+        Self::ResponseFormat {
+            expected: expected.into(),
+            got: got.into(),
         }
     }
 
     /// Create a network error.
     #[must_use]
     pub fn network(message: impl Into<String>) -> Self {
-        Self {
-            kind: LlmErrorKind::Network,
-            provider: None,
-            message: message.into(),
-            code: None,
-        }
+        Self::Network(message.into())
     }
 
     /// Create a streaming error.
     #[must_use]
     pub fn stream(message: impl Into<String>) -> Self {
-        Self {
-            kind: LlmErrorKind::Stream,
-            provider: None,
-            message: message.into(),
-            code: None,
-        }
+        Self::Stream(message.into())
     }
 
     /// Create an HTTP status error.
     #[must_use]
     pub fn http_status(status: u16, body: impl Into<String>) -> Self {
-        Self {
-            kind: LlmErrorKind::HttpStatus,
-            provider: None,
-            message: format!("HTTP {status}: {}", body.into()),
-            code: Some(status.to_string()),
+        Self::HttpStatus {
+            status,
+            body: body.into(),
         }
     }
 
     /// Create a provider-specific error.
     #[must_use]
     pub fn provider(provider: impl Into<String>, message: impl Into<String>) -> Self {
-        Self {
-            kind: LlmErrorKind::Provider,
-            provider: Some(provider.into()),
+        Self::Provider {
+            provider: provider.into(),
             message: message.into(),
             code: None,
         }
@@ -144,9 +153,8 @@ impl LlmError {
         code: impl Into<String>,
         message: impl Into<String>,
     ) -> Self {
-        Self {
-            kind: LlmErrorKind::Provider,
-            provider: Some(provider.into()),
+        Self::Provider {
+            provider: provider.into(),
             message: message.into(),
             code: Some(code.into()),
         }
@@ -155,46 +163,21 @@ impl LlmError {
     /// Create an internal error.
     #[must_use]
     pub fn internal(message: impl Into<String>) -> Self {
-        Self {
-            kind: LlmErrorKind::Internal,
-            provider: None,
-            message: message.into(),
-            code: None,
-        }
+        Self::Internal(message.into())
     }
 
     /// Create a not supported error.
     #[must_use]
     pub fn not_supported(feature: impl Into<String>) -> Self {
-        Self {
-            kind: LlmErrorKind::NotSupported,
-            provider: None,
-            message: format!("Feature not supported: {}", feature.into()),
-            code: None,
-        }
+        Self::NotSupported(feature.into())
     }
 
     /// Check if this is a retryable error.
     #[must_use]
     pub const fn is_retryable(&self) -> bool {
-        matches!(self.kind, LlmErrorKind::RateLimited | LlmErrorKind::Network)
+        matches!(self, Self::RateLimited { .. } | Self::Network(_))
     }
 }
-
-impl fmt::Display for LlmError {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        if let Some(provider) = &self.provider {
-            write!(f, "[{provider}] ")?;
-        }
-        write!(f, "{}", self.message)?;
-        if let Some(code) = &self.code {
-            write!(f, " (code: {code})")?;
-        }
-        Ok(())
-    }
-}
-
-impl std::error::Error for LlmError {}
 
 impl From<reqwest::Error> for LlmError {
     fn from(err: reqwest::Error) -> Self {

@@ -59,6 +59,3 @@ impl From<rusqlite::Error> for MemoryError {
         Self::storage("sqlite", e.to_string())
     }
 }
-
-/// Convenience alias for memory-scoped results.
-pub type MemoryResult<T> = Result<T, MemoryError>;

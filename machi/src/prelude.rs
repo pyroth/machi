@@ -36,7 +36,7 @@ pub use crate::guardrail::{
     GuardrailOutput, InputGuardrail, InputGuardrailCheck, InputGuardrailResult, OutputGuardrail,
     OutputGuardrailCheck, OutputGuardrailResult,
 };
-pub use crate::llms::{LlmError, LlmErrorKind};
+pub use crate::llms::LlmError;
 #[cfg(feature = "ollama")]
 pub use crate::llms::{Ollama, OllamaConfig};
 #[cfg(feature = "openai")]
@@ -48,7 +48,7 @@ pub use crate::memory::SqliteSession;
 pub use crate::memory::{InMemorySession, MemoryError, Session, SharedSession};
 pub use crate::message::{
     Annotation, Content, ContentPart, FunctionCall, ImageDetail, ImageMime, InputAudio, Message,
-    MessageAggregator, MessageBuilder, MessageDelta, Role, ThinkingBlock, ToolCall, ToolCallDelta,
+    MessageBuilder, Role, ThinkingBlock, ToolCall,
 };
 pub use crate::stream::{StopReason, StreamAggregator, StreamChunk};
 pub use crate::tool::{

@@ -50,10 +50,6 @@ async fn main() -> Result<()> {
     println!("  Similarity (cat/feline sentences): {sim_0_1:.4}");
     println!("  Similarity (cat/stock sentences):  {sim_0_2:.4}");
 
-    if let Some(tokens) = response.total_tokens {
-        println!("\nTotal tokens used: {tokens}");
-    }
-
     Ok(())
 }
 

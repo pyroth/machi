@@ -30,7 +30,7 @@ pub use error::{Error, Result};
 
 // Re-export submodule error types at crate root for convenience.
 pub use agent::AgentError;
-pub use llms::{LlmError, LlmErrorKind};
+pub use llms::LlmError;
 pub use memory::MemoryError;
 pub use tool::ToolError;
 #[cfg(feature = "wallet")]

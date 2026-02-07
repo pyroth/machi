@@ -16,7 +16,7 @@ pub mod openai;
 #[cfg(feature = "ollama")]
 pub mod ollama;
 
-pub use error::{LlmError, LlmErrorKind};
+pub use error::LlmError;
 
 #[cfg(feature = "openai")]
 pub use openai::{OpenAI, OpenAIConfig};

@@ -204,9 +204,6 @@ pub struct EmbeddingResponse {
     /// Token usage statistics.
     #[serde(skip_serializing_if = "Option::is_none")]
     pub usage: Option<EmbeddingUsage>,
-    /// Total tokens used (convenience field, same as usage.total_tokens).
-    #[serde(skip)]
-    pub total_tokens: Option<u32>,
 }
 
 impl EmbeddingResponse {
@@ -217,7 +214,6 @@ impl EmbeddingResponse {
             embeddings,
             model: None,
             usage: None,
-            total_tokens: None,
         }
     }
 
@@ -235,7 +231,6 @@ impl EmbeddingResponse {
             prompt_tokens,
             total_tokens,
         });
-        self.total_tokens = Some(total_tokens);
         self
     }
 
@@ -254,8 +249,7 @@ impl EmbeddingResponse {
     /// Get the total number of tokens used.
     #[must_use]
     pub fn tokens_used(&self) -> Option<u32> {
-        self.total_tokens
-            .or_else(|| self.usage.as_ref().map(|u| u.total_tokens))
+        self.usage.as_ref().map(|u| u.total_tokens)
     }
 }
 
@@ -582,7 +576,6 @@ mod tests {
             assert_eq!(resp.embeddings.len(), 2);
             assert!(resp.model.is_none());
             assert!(resp.usage.is_none());
-            assert!(resp.total_tokens.is_none());
         }
 
         #[test]
@@ -605,7 +598,6 @@ mod tests {
             let usage = resp.usage.unwrap();
             assert_eq!(usage.prompt_tokens, 50);
             assert_eq!(usage.total_tokens, 50);
-            assert_eq!(resp.total_tokens, Some(50));
         }
 
         #[test]
@@ -639,25 +631,9 @@ mod tests {
         }
 
         #[test]
-        fn tokens_used_from_total_tokens() {
-            let mut resp = EmbeddingResponse::new(vec![]);
-            resp.total_tokens = Some(100);
-
-            assert_eq!(resp.tokens_used(), Some(100));
-        }
-
-        #[test]
         fn tokens_used_from_usage() {
             let resp = EmbeddingResponse::new(vec![]).with_usage(75, 75);
             assert_eq!(resp.tokens_used(), Some(75));
-        }
-
-        #[test]
-        fn tokens_used_prefers_total_tokens() {
-            let mut resp = EmbeddingResponse::new(vec![]).with_usage(50, 50);
-            resp.total_tokens = Some(100);
-
-            assert_eq!(resp.tokens_used(), Some(100));
         }
 
         #[test]
@@ -685,15 +661,6 @@ mod tests {
             assert!(json.contains("embeddings"));
             assert!(!json.contains("model"));
             assert!(!json.contains("usage"));
-        }
-
-        #[test]
-        fn serde_skips_total_tokens() {
-            let mut resp = EmbeddingResponse::new(vec![]);
-            resp.total_tokens = Some(100);
-
-            let json = serde_json::to_string(&resp).unwrap();
-            assert!(!json.contains("total_tokens"));
         }
     }
 

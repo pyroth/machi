@@ -83,23 +83,15 @@ impl EmbeddingProvider for OpenAI {
             .map(|d| Embedding::new(d.embedding, d.index))
             .collect();
 
-        let (usage, total_tokens) = if let Some(u) = parsed.usage {
-            (
-                Some(EmbeddingUsage {
-                    prompt_tokens: u.prompt_tokens,
-                    total_tokens: u.total_tokens,
-                }),
-                Some(u.total_tokens),
-            )
-        } else {
-            (None, None)
-        };
+        let usage = parsed.usage.map(|u| EmbeddingUsage {
+            prompt_tokens: u.prompt_tokens,
+            total_tokens: u.total_tokens,
+        });
 
         Ok(EmbeddingResponse {
             embeddings,
             model: Some(parsed.model),
             usage,
-            total_tokens,
         })
     }
 

@@ -7,7 +7,7 @@
 
 // Re-export submodule error types for backward compatibility.
 pub use crate::agent::AgentError;
-pub use crate::llms::{LlmError, LlmErrorKind};
+pub use crate::llms::LlmError;
 pub use crate::memory::MemoryError;
 pub use crate::tool::ToolError;
 #[cfg(feature = "wallet")]

@@ -35,7 +35,7 @@ mod session;
 #[cfg(feature = "memory-sqlite")]
 mod sqlite;
 
-pub use error::{MemoryError, MemoryResult};
+pub use error::MemoryError;
 pub use in_memory::InMemorySession;
 pub use session::{Session, SharedSession};
 

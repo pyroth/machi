@@ -3,7 +3,9 @@
 use async_trait::async_trait;
 use serde::{Deserialize, Serialize};
 
-use crate::embedding::{Embedding, EmbeddingProvider, EmbeddingRequest, EmbeddingResponse};
+use crate::embedding::{
+    Embedding, EmbeddingProvider, EmbeddingRequest, EmbeddingResponse, EmbeddingUsage,
+};
 use crate::error::{LlmError, Result};
 
 use super::client::Ollama;
@@ -60,11 +62,15 @@ impl EmbeddingProvider for Ollama {
             .map(|(i, vector)| Embedding::new(vector, i))
             .collect();
 
+        let usage = parsed.prompt_eval_count.map(|tokens| EmbeddingUsage {
+            prompt_tokens: tokens,
+            total_tokens: tokens,
+        });
+
         Ok(EmbeddingResponse {
             embeddings,
             model: Some(request.model.clone()),
-            usage: None,
-            total_tokens: parsed.prompt_eval_count,
+            usage,
         })
     }
 
