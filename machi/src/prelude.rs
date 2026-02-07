@@ -45,7 +45,7 @@ pub use crate::llms::{OpenAI, OpenAIConfig};
 pub use crate::mcp::{HttpBuilder, McpServer, StdioBuilder};
 #[cfg(feature = "memory-sqlite")]
 pub use crate::memory::SqliteSession;
-pub use crate::memory::{InMemorySession, MemoryError, Session, SharedSession};
+pub use crate::memory::{BoxedSession, InMemorySession, MemoryError, Session, SharedSession};
 pub use crate::message::{
     Annotation, Content, ContentPart, FunctionCall, ImageDetail, ImageMime, InputAudio, Message,
     Role, ThinkingBlock, ToolCall,

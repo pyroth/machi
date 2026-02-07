@@ -58,6 +58,24 @@ pub struct OpenAIChatRequest {
     /// User identifier for abuse detection.
     #[serde(skip_serializing_if = "Option::is_none")]
     pub user: Option<String>,
+    /// Number of completions to generate.
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub n: Option<u32>,
+    /// Random seed for reproducibility (deprecated).
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub seed: Option<i64>,
+    /// Whether to return log probabilities.
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub logprobs: Option<bool>,
+    /// Number of top log probabilities to return.
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub top_logprobs: Option<u32>,
+    /// Whether to store the completion for later retrieval.
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub store: Option<bool>,
+    /// Metadata key-value pairs.
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub metadata: Option<std::collections::HashMap<String, String>>,
 }
 
 /// Stream options for OpenAI.
@@ -412,6 +430,12 @@ impl OpenAI {
             reasoning_effort: request.reasoning_effort.map(|e| e.as_str().to_owned()),
             service_tier: request.service_tier.clone(),
             user: request.user.clone(),
+            n: request.n,
+            seed: request.seed,
+            logprobs: request.logprobs,
+            top_logprobs: request.top_logprobs,
+            store: request.store,
+            metadata: request.metadata.clone(),
         }
     }
 
@@ -1130,6 +1154,12 @@ mod tests {
                 stream_options: None,
                 service_tier: None,
                 user: None,
+                n: None,
+                seed: None,
+                logprobs: None,
+                top_logprobs: None,
+                store: None,
+                metadata: None,
             };
 
             let json = serde_json::to_string(&body).unwrap();
@@ -1138,6 +1168,11 @@ mod tests {
             assert!(!json.contains("max_tokens"));
             assert!(!json.contains("temperature"));
             assert!(!json.contains("tools"));
+            assert!(!json.contains("\"n\""));
+            assert!(!json.contains("seed"));
+            assert!(!json.contains("logprobs"));
+            assert!(!json.contains("store"));
+            assert!(!json.contains("metadata"));
             assert!(json.contains("model"));
             assert!(json.contains("messages"));
         }
