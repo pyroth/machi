@@ -9,12 +9,15 @@ pub mod callback;
 pub mod chat;
 pub mod embedding;
 pub mod error;
+pub mod guardrail;
 pub mod llms;
 pub mod memory;
 pub mod message;
 pub mod prelude;
 pub mod stream;
 pub mod tool;
+#[cfg(feature = "toolkit")]
+pub mod tools;
 pub mod usage;
 
 pub use error::{Error, LlmError, Result, ToolError};

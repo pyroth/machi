@@ -27,7 +27,9 @@ async fn main() -> Result<()> {
     // Sub-agent: provides factual summaries.
     let researcher = Agent::new("researcher")
         .description("A researcher who provides concise factual summaries.")
-        .instructions("You are a researcher. Provide a brief factual summary about the given topic.")
+        .instructions(
+            "You are a researcher. Provide a brief factual summary about the given topic.",
+        )
         .model("gpt-4o-mini")
         .provider(Arc::clone(&provider));
 

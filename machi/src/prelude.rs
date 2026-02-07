@@ -25,6 +25,10 @@ pub use crate::callback::{
     NoopRunHooks, RunContext, RunHooks, SharedAgentHooks, SharedRunHooks,
 };
 pub use crate::error::{Error, LlmError, Result, ToolError};
+pub use crate::guardrail::{
+    GuardrailOutput, InputGuardrail, InputGuardrailCheck, InputGuardrailResult, OutputGuardrail,
+    OutputGuardrailCheck, OutputGuardrailResult,
+};
 
 pub use crate::audio::{
     AudioFormat, AudioProvider, SpeechRequest, SpeechResponse, SpeechToTextProvider,
@@ -54,3 +58,9 @@ pub use crate::tool::{
     ToolResult, ToolType,
 };
 pub use crate::usage::{CompletionTokensDetails, PromptTokensDetails, Usage, UsageTracker};
+
+#[cfg(feature = "toolkit")]
+pub use crate::tools::{
+    BingProvider, BraveProvider, DuckDuckGoProvider, EditFileTool, ExecTool, ListDirTool,
+    ReadFileTool, SearchProvider, SearxngProvider, TavilyProvider, WebSearchTool, WriteFileTool,
+};

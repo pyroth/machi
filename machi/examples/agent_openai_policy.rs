@@ -70,8 +70,7 @@ async fn main() -> Result<()> {
         .tool_policy("read_file", ToolExecutionPolicy::Auto)
         .tool_policy("delete_file", ToolExecutionPolicy::RequireConfirmation);
 
-    let config = RunConfig::default()
-        .confirmation_handler(Arc::new(TerminalConfirmation));
+    let config = RunConfig::default().confirmation_handler(Arc::new(TerminalConfirmation));
 
     let result = agent
         .run("Read config.txt, then delete temp.log", config)

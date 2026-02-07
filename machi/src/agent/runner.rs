@@ -29,6 +29,9 @@ use tracing::{Instrument, debug, error, info, info_span, warn};
 use crate::callback::{NoopRunHooks, RunContext, RunHooks};
 use crate::chat::{ChatRequest, ChatResponse, ToolChoice};
 use crate::error::{Error, Result};
+use crate::guardrail::{
+    InputGuardrail, InputGuardrailResult, OutputGuardrail, OutputGuardrailResult,
+};
 use crate::message::Message;
 use crate::stream::{StreamAggregator, StreamChunk};
 use crate::tool::{
@@ -137,6 +140,29 @@ impl Runner {
         let tool_names: Vec<&str> = all_definitions.iter().map(ToolDefinition::name).collect();
         tracing::Span::current().record("agent.tools", tracing::field::debug(&tool_names));
 
+        // Collect guardrails from agent + run config.
+        let all_input_guardrails = Self::collect_input_guardrails(agent, &config);
+        let all_output_guardrails = Self::collect_output_guardrails(agent, &config);
+        let mut input_guardrail_results: Vec<InputGuardrailResult> = Vec::new();
+
+        // Run sequential input guardrails before the loop starts.
+        let sequential: Vec<&InputGuardrail> = all_input_guardrails
+            .iter()
+            .filter(|g| !g.is_parallel())
+            .copied()
+            .collect();
+        let parallel: Vec<&InputGuardrail> = all_input_guardrails
+            .iter()
+            .filter(|g| g.is_parallel())
+            .copied()
+            .collect();
+
+        if !sequential.is_empty() {
+            let seq_results =
+                Self::run_input_guardrails(&sequential, &context, &agent.name, &messages).await?;
+            input_guardrail_results.extend(seq_results);
+        }
+
         hooks.agent_start(&context).await;
 
         let system_ref = (!system_prompt.is_empty()).then_some(system_prompt.as_str());
@@ -149,7 +175,19 @@ impl Runner {
 
             hooks.llm_start(&context, system_ref, &messages).await;
 
-            let response = provider.chat(&request).await.map_err(|e| {
+            // On the first step, run parallel input guardrails alongside the LLM call.
+            let response = if step == 1 && !parallel.is_empty() {
+                let (guardrail_result, llm_result) = tokio::join!(
+                    Self::run_input_guardrails(&parallel, &context, &agent.name, &messages),
+                    provider.chat(&request),
+                );
+                // Check guardrails first — if triggered, discard the LLM result.
+                input_guardrail_results.extend(guardrail_result?);
+                llm_result
+            } else {
+                provider.chat(&request).await
+            }
+            .map_err(|e| {
                 error!(error = %e, agent = %agent.name, step, "LLM call failed");
                 tracing::Span::current().record("error", tracing::field::display(&e));
                 e
@@ -179,6 +217,16 @@ impl Runner {
                     });
 
                     let output_value = output.clone();
+
+                    // Run output guardrails before delivering the final output.
+                    let output_guardrail_results = Self::run_output_guardrails(
+                        &all_output_guardrails,
+                        &context,
+                        &agent.name,
+                        &output_value,
+                    )
+                    .await?;
+
                     hooks.agent_end(&context, &output_value).await;
 
                     // Persist to session if configured.
@@ -202,6 +250,8 @@ impl Runner {
                         steps: step,
                         step_history,
                         agent_name: agent.name.clone(),
+                        input_guardrail_results,
+                        output_guardrail_results,
                     });
                 }
 
@@ -291,6 +341,348 @@ impl Runner {
         hooks.error(&context, &err).await;
 
         Err(err)
+    }
+
+    /// Execute an agent run with streaming output.
+    ///
+    /// Returns a [`Stream`] of [`RunEvent`]s that the caller can consume
+    /// in real-time. The stream yields lifecycle events (start/end),
+    /// incremental text deltas, tool call progress, and the final result.
+    ///
+    /// The underlying LLM call uses [`ChatProvider::chat_stream`] so that
+    /// text tokens are delivered as they are generated.
+    ///
+    /// # Arguments
+    ///
+    /// * `agent` — the agent to run (must have a provider configured)
+    /// * `input` — the user's input (text, multimodal, or raw content parts)
+    /// * `config` — run-level configuration (hooks, session, limits)
+    ///
+    /// # Returns
+    ///
+    /// A pinned stream of `Result<RunEvent>`. Errors terminate the stream.
+    pub fn run_streamed<'a>(
+        agent: &'a Agent,
+        input: impl Into<UserInput>,
+        config: RunConfig,
+    ) -> Pin<Box<dyn Stream<Item = Result<RunEvent>> + Send + 'a>> {
+        let input = input.into();
+        Box::pin(Self::run_streamed_inner(agent, input, config))
+    }
+
+    /// Internal streaming implementation of the agent run loop.
+    //
+    // The `tail_expr_drop_order` warning originates inside the `try_stream!` macro
+    // expansion, where temporaries in the generated async block's tail expression
+    // have a different drop order under Rust 2024. This is harmless (no locks or
+    // channels involved) and is a known upstream issue in `async-stream`.
+    #[allow(tail_expr_drop_order)]
+    fn run_streamed_inner(
+        agent: &Agent,
+        input: UserInput,
+        config: RunConfig,
+    ) -> impl Stream<Item = Result<RunEvent>> + Send + '_ {
+        async_stream::try_stream! {
+            let provider = agent.provider.as_deref().ok_or_else(|| {
+                Error::agent(format!(
+                    "Agent '{}' has no provider configured. Call .provider() before running.",
+                    agent.name
+                ))
+            })?;
+            let max_steps = config.max_steps.unwrap_or(agent.max_steps);
+            let noop = NoopRunHooks;
+            let run_hooks: &dyn RunHooks = config.hooks.as_deref().unwrap_or(&noop);
+            let hooks = HookPair::new(run_hooks, agent.hooks.as_deref(), &agent.name);
+
+            let mut context = RunContext::new().with_agent_name(&agent.name);
+            let mut messages = Vec::new();
+            let mut step_history = Vec::new();
+            let mut cumulative_usage = Usage::zero();
+            let mut auto_approved: HashSet<String> = HashSet::new();
+
+            // Resolve system instructions.
+            let system_prompt = agent.resolve_instructions();
+
+            // Build initial messages: system + user input.
+            if !system_prompt.is_empty() {
+                messages.push(Message::system(&system_prompt));
+            }
+            let user_message = input.into_message();
+            messages.push(user_message.clone());
+
+            // Load session history.
+            if let Some(ref session) = config.session {
+                let history = session.get_messages(None).await?;
+                if !history.is_empty() {
+                    let insert_pos = messages.len().saturating_sub(1);
+                    messages.splice(insert_pos..insert_pos, history);
+                }
+            }
+
+            let all_definitions = Self::collect_all_definitions(agent);
+            let tool_names: Vec<&str> = all_definitions.iter().map(ToolDefinition::name).collect();
+
+            // Collect guardrails from agent + run config.
+            let all_input_guardrails = Self::collect_input_guardrails(agent, &config);
+            let all_output_guardrails = Self::collect_output_guardrails(agent, &config);
+            let mut input_guardrail_results: Vec<InputGuardrailResult> = Vec::new();
+
+            // Run sequential input guardrails before the loop starts.
+            let sequential: Vec<&InputGuardrail> = all_input_guardrails
+                .iter()
+                .filter(|g| !g.is_parallel())
+                .copied()
+                .collect();
+            let parallel: Vec<&InputGuardrail> = all_input_guardrails
+                .iter()
+                .filter(|g| g.is_parallel())
+                .copied()
+                .collect();
+
+            if !sequential.is_empty() {
+                let seq_results =
+                    Self::run_input_guardrails(&sequential, &context, &agent.name, &messages).await?;
+                input_guardrail_results.extend(seq_results);
+            }
+
+            info!(
+                agent = %agent.name,
+                model = %agent.model,
+                tools = ?tool_names,
+                gen_ai.system = "machi",
+                "Agent streamed run started",
+            );
+
+            hooks.agent_start(&context).await;
+            yield RunEvent::RunStarted { agent_name: agent.name.clone() };
+
+            let system_ref = (!system_prompt.is_empty()).then_some(system_prompt.as_str());
+
+            for step in 1..=max_steps {
+                context.advance_step();
+                debug!(agent = %agent.name, step, "Starting streamed step");
+
+                yield RunEvent::StepStarted { step };
+
+                let request = Self::build_stream_request(agent, &messages, &all_definitions);
+
+                hooks.llm_start(&context, system_ref, &messages).await;
+
+                // On the first step, run parallel input guardrails before streaming.
+                // Note: In streaming mode we run parallel guardrails before the
+                // stream starts (not truly concurrent) because we cannot fork a
+                // try_stream. This still provides the safety check.
+                if step == 1 && !parallel.is_empty() {
+                    let par_results =
+                        Self::run_input_guardrails(&parallel, &context, &agent.name, &messages).await?;
+                    input_guardrail_results.extend(par_results);
+                }
+
+                // Stream chunks from the LLM.
+                let mut chunk_stream = provider.chat_stream(&request).await?;
+                let mut aggregator = StreamAggregator::new();
+
+                while let Some(chunk_result) = chunk_stream.next().await {
+                    let chunk = chunk_result?;
+
+                    // Yield real-time events for displayable content.
+                    match &chunk {
+                        StreamChunk::Text(delta) => {
+                            yield RunEvent::TextDelta(delta.clone());
+                        }
+                        StreamChunk::ReasoningContent(delta) => {
+                            yield RunEvent::ReasoningDelta(delta.clone());
+                        }
+                        StreamChunk::Audio { data, transcript } => {
+                            yield RunEvent::AudioDelta {
+                                data: data.clone(),
+                                transcript: transcript.clone(),
+                            };
+                        }
+                        StreamChunk::ToolUseStart { id, name, .. } => {
+                            yield RunEvent::ToolCallStarted {
+                                id: id.clone(),
+                                name: name.clone(),
+                            };
+                        }
+                        _ => {}
+                    }
+
+                    aggregator.apply(&chunk);
+                }
+
+                // Reconstruct a complete response from accumulated chunks.
+                let response = aggregator.into_chat_response();
+
+                hooks.llm_end(&context, &response).await;
+
+                // Accumulate usage.
+                if let Some(usage) = response.usage {
+                    cumulative_usage += usage;
+                    context.add_usage(usage);
+                }
+
+                let structured = agent.output_schema.is_some();
+                let next_step = Self::classify_response(&response, structured);
+                let (next_step, forbidden) = Self::apply_policies(next_step, agent, &auto_approved);
+
+                match next_step {
+                    NextStep::FinalOutput { ref output } => {
+                        messages.push(response.message.clone());
+
+                        step_history.push(StepInfo {
+                            step,
+                            response: response.clone(),
+                            tool_calls: Vec::new(),
+                        });
+
+                        let output_value = output.clone();
+
+                        // Run output guardrails before delivering the final output.
+                        let output_guardrail_results = Self::run_output_guardrails(
+                            &all_output_guardrails,
+                            &context,
+                            &agent.name,
+                            &output_value,
+                        )
+                        .await?;
+
+                        hooks.agent_end(&context, &output_value).await;
+
+                        yield RunEvent::StepCompleted {
+                            step_info: Box::new(step_history.last().expect("just pushed").clone()),
+                        };
+
+                        // Persist to session if configured.
+                        if let Some(ref session) = config.session {
+                            let to_save = vec![user_message, response.message.clone()];
+                            let _ = session.add_messages(&to_save).await;
+                        }
+
+                        tracing::Span::current().record("agent.result_steps", step);
+                        info!(
+                            agent = %agent.name,
+                            steps = step,
+                            input_tokens = cumulative_usage.input_tokens,
+                            output_tokens = cumulative_usage.output_tokens,
+                            "Agent streamed run completed",
+                        );
+
+                        yield RunEvent::RunCompleted {
+                            result: Box::new(RunResult {
+                                output: output_value,
+                                usage: cumulative_usage,
+                                steps: step,
+                                step_history,
+                                agent_name: agent.name.clone(),
+                                input_guardrail_results,
+                                output_guardrail_results,
+                            }),
+                        };
+                        return;
+                    }
+
+                    NextStep::ToolCalls { ref calls } => {
+                        messages.push(response.message.clone());
+                        Self::append_denied_messages(
+                            &forbidden,
+                            "forbidden by execution policy",
+                            &mut messages,
+                        );
+
+                        let tool_records = Self::execute_tool_calls(
+                            calls,
+                            agent,
+                            &context,
+                            &hooks,
+                            &mut messages,
+                            config.max_tool_concurrency,
+                        )
+                        .await?;
+
+                        // Yield individual tool completion events.
+                        for record in &tool_records {
+                            yield RunEvent::ToolCallCompleted { record: record.clone() };
+                        }
+
+                        step_history.push(StepInfo {
+                            step,
+                            response,
+                            tool_calls: tool_records,
+                        });
+
+                        yield RunEvent::StepCompleted {
+                            step_info: Box::new(step_history.last().expect("just pushed").clone()),
+                        };
+                    }
+
+                    NextStep::NeedsApproval {
+                        ref pending_approval,
+                        ref approved,
+                    } => {
+                        messages.push(response.message.clone());
+                        Self::append_denied_messages(
+                            &forbidden,
+                            "forbidden by execution policy",
+                            &mut messages,
+                        );
+
+                        let handler = config.confirmation_handler.as_deref().ok_or_else(|| {
+                            Error::agent(
+                                "Tool execution requires approval but no confirmation handler is configured",
+                            )
+                        })?;
+
+                        let (confirmed, denied) =
+                            Self::seek_confirmations(pending_approval, handler, &mut auto_approved)
+                                .await;
+
+                        Self::append_denied_messages(&denied, "denied by user", &mut messages);
+
+                        let executable: Vec<ToolCallRequest> =
+                            approved.iter().chain(&confirmed).cloned().collect();
+
+                        let tool_records = if executable.is_empty() {
+                            Vec::new()
+                        } else {
+                            Self::execute_tool_calls(
+                                &executable,
+                                agent,
+                                &context,
+                                &hooks,
+                                &mut messages,
+                                config.max_tool_concurrency,
+                            )
+                            .await?
+                        };
+
+                        for record in &tool_records {
+                            yield RunEvent::ToolCallCompleted { record: record.clone() };
+                        }
+
+                        step_history.push(StepInfo {
+                            step,
+                            response,
+                            tool_calls: tool_records,
+                        });
+
+                        yield RunEvent::StepCompleted {
+                            step_info: Box::new(step_history.last().expect("just pushed").clone()),
+                        };
+                    }
+
+                    NextStep::MaxStepsExceeded => {
+                        unreachable!("MaxStepsExceeded is only set outside the loop");
+                    }
+                }
+            }
+
+            // Exceeded max steps.
+            let err = Error::max_steps(max_steps);
+            error!(error = %err, agent = %agent.name, max_steps, "Streamed max steps exceeded");
+            hooks.error(&context, &err).await;
+            Err(err)?;
+        }
     }
 
     /// Collect [`ToolDefinition`]s from regular tools and managed agents.
@@ -567,300 +959,104 @@ impl Runner {
         }
     }
 
-    /// Execute an agent run with streaming output.
-    ///
-    /// Returns a [`Stream`] of [`RunEvent`]s that the caller can consume
-    /// in real-time. The stream yields lifecycle events (start/end),
-    /// incremental text deltas, tool call progress, and the final result.
-    ///
-    /// The underlying LLM call uses [`ChatProvider::chat_stream`] so that
-    /// text tokens are delivered as they are generated.
-    ///
-    /// # Arguments
-    ///
-    /// * `agent` — the agent to run (must have a provider configured)
-    /// * `input` — the user's input (text, multimodal, or raw content parts)
-    /// * `config` — run-level configuration (hooks, session, limits)
-    ///
-    /// # Returns
-    ///
-    /// A pinned stream of `Result<RunEvent>`. Errors terminate the stream.
-    pub fn run_streamed<'a>(
+    /// Combine agent-level and run-level input guardrails into a single list.
+    fn collect_input_guardrails<'a>(
         agent: &'a Agent,
-        input: impl Into<UserInput>,
-        config: RunConfig,
-    ) -> Pin<Box<dyn Stream<Item = Result<RunEvent>> + Send + 'a>> {
-        let input = input.into();
-        Box::pin(Self::run_streamed_inner(agent, input, config))
+        config: &'a RunConfig,
+    ) -> Vec<&'a InputGuardrail> {
+        agent
+            .input_guardrails
+            .iter()
+            .chain(config.input_guardrails.iter())
+            .collect()
     }
 
-    /// Internal streaming implementation of the agent run loop.
-    //
-    // The `tail_expr_drop_order` warning originates inside the `try_stream!` macro
-    // expansion, where temporaries in the generated async block's tail expression
-    // have a different drop order under Rust 2024. This is harmless (no locks or
-    // channels involved) and is a known upstream issue in `async-stream`.
-    #[allow(tail_expr_drop_order)]
-    fn run_streamed_inner(
-        agent: &Agent,
-        input: UserInput,
-        config: RunConfig,
-    ) -> impl Stream<Item = Result<RunEvent>> + Send + '_ {
-        async_stream::try_stream! {
-            let provider = agent.provider.as_deref().ok_or_else(|| {
-                Error::agent(format!(
-                    "Agent '{}' has no provider configured. Call .provider() before running.",
-                    agent.name
-                ))
-            })?;
-            let max_steps = config.max_steps.unwrap_or(agent.max_steps);
-            let noop = NoopRunHooks;
-            let run_hooks: &dyn RunHooks = config.hooks.as_deref().unwrap_or(&noop);
-            let hooks = HookPair::new(run_hooks, agent.hooks.as_deref(), &agent.name);
+    /// Combine agent-level and run-level output guardrails into a single list.
+    fn collect_output_guardrails<'a>(
+        agent: &'a Agent,
+        config: &'a RunConfig,
+    ) -> Vec<&'a OutputGuardrail> {
+        agent
+            .output_guardrails
+            .iter()
+            .chain(config.output_guardrails.iter())
+            .collect()
+    }
 
-            let mut context = RunContext::new().with_agent_name(&agent.name);
-            let mut messages = Vec::new();
-            let mut step_history = Vec::new();
-            let mut cumulative_usage = Usage::zero();
-            let mut auto_approved: HashSet<String> = HashSet::new();
-
-            // Resolve system instructions.
-            let system_prompt = agent.resolve_instructions();
-
-            // Build initial messages: system + user input.
-            if !system_prompt.is_empty() {
-                messages.push(Message::system(&system_prompt));
-            }
-            let user_message = input.into_message();
-            messages.push(user_message.clone());
-
-            // Load session history.
-            if let Some(ref session) = config.session {
-                let history = session.get_messages(None).await?;
-                if !history.is_empty() {
-                    let insert_pos = messages.len().saturating_sub(1);
-                    messages.splice(insert_pos..insert_pos, history);
-                }
-            }
-
-            let all_definitions = Self::collect_all_definitions(agent);
-            let tool_names: Vec<&str> = all_definitions.iter().map(ToolDefinition::name).collect();
-
-            info!(
-                agent = %agent.name,
-                model = %agent.model,
-                tools = ?tool_names,
-                gen_ai.system = "machi",
-                "Agent streamed run started",
-            );
-
-            hooks.agent_start(&context).await;
-            yield RunEvent::RunStarted { agent_name: agent.name.clone() };
-
-            let system_ref = (!system_prompt.is_empty()).then_some(system_prompt.as_str());
-
-            for step in 1..=max_steps {
-                context.advance_step();
-                debug!(agent = %agent.name, step, "Starting streamed step");
-
-                yield RunEvent::StepStarted { step };
-
-                let request = Self::build_stream_request(agent, &messages, &all_definitions);
-
-                hooks.llm_start(&context, system_ref, &messages).await;
-
-                // Stream chunks from the LLM.
-                let mut chunk_stream = provider.chat_stream(&request).await?;
-                let mut aggregator = StreamAggregator::new();
-
-                while let Some(chunk_result) = chunk_stream.next().await {
-                    let chunk = chunk_result?;
-
-                    // Yield real-time events for displayable content.
-                    match &chunk {
-                        StreamChunk::Text(delta) => {
-                            yield RunEvent::TextDelta(delta.clone());
-                        }
-                        StreamChunk::ReasoningContent(delta) => {
-                            yield RunEvent::ReasoningDelta(delta.clone());
-                        }
-                        StreamChunk::Audio { data, transcript } => {
-                            yield RunEvent::AudioDelta {
-                                data: data.clone(),
-                                transcript: transcript.clone(),
-                            };
-                        }
-                        StreamChunk::ToolUseStart { id, name, .. } => {
-                            yield RunEvent::ToolCallStarted {
-                                id: id.clone(),
-                                name: name.clone(),
-                            };
-                        }
-                        _ => {}
-                    }
-
-                    aggregator.apply(&chunk);
-                }
-
-                // Reconstruct a complete response from accumulated chunks.
-                let response = aggregator.into_chat_response();
-
-                hooks.llm_end(&context, &response).await;
-
-                // Accumulate usage.
-                if let Some(usage) = response.usage {
-                    cumulative_usage += usage;
-                    context.add_usage(usage);
-                }
-
-                let structured = agent.output_schema.is_some();
-                let next_step = Self::classify_response(&response, structured);
-                let (next_step, forbidden) = Self::apply_policies(next_step, agent, &auto_approved);
-
-                match next_step {
-                    NextStep::FinalOutput { ref output } => {
-                        messages.push(response.message.clone());
-
-                        step_history.push(StepInfo {
-                            step,
-                            response: response.clone(),
-                            tool_calls: Vec::new(),
-                        });
-
-                        let output_value = output.clone();
-                        hooks.agent_end(&context, &output_value).await;
-
-                        yield RunEvent::StepCompleted {
-                            step_info: Box::new(step_history.last().expect("just pushed").clone()),
-                        };
-
-                        // Persist to session if configured.
-                        if let Some(ref session) = config.session {
-                            let to_save = vec![user_message, response.message.clone()];
-                            let _ = session.add_messages(&to_save).await;
-                        }
-
-                        tracing::Span::current().record("agent.result_steps", step);
-                        info!(
-                            agent = %agent.name,
-                            steps = step,
-                            input_tokens = cumulative_usage.input_tokens,
-                            output_tokens = cumulative_usage.output_tokens,
-                            "Agent streamed run completed",
-                        );
-
-                        yield RunEvent::RunCompleted {
-                            result: Box::new(RunResult {
-                                output: output_value,
-                                usage: cumulative_usage,
-                                steps: step,
-                                step_history,
-                                agent_name: agent.name.clone(),
-                            }),
-                        };
-                        return;
-                    }
-
-                    NextStep::ToolCalls { ref calls } => {
-                        messages.push(response.message.clone());
-                        Self::append_denied_messages(
-                            &forbidden,
-                            "forbidden by execution policy",
-                            &mut messages,
-                        );
-
-                        let tool_records = Self::execute_tool_calls(
-                            calls,
-                            agent,
-                            &context,
-                            &hooks,
-                            &mut messages,
-                            config.max_tool_concurrency,
-                        )
-                        .await?;
-
-                        // Yield individual tool completion events.
-                        for record in &tool_records {
-                            yield RunEvent::ToolCallCompleted { record: record.clone() };
-                        }
-
-                        step_history.push(StepInfo {
-                            step,
-                            response,
-                            tool_calls: tool_records,
-                        });
-
-                        yield RunEvent::StepCompleted {
-                            step_info: Box::new(step_history.last().expect("just pushed").clone()),
-                        };
-                    }
-
-                    NextStep::NeedsApproval {
-                        ref pending_approval,
-                        ref approved,
-                    } => {
-                        messages.push(response.message.clone());
-                        Self::append_denied_messages(
-                            &forbidden,
-                            "forbidden by execution policy",
-                            &mut messages,
-                        );
-
-                        let handler = config.confirmation_handler.as_deref().ok_or_else(|| {
-                            Error::agent(
-                                "Tool execution requires approval but no confirmation handler is configured",
-                            )
-                        })?;
-
-                        let (confirmed, denied) =
-                            Self::seek_confirmations(pending_approval, handler, &mut auto_approved)
-                                .await;
-
-                        Self::append_denied_messages(&denied, "denied by user", &mut messages);
-
-                        let executable: Vec<ToolCallRequest> =
-                            approved.iter().chain(&confirmed).cloned().collect();
-
-                        let tool_records = if executable.is_empty() {
-                            Vec::new()
-                        } else {
-                            Self::execute_tool_calls(
-                                &executable,
-                                agent,
-                                &context,
-                                &hooks,
-                                &mut messages,
-                                config.max_tool_concurrency,
-                            )
-                            .await?
-                        };
-
-                        for record in &tool_records {
-                            yield RunEvent::ToolCallCompleted { record: record.clone() };
-                        }
-
-                        step_history.push(StepInfo {
-                            step,
-                            response,
-                            tool_calls: tool_records,
-                        });
-
-                        yield RunEvent::StepCompleted {
-                            step_info: Box::new(step_history.last().expect("just pushed").clone()),
-                        };
-                    }
-
-                    NextStep::MaxStepsExceeded => {
-                        unreachable!("MaxStepsExceeded is only set outside the loop");
-                    }
-                }
-            }
-
-            // Exceeded max steps.
-            let err = Error::max_steps(max_steps);
-            error!(error = %err, agent = %agent.name, max_steps, "Streamed max steps exceeded");
-            hooks.error(&context, &err).await;
-            Err(err)?;
+    /// Run input guardrails and return their results.
+    ///
+    /// If any guardrail's tripwire is triggered, returns an error immediately
+    /// and cancels remaining guardrails (via early return from the join).
+    async fn run_input_guardrails(
+        guardrails: &[&InputGuardrail],
+        context: &RunContext,
+        agent_name: &str,
+        messages: &[Message],
+    ) -> Result<Vec<InputGuardrailResult>> {
+        if guardrails.is_empty() {
+            return Ok(Vec::new());
         }
+
+        let futs: Vec<_> = guardrails
+            .iter()
+            .map(|g| g.run(context, agent_name, messages))
+            .collect();
+
+        let outcomes = futures::future::join_all(futs).await;
+        let mut results = Vec::with_capacity(outcomes.len());
+
+        for outcome in outcomes {
+            let result = outcome?;
+            if result.is_triggered() {
+                let name = result.guardrail_name.clone();
+                let info = result.output.output_info;
+                warn!(
+                    guardrail = %name,
+                    "Input guardrail tripwire triggered",
+                );
+                return Err(Error::input_guardrail_triggered(name, info));
+            }
+            results.push(result);
+        }
+
+        Ok(results)
+    }
+
+    /// Run output guardrails concurrently and return their results.
+    ///
+    /// If any guardrail's tripwire is triggered, returns an error immediately.
+    async fn run_output_guardrails(
+        guardrails: &[&OutputGuardrail],
+        context: &RunContext,
+        agent_name: &str,
+        output: &Value,
+    ) -> Result<Vec<OutputGuardrailResult>> {
+        if guardrails.is_empty() {
+            return Ok(Vec::new());
+        }
+
+        let futs: Vec<_> = guardrails
+            .iter()
+            .map(|g| g.run(context, agent_name, output))
+            .collect();
+
+        let outcomes = futures::future::join_all(futs).await;
+        let mut results = Vec::with_capacity(outcomes.len());
+
+        for outcome in outcomes {
+            let result = outcome?;
+            if result.is_triggered() {
+                let name = result.guardrail_name.clone();
+                let info = result.output.output_info;
+                warn!(
+                    guardrail = %name,
+                    "Output guardrail tripwire triggered",
+                );
+                return Err(Error::output_guardrail_triggered(name, info));
+            }
+            results.push(result);
+        }
+
+        Ok(results)
     }
 }

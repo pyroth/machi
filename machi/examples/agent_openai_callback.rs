@@ -24,7 +24,12 @@ impl AgentHooks for PrintHooks {
         println!("[hook] Agent started (step {})", context.step());
     }
 
-    async fn on_llm_start(&self, _context: &RunContext, _system: Option<&str>, _messages: &[Message]) {
+    async fn on_llm_start(
+        &self,
+        _context: &RunContext,
+        _system: Option<&str>,
+        _messages: &[Message],
+    ) {
         println!("[hook] LLM call starting...");
     }
 
@@ -37,7 +42,10 @@ impl AgentHooks for PrintHooks {
 
     async fn on_end(&self, _context: &RunContext, output: &Value) {
         let text = output.as_str().unwrap_or("<structured>");
-        println!("[hook] Agent finished — output length: {} chars", text.len());
+        println!(
+            "[hook] Agent finished — output length: {} chars",
+            text.len()
+        );
     }
 }
 

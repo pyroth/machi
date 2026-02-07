@@ -14,6 +14,9 @@ use serde_json::Value;
 
 use crate::callback::SharedRunHooks;
 use crate::chat::ChatResponse;
+use crate::guardrail::{
+    InputGuardrail, InputGuardrailResult, OutputGuardrail, OutputGuardrailResult,
+};
 use crate::memory::SharedSession;
 use crate::message::{Content, ContentPart, ImageMime, Message, Role, ToolCall};
 use crate::tool::SharedConfirmationHandler;
@@ -103,6 +106,18 @@ pub struct RunConfig {
     /// Required when any tool has [`ToolExecutionPolicy::RequireConfirmation`](crate::tool::ToolExecutionPolicy::RequireConfirmation).
     /// If absent and a tool requires confirmation, the runner returns an error.
     pub confirmation_handler: Option<SharedConfirmationHandler>,
+
+    /// Additional input guardrails applied at the run level.
+    ///
+    /// These are combined with the agent's own [`input_guardrails`](crate::agent::Agent::input_guardrails)
+    /// and executed together during the first step.
+    pub input_guardrails: Vec<InputGuardrail>,
+
+    /// Additional output guardrails applied at the run level.
+    ///
+    /// These are combined with the agent's own [`output_guardrails`](crate::agent::Agent::output_guardrails)
+    /// and executed together after the agent produces a final output.
+    pub output_guardrails: Vec<OutputGuardrail>,
 }
 
 impl fmt::Debug for RunConfig {
@@ -113,6 +128,8 @@ impl fmt::Debug for RunConfig {
             .field("max_steps", &self.max_steps)
             .field("max_tool_concurrency", &self.max_tool_concurrency)
             .field("confirmation_handler", &self.confirmation_handler.is_some())
+            .field("input_guardrails", &self.input_guardrails.len())
+            .field("output_guardrails", &self.output_guardrails.len())
             .finish()
     }
 }
@@ -158,6 +175,20 @@ impl RunConfig {
         self.confirmation_handler = Some(handler);
         self
     }
+
+    /// Add an input guardrail at the run level.
+    #[must_use]
+    pub fn input_guardrail(mut self, guardrail: InputGuardrail) -> Self {
+        self.input_guardrails.push(guardrail);
+        self
+    }
+
+    /// Add an output guardrail at the run level.
+    #[must_use]
+    pub fn output_guardrail(mut self, guardrail: OutputGuardrail) -> Self {
+        self.output_guardrails.push(guardrail);
+        self
+    }
 }
 
 /// The final result of a completed agent run.
@@ -181,6 +212,12 @@ pub struct RunResult {
     /// if managed agents were involved (though each managed agent runs
     /// its own sub-run).
     pub agent_name: String,
+
+    /// Results from input guardrail checks (empty if no guardrails configured).
+    pub input_guardrail_results: Vec<InputGuardrailResult>,
+
+    /// Results from output guardrail checks (empty if no guardrails configured).
+    pub output_guardrail_results: Vec<OutputGuardrailResult>,
 }
 
 impl RunResult {

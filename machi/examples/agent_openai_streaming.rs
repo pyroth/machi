@@ -33,7 +33,10 @@ async fn main() -> Result<()> {
                 stdout().flush()?;
             }
             RunEvent::RunCompleted { result } => {
-                println!("\n\nCompleted in {} step(s), {}", result.steps, result.usage);
+                println!(
+                    "\n\nCompleted in {} step(s), {}",
+                    result.steps, result.usage
+                );
             }
             _ => {}
         }

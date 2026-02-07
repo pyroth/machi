@@ -29,7 +29,10 @@ async fn main() -> Result<()> {
         .provider(provider);
 
     let result = agent
-        .run("What is the tallest mountain on Earth?", RunConfig::default())
+        .run(
+            "What is the tallest mountain on Earth?",
+            RunConfig::default(),
+        )
         .await?;
 
     println!("{}", result.output);

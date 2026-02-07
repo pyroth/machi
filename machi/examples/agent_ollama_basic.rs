@@ -22,7 +22,9 @@ async fn main() -> Result<()> {
         .model("qwen3")
         .provider(provider);
 
-    let result = agent.run("What is the capital of France?", RunConfig::default()).await?;
+    let result = agent
+        .run("What is the capital of France?", RunConfig::default())
+        .await?;
     println!("{}", result.output);
 
     Ok(())

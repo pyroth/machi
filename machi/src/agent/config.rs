@@ -36,6 +36,7 @@ use serde_json::Value;
 use crate::callback::SharedAgentHooks;
 use crate::chat::{ResponseFormat, SharedChatProvider};
 use crate::error::Result;
+use crate::guardrail::{InputGuardrail, OutputGuardrail};
 use crate::tool::{BoxedTool, ToolDefinition, ToolExecutionPolicy};
 
 use super::result::{RunConfig, RunEvent, RunResult, UserInput};
@@ -304,6 +305,23 @@ pub struct Agent {
     /// conforming to this schema, and parses the text output as a JSON
     /// [`Value`](serde_json::Value) in [`RunResult::output`](super::RunResult).
     pub output_schema: Option<OutputSchema>,
+
+    /// Input guardrails that validate user input before or alongside the LLM.
+    ///
+    /// These checks run during the first step of the agent run. Guardrails
+    /// with `run_in_parallel: true` execute concurrently with the first LLM
+    /// call; those with `run_in_parallel: false` execute sequentially before it.
+    ///
+    /// If any guardrail's tripwire is triggered, the run halts immediately
+    /// with [`Error::InputGuardrailTriggered`](crate::Error::InputGuardrailTriggered).
+    pub input_guardrails: Vec<InputGuardrail>,
+
+    /// Output guardrails that validate the agent's final response.
+    ///
+    /// These checks run concurrently after the agent produces a final output.
+    /// If any guardrail's tripwire is triggered, the output is discarded and
+    /// [`Error::OutputGuardrailTriggered`](crate::Error::OutputGuardrailTriggered) is returned.
+    pub output_guardrails: Vec<OutputGuardrail>,
 }
 
 impl fmt::Debug for Agent {
@@ -333,6 +351,8 @@ impl fmt::Debug for Agent {
                 "output_schema",
                 &self.output_schema.as_ref().map(OutputSchema::name),
             )
+            .field("input_guardrails", &self.input_guardrails)
+            .field("output_guardrails", &self.output_guardrails)
             .finish()
     }
 }
@@ -357,6 +377,8 @@ impl Agent {
             max_steps: Self::DEFAULT_MAX_STEPS,
             tool_policies: HashMap::new(),
             output_schema: None,
+            input_guardrails: Vec::new(),
+            output_guardrails: Vec::new(),
         }
     }
 
@@ -454,6 +476,26 @@ impl Agent {
     #[must_use]
     pub fn output_schema(mut self, schema: OutputSchema) -> Self {
         self.output_schema = Some(schema);
+        self
+    }
+
+    /// Add an input guardrail to this agent.
+    ///
+    /// Input guardrails validate user input before or alongside the first
+    /// LLM call. See [`InputGuardrail`] for details on execution modes.
+    #[must_use]
+    pub fn input_guardrail(mut self, guardrail: InputGuardrail) -> Self {
+        self.input_guardrails.push(guardrail);
+        self
+    }
+
+    /// Add an output guardrail to this agent.
+    ///
+    /// Output guardrails validate the agent's final response after generation.
+    /// See [`OutputGuardrail`] for details.
+    #[must_use]
+    pub fn output_guardrail(mut self, guardrail: OutputGuardrail) -> Self {
+        self.output_guardrails.push(guardrail);
         self
     }
 
