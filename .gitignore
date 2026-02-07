@@ -20,11 +20,4 @@ target
 #  option (not recommended) you can uncomment the following to ignore the entire idea folder.
 #.idea/
 
-/kobe
-/rig
-/smolagents
-/nanobot
-/old
-/litellm
-/llm
-/openai-agents-python
+/3rdparty
