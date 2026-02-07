@@ -1,74 +1,55 @@
-//! Runner — the agent execution engine.
+//! Agent execution engine.
 //!
-//! The [`Runner`] drives an [`Agent`] through its reasoning loop:
+//! [`Runner`] drives an [`Agent`] through a reasoning loop:
 //!
 //! 1. Build messages from instructions + conversation history
 //! 2. Call the LLM with available tools
-//! 3. Parse the response into a [`NextStep`]
-//! 4. Execute tool calls (including managed agent sub-runs)
+//! 3. Classify the response into a [`NextStep`]
+//! 4. Execute tool calls (including managed-agent sub-runs)
 //! 5. Append results and loop back to step 2
 //!
-//! The loop terminates when the LLM produces a final text output, an error
-//! occurs, or the maximum step count is exceeded.
-//!
-//! # Architecture
-//!
-//! All shared per-run state and logic lives in [`RunState`], which is
-//! initialised once and then driven by either the blocking ([`Runner::run`])
-//! or streaming ([`Runner::run_streamed`]) entry-point. This eliminates the
-//! code duplication that would otherwise exist between the two paths.
-//!
-//! # Managed Agent Execution
-//!
-//! When a tool call targets a managed agent, the Runner spawns a recursive
-//! child run for the sub-agent. Each sub-agent uses its own provider,
-//! enabling heterogeneous multi-agent systems.
+//! The loop terminates on a final output, an error, or the step limit.
+//! All per-run state lives in [`RunState`], initialised once and driven by
+//! [`Runner::run`] (blocking) or [`Runner::run_streamed`] (streaming).
 
-use std::collections::HashSet;
-use std::future::Future;
-use std::pin::Pin;
+use std::{collections::HashSet, future::Future, pin::Pin};
 
-use futures::StreamExt as _;
-use futures::stream::Stream;
+use futures::{StreamExt as _, stream::Stream};
 use serde_json::Value;
 use tracing::{Instrument, debug, error, info, info_span, warn};
 
-use crate::callback::{NoopRunHooks, RunContext, RunHooks};
-use crate::chat::{ChatProvider, ChatRequest, ChatResponse, ToolChoice};
-use crate::error::{AgentError, Error, Result};
-use crate::guardrail::{
-    InputGuardrail, InputGuardrailResult, OutputGuardrail, OutputGuardrailResult,
+use super::{
+    config::Agent,
+    hook::HookPair,
+    result::{
+        NextStep, RunConfig, RunEvent, RunResult, StepInfo, ToolCallRecord, ToolCallRequest,
+        UserInput,
+    },
 };
-use crate::message::Message;
-use crate::stream::{StreamAggregator, StreamChunk};
-use crate::tool::{
-    BoxedTool, ConfirmationHandler, ToolConfirmationRequest, ToolConfirmationResponse,
-    ToolDefinition, ToolExecutionPolicy,
+use crate::{
+    callback::{NoopRunHooks, RunContext, RunHooks},
+    chat::{ChatProvider, ChatRequest, ChatResponse, ToolChoice},
+    error::{AgentError, Error, Result},
+    guardrail::{InputGuardrail, InputGuardrailResult, OutputGuardrail, OutputGuardrailResult},
+    message::Message,
+    stream::{StreamAggregator, StreamChunk},
+    tool::{
+        BoxedTool, ConfirmationHandler, ToolConfirmationRequest, ToolConfirmationResponse,
+        ToolDefinition, ToolExecutionPolicy,
+    },
+    usage::Usage,
 };
-use crate::usage::Usage;
 
-use super::config::Agent;
-use super::hook::HookPair;
-use super::result::{
-    NextStep, RunConfig, RunEvent, RunResult, StepInfo, ToolCallRecord, ToolCallRequest, UserInput,
-};
-
-// ---------------------------------------------------------------------------
-// StepOutcome — result of processing one reasoning step
-// ---------------------------------------------------------------------------
-
-/// The outcome of a single reasoning step after the LLM response has been
-/// classified and tool calls (if any) have been executed.
+/// Outcome of processing one reasoning step.
 enum StepOutcome {
-    /// The LLM produced a final answer — the run is complete.
+    /// Final answer produced — run complete.
     Done(RunResult),
-    /// Tool calls were executed; continue to the next step.
+    /// Tool calls executed — continue looping.
     Continue,
 }
 
-/// Holds every piece of mutable state that accumulates during a single agent
-/// run. Created once by [`RunState::init`] and then driven step-by-step by
-/// the two execution paths in [`Runner`].
+/// Per-run mutable state, created once by [`init`](Self::init) and driven
+/// step-by-step by [`Runner::run`] or [`Runner::run_streamed`].
 struct RunState<'a> {
     agent: &'a Agent,
     provider: &'a dyn ChatProvider,
@@ -89,12 +70,7 @@ struct RunState<'a> {
 }
 
 impl<'a> RunState<'a> {
-    /// Initialize all per-run state from agent configuration and user input.
-    ///
-    /// This performs provider validation, message construction, session
-    /// history loading, tool definition collection, and sequential input
-    /// guardrail execution — everything that is identical between the
-    /// blocking and streaming paths.
+    /// Build all per-run state from agent config and user input.
     async fn init(agent: &'a Agent, input: UserInput, config: &'a RunConfig) -> Result<Self> {
         let provider = agent.provider.as_deref().ok_or_else(|| {
             AgentError::runtime(format!(
@@ -108,17 +84,15 @@ impl<'a> RunState<'a> {
         let context = RunContext::new().with_agent_name(&agent.name);
         let mut messages = Vec::new();
 
-        // Resolve system instructions.
         let system_prompt = agent.resolve_instructions();
         if !system_prompt.is_empty() {
             messages.push(Message::system(&system_prompt));
         }
 
-        // Build user message.
         let user_message = input.into_message();
         messages.push(user_message.clone());
 
-        // Load session history (inserted between system prompt and user input).
+        // Insert session history before the user message.
         if let Some(ref session) = config.session {
             let history = session.get_messages(None).await?;
             if !history.is_empty() {
@@ -127,35 +101,30 @@ impl<'a> RunState<'a> {
             }
         }
 
-        // Collect tool definitions: regular tools + managed agent tool stubs.
         let all_definitions = Runner::collect_all_definitions(agent);
-
-        // Record tool names in the agent span.
         let tool_names: Vec<&str> = all_definitions.iter().map(ToolDefinition::name).collect();
         tracing::Span::current().record("agent.tools", tracing::field::debug(&tool_names));
 
-        // Collect guardrails from agent + run config.
+        // Guardrails: sequential ones run now, parallel ones run with the first LLM call.
         let all_input_guardrails = Runner::collect_input_guardrails(agent, config);
         let all_output_guardrails = Runner::collect_output_guardrails(agent, config);
-        let mut input_guardrail_results: Vec<InputGuardrailResult> = Vec::new();
+        let mut input_guardrail_results = Vec::new();
 
-        // Split input guardrails into sequential and parallel groups.
-        let sequential: Vec<&InputGuardrail> = all_input_guardrails
+        let sequential: Vec<_> = all_input_guardrails
             .iter()
             .filter(|g| !g.is_parallel())
             .copied()
             .collect();
-        let parallel: Vec<&InputGuardrail> = all_input_guardrails
+        let parallel: Vec<_> = all_input_guardrails
             .iter()
             .filter(|g| g.is_parallel())
             .copied()
             .collect();
 
-        // Run sequential input guardrails before the loop starts.
         if !sequential.is_empty() {
-            let seq_results =
+            let results =
                 Runner::run_input_guardrails(&sequential, &context, &agent.name, &messages).await?;
-            input_guardrail_results.extend(seq_results);
+            input_guardrail_results.extend(results);
         }
 
         Ok(Self {
@@ -178,12 +147,12 @@ impl<'a> RunState<'a> {
         })
     }
 
-    /// Returns the system prompt as an `Option<&str>` for hook dispatch.
+    /// System prompt as `Option<&str>` for hook dispatch.
     fn system_ref(&self) -> Option<&str> {
         (!self.system_prompt.is_empty()).then_some(self.system_prompt.as_str())
     }
 
-    /// Build a non-streaming [`ChatRequest`] for the current step.
+    /// Build a [`ChatRequest`] for the current step.
     fn build_request(&self) -> ChatRequest {
         Runner::build_request(self.agent, &self.messages, &self.all_definitions)
     }
@@ -203,12 +172,10 @@ impl<'a> RunState<'a> {
         }
     }
 
-    /// Process a completed LLM response and return the step outcome.
+    /// Process a completed LLM response — the shared core of both paths.
     ///
-    /// This is the **shared core** between blocking and streaming paths.
-    /// It classifies the response, applies tool execution policies, runs
-    /// output guardrails (for final output), executes tool calls, and
-    /// updates the step history.
+    /// Classifies the response, applies tool policies, runs output
+    /// guardrails, executes tool calls, and updates step history.
     async fn process_step(
         &mut self,
         step: usize,
@@ -222,9 +189,7 @@ impl<'a> RunState<'a> {
 
         match next_step {
             NextStep::FinalOutput { ref output } => {
-                // Append assistant message to history.
                 self.messages.push(response.message.clone());
-
                 self.step_history.push(StepInfo {
                     step,
                     response: response.clone(),
@@ -232,8 +197,6 @@ impl<'a> RunState<'a> {
                 });
 
                 let output_value = output.clone();
-
-                // Run output guardrails before delivering the final output.
                 let output_guardrail_results = Runner::run_output_guardrails(
                     &self.all_output_guardrails,
                     &self.context,
@@ -243,8 +206,6 @@ impl<'a> RunState<'a> {
                 .await?;
 
                 hooks.agent_end(&self.context, &output_value).await;
-
-                // Persist to session if configured.
                 if let Some(ref session) = config.session {
                     let to_save = vec![self.user_message.clone(), response.message.clone()];
                     let _ = session.add_messages(&to_save).await;
@@ -259,7 +220,6 @@ impl<'a> RunState<'a> {
                     "Agent run completed",
                 );
 
-                // Move accumulated state into the result to avoid cloning.
                 let result = RunResult {
                     output: output_value,
                     usage: self.cumulative_usage,
@@ -323,7 +283,6 @@ impl<'a> RunState<'a> {
 
                 Runner::append_denied_messages(&denied, "denied by user", &mut self.messages);
 
-                // Execute approved + confirmed calls.
                 let executable: Vec<ToolCallRequest> =
                     approved.iter().chain(&confirmed).cloned().collect();
 
@@ -353,36 +312,16 @@ impl<'a> RunState<'a> {
     }
 }
 
-/// Stateless execution engine that drives an [`Agent`] through its reasoning loop.
-///
-/// `Runner` owns no state — all per-run state lives in [`RunState`] within
-/// the run functions. This makes it safe to call `run` concurrently for
-/// different agents or even the same agent with different inputs.
+/// Stateless execution engine that drives an [`Agent`] through its reasoning
+/// loop. All per-run state lives in [`RunState`], making concurrent calls safe.
 #[derive(Debug, Clone, Copy)]
 pub struct Runner;
 
 impl Runner {
-    /// Execute an agent run to completion.
+    /// Execute an agent run to completion, returning a [`RunResult`].
     ///
-    /// The agent's own [`provider`](Agent::provider) is used for LLM calls.
-    /// Each managed sub-agent uses its own provider, enabling heterogeneous
-    /// multi-agent systems with different LLMs.
-    ///
-    /// # Arguments
-    ///
-    /// * `agent` — the agent to run (must have a provider configured)
-    /// * `input` — the user's input (text, multimodal, or raw content parts)
-    /// * `config` — run-level configuration (hooks, session, limits)
-    ///
-    /// # Returns
-    ///
-    /// A [`RunResult`] containing the final output, usage stats, and step history.
-    ///
-    /// # Errors
-    ///
-    /// Returns [`Error::Agent`] if no provider is configured on the agent,
-    /// [`Error::MaxSteps`] if the step limit is exceeded, or propagates
-    /// LLM / tool errors encountered during execution.
+    /// Uses the agent's own provider for LLM calls. Each managed sub-agent
+    /// uses its own provider, enabling heterogeneous multi-agent systems.
     pub fn run<'a>(
         agent: &'a Agent,
         input: impl Into<UserInput>,
@@ -402,7 +341,7 @@ impl Runner {
         Box::pin(Self::run_inner(agent, input, config).instrument(span))
     }
 
-    /// Internal async implementation of the blocking agent run loop.
+    /// Core async loop for the blocking execution path.
     async fn run_inner(agent: &Agent, input: UserInput, config: RunConfig) -> Result<RunResult> {
         let noop = NoopRunHooks;
         let run_hooks: &dyn RunHooks = config.hooks.as_deref().unwrap_or(&noop);
@@ -422,7 +361,7 @@ impl Runner {
                 .llm_start(&state.context, state.system_ref(), &state.messages)
                 .await;
 
-            // On the first step, run parallel input guardrails alongside the LLM call.
+            // First step: run parallel guardrails alongside the LLM call.
             let response = if step == 1 && !state.parallel_guardrails.is_empty() {
                 let (guardrail_result, llm_result) = tokio::join!(
                     Self::run_input_guardrails(
@@ -433,7 +372,6 @@ impl Runner {
                     ),
                     state.provider.chat(&request),
                 );
-                // Check guardrails first — if triggered, discard the LLM result.
                 state.input_guardrail_results.extend(guardrail_result?);
                 llm_result
             } else {
@@ -454,7 +392,6 @@ impl Runner {
             }
         }
 
-        // Exceeded max steps.
         let err = Error::from(AgentError::max_steps(state.max_steps));
         error!(error = %err, agent = %agent.name, max_steps = state.max_steps, "Max steps exceeded");
         tracing::Span::current().record("error", tracing::field::display(&err));
@@ -464,12 +401,8 @@ impl Runner {
 
     /// Execute an agent run with streaming output.
     ///
-    /// Returns a [`Stream`] of [`RunEvent`]s that the caller can consume
-    /// in real-time. The stream yields lifecycle events (start/end),
-    /// incremental text deltas, tool call progress, and the final result.
-    ///
-    /// The underlying LLM call uses [`ChatProvider::chat_stream`] so that
-    /// text tokens are delivered as they are generated.
+    /// Returns a [`Stream`] of [`RunEvent`]s: lifecycle events, text deltas,
+    /// tool-call progress, and the final result.
     pub fn run_streamed<'a>(
         agent: &'a Agent,
         input: impl Into<UserInput>,
@@ -479,12 +412,8 @@ impl Runner {
         Box::pin(Self::run_streamed_inner(agent, input, config))
     }
 
-    /// Internal streaming implementation of the agent run loop.
-    //
-    // The `tail_expr_drop_order` warning originates inside the `try_stream!` macro
-    // expansion, where temporaries in the generated async block's tail expression
-    // have a different drop order under Rust 2024. This is harmless and is a known
-    // upstream issue in `async-stream`.
+    /// Core streaming loop.
+    // `tail_expr_drop_order`: false positive from the `try_stream!` macro.
     #[allow(tail_expr_drop_order)]
     fn run_streamed_inner(
         agent: &Agent,
@@ -521,9 +450,7 @@ impl Runner {
                     .llm_start(&state.context, state.system_ref(), &state.messages)
                     .await;
 
-                // In streaming mode, parallel guardrails run before the stream
-                // starts (not truly concurrent) because we cannot fork a
-                // try_stream. This still provides the safety check.
+                // Parallel guardrails run sequentially here (cannot fork a try_stream).
                 if step == 1 && !state.parallel_guardrails.is_empty() {
                     let par_results = Self::run_input_guardrails(
                         &state.parallel_guardrails,
@@ -535,14 +462,12 @@ impl Runner {
                     state.input_guardrail_results.extend(par_results);
                 }
 
-                // Stream chunks from the LLM.
                 let mut chunk_stream = state.provider.chat_stream(&request).await?;
                 let mut aggregator = StreamAggregator::new();
 
                 while let Some(chunk_result) = chunk_stream.next().await {
                     let chunk = chunk_result?;
 
-                    // Yield real-time events for displayable content.
                     match &chunk {
                         StreamChunk::Text(delta) => {
                             yield RunEvent::TextDelta(delta.clone());
@@ -568,7 +493,6 @@ impl Runner {
                     aggregator.apply(&chunk);
                 }
 
-                // Reconstruct a complete response from accumulated chunks.
                 let response = aggregator.into_chat_response();
 
                 hooks.llm_end(&state.context, &response).await;
@@ -576,7 +500,6 @@ impl Runner {
 
                 match state.process_step(step, response, &hooks, &config).await? {
                     StepOutcome::Done(result) => {
-                        // Yield step completion for the final step.
                         if let Some(last_step) = result.step_history.last() {
                             yield RunEvent::StepCompleted {
                                 step_info: Box::new(last_step.clone()),
@@ -588,7 +511,6 @@ impl Runner {
                         return;
                     }
                     StepOutcome::Continue => {
-                        // Yield tool completion + step completion events.
                         let last = state.step_history.last().expect("just pushed");
                         for record in &last.tool_calls {
                             yield RunEvent::ToolCallCompleted {
@@ -602,9 +524,8 @@ impl Runner {
                 }
             }
 
-            // Exceeded max steps.
             let err = Error::from(AgentError::max_steps(state.max_steps));
-            error!(error = %err, agent = %agent.name, max_steps = state.max_steps, "Streamed max steps exceeded");
+            error!(error = %err, agent = %agent.name, max_steps = state.max_steps, "Max steps exceeded");
             hooks.error(&state.context, &err).await;
             Err(err)?;
         }
@@ -612,7 +533,7 @@ impl Runner {
 }
 
 impl Runner {
-    /// Collect [`ToolDefinition`]s from regular tools and managed agents.
+    /// Collect tool definitions from regular tools and managed agents.
     fn collect_all_definitions(agent: &Agent) -> Vec<ToolDefinition> {
         agent
             .tools
@@ -635,7 +556,6 @@ impl Runner {
                 .tool_choice(ToolChoice::Auto)
                 .parallel_tool_calls(true);
         }
-        // Apply structured output schema when configured on the agent.
         if let Some(ref schema) = agent.output_schema {
             request = request.response_format(schema.to_response_format());
         }
@@ -644,9 +564,7 @@ impl Runner {
 
     /// Classify an LLM response into a [`NextStep`].
     ///
-    /// When `structured_output` is `true`, the text content is parsed as JSON
-    /// so that [`RunResult::output`] contains a structured [`Value`] rather
-    /// than a plain string.
+    /// When `structured_output` is true, text is parsed as JSON.
     fn classify_response(response: &ChatResponse, structured_output: bool) -> NextStep {
         if let Some(tool_calls) = response.tool_calls() {
             let calls: Vec<ToolCallRequest> =
@@ -656,7 +574,6 @@ impl Runner {
             }
         }
         let output = if structured_output {
-            // Parse the LLM's text as JSON for structured output.
             response.text().map_or(Value::Null, |text| {
                 serde_json::from_str(&text).unwrap_or(Value::String(text))
             })
@@ -666,11 +583,8 @@ impl Runner {
         NextStep::FinalOutput { output }
     }
 
-    /// Apply tool execution policies, partitioning calls into approved,
-    /// needs-approval, and forbidden groups.
-    ///
-    /// Returns the (possibly rewritten) [`NextStep`] and a list of calls
-    /// that were forbidden by policy.
+    /// Apply tool execution policies, returning the rewritten [`NextStep`]
+    /// and any calls forbidden by policy.
     fn apply_policies(
         next_step: NextStep,
         agent: &Agent,
@@ -716,11 +630,7 @@ impl Runner {
         (result, forbidden)
     }
 
-    /// Execute tool calls concurrently and append results to messages.
-    ///
-    /// Runs up to `max_concurrency` calls in parallel per chunk using
-    /// [`futures::future::join_all`], preserving the original call order.
-    /// When `max_concurrency` is `None`, all calls run simultaneously.
+    /// Execute tool calls with bounded concurrency, appending results to messages.
     async fn execute_tool_calls(
         calls: &[ToolCallRequest],
         agent: &Agent,
@@ -740,7 +650,6 @@ impl Runner {
             records.extend(futures::future::join_all(futs).await);
         }
 
-        // Append tool result messages in original call order.
         for record in &records {
             messages.push(Message::tool(&record.id, &record.result));
         }
@@ -748,10 +657,7 @@ impl Runner {
         Ok(records)
     }
 
-    /// Execute a single tool call with lifecycle hooks.
-    ///
-    /// Fires `tool_start` before dispatch and `tool_end` after, then returns
-    /// the completed [`ToolCallRecord`].
+    /// Execute a single tool call with lifecycle hooks and tracing.
     async fn execute_single_tool(
         call: &ToolCallRequest,
         agent: &Agent,
@@ -801,7 +707,7 @@ impl Runner {
         .await
     }
 
-    /// Run a managed sub-agent with the given task arguments.
+    /// Dispatch a managed sub-agent with the given task arguments.
     async fn dispatch_managed_agent(sub_agent: &Agent, args: &Value) -> (String, bool) {
         let task = args.get("task").and_then(Value::as_str).unwrap_or_default();
         info!(
@@ -822,7 +728,7 @@ impl Runner {
         }
     }
 
-    /// Dispatch a regular tool call via the [`DynTool`](crate::tool::DynTool) interface.
+    /// Dispatch a regular tool call via [`DynTool`](crate::tool::DynTool).
     async fn dispatch_tool(tool: &BoxedTool, call: &ToolCallRequest) -> (String, bool) {
         match tool.call_json(call.arguments.clone()).await {
             Ok(value) => {
@@ -836,11 +742,9 @@ impl Runner {
         }
     }
 
-    /// Request human confirmation for tool calls that require approval.
+    /// Request human confirmation, returning `(confirmed, denied)`.
     ///
-    /// Returns `(confirmed, denied)` partitioning the pending calls based
-    /// on the user's responses. Calls approved via `ApproveAll` are recorded
-    /// in `auto_approved` so subsequent calls skip confirmation.
+    /// `ApproveAll` responses are recorded in `auto_approved` for future calls.
     async fn seek_confirmations(
         pending: &[ToolCallRequest],
         handler: &dyn ConfirmationHandler,
@@ -881,7 +785,7 @@ impl Runner {
         }
     }
 
-    /// Collect input guardrails from both agent and run config.
+    /// Merge input guardrails from agent and run config.
     fn collect_input_guardrails<'a>(
         agent: &'a Agent,
         config: &'a RunConfig,
@@ -893,7 +797,7 @@ impl Runner {
             .collect()
     }
 
-    /// Collect output guardrails from both agent and run config.
+    /// Merge output guardrails from agent and run config.
     fn collect_output_guardrails<'a>(
         agent: &'a Agent,
         config: &'a RunConfig,
@@ -905,10 +809,7 @@ impl Runner {
             .collect()
     }
 
-    /// Run input guardrails and check for tripwire triggers.
-    ///
-    /// If any guardrail triggers its tripwire, returns
-    /// [`Error::InputGuardrailTriggered`](crate::Error) immediately.
+    /// Run input guardrails sequentially; short-circuits on tripwire.
     async fn run_input_guardrails(
         guardrails: &[&InputGuardrail],
         context: &RunContext,
@@ -932,10 +833,7 @@ impl Runner {
         Ok(results)
     }
 
-    /// Run output guardrails concurrently and check for tripwire triggers.
-    ///
-    /// All guardrails run in parallel via `join_all`. If any guardrail
-    /// triggers its tripwire, returns [`Error::OutputGuardrailTriggered`](crate::Error).
+    /// Run output guardrails concurrently; short-circuits on tripwire.
     async fn run_output_guardrails(
         guardrails: &[&OutputGuardrail],
         context: &RunContext,
