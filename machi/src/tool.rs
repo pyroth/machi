@@ -13,7 +13,6 @@
 use async_trait::async_trait;
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
-use std::collections::{HashMap, HashSet};
 use std::fmt;
 
 /// Error type for tool execution failures.
@@ -31,10 +30,6 @@ pub enum ToolError {
     /// Tool not found.
     #[error("Tool not found: {0}")]
     NotFound(String),
-
-    /// Tool is not initialized.
-    #[error("Tool not initialized")]
-    NotInitialized,
 
     /// Tool execution is forbidden by policy.
     #[error("Tool '{0}' is forbidden by policy")]
@@ -169,10 +164,6 @@ pub struct ToolDefinition {
     /// When enabled, the model output will exactly match the schema.
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub strict: Option<bool>,
-
-    /// Output type string for LLM prompts (internal use).
-    #[serde(default, skip_serializing_if = "Option::is_none")]
-    pub output_type: Option<String>,
 }
 
 impl ToolDefinition {
@@ -184,7 +175,6 @@ impl ToolDefinition {
             description: description.into(),
             parameters,
             strict: None,
-            output_type: None,
         }
     }
 
@@ -200,7 +190,6 @@ impl ToolDefinition {
             description: description.into(),
             parameters,
             strict: Some(true),
-            output_type: None,
         }
     }
 
@@ -228,13 +217,6 @@ impl ToolDefinition {
     #[must_use]
     pub const fn is_strict(&self) -> bool {
         matches!(self.strict, Some(true))
-    }
-
-    /// Set the output type.
-    #[must_use]
-    pub fn with_output_type(mut self, output_type: impl Into<String>) -> Self {
-        self.output_type = Some(output_type.into());
-        self
     }
 
     /// Returns the tool name.
@@ -306,16 +288,6 @@ pub trait Tool: Send + Sync {
     /// Get the JSON schema for the tool's parameters.
     fn parameters_schema(&self) -> Value;
 
-    /// Get the output type string for LLM prompts.
-    fn output_type(&self) -> &'static str {
-        "object"
-    }
-
-    /// Get the JSON schema for the tool's output (optional).
-    fn output_schema(&self) -> Option<Value> {
-        None
-    }
-
     /// Execute the tool with the given arguments.
     async fn call(&self, args: Self::Args) -> Result<Self::Output, Self::Error>;
 
@@ -326,7 +298,6 @@ pub trait Tool: Send + Sync {
             description: self.description(),
             parameters: self.parameters_schema(),
             strict: None,
-            output_type: Some(self.output_type().to_owned()),
         }
     }
 
@@ -590,152 +561,6 @@ impl ToolCallResult {
     }
 }
 
-/// A collection of tools that can be used by an agent.
-#[derive(Default)]
-pub struct ToolBox {
-    tools: HashMap<String, BoxedTool>,
-    policies: HashMap<String, ToolExecutionPolicy>,
-    auto_approved: HashSet<String>,
-}
-
-impl ToolBox {
-    /// Create a new empty toolbox.
-    #[must_use]
-    pub fn new() -> Self {
-        Self::default()
-    }
-
-    /// Add a tool to the toolbox.
-    pub fn add<T: Tool + 'static>(&mut self, tool: T)
-    where
-        T::Output: 'static,
-    {
-        self.tools.insert(tool.name().to_owned(), Box::new(tool));
-    }
-
-    /// Add a tool with an execution policy.
-    pub fn add_with_policy<T: Tool + 'static>(&mut self, tool: T, policy: ToolExecutionPolicy)
-    where
-        T::Output: 'static,
-    {
-        let name = tool.name().to_owned();
-        self.tools.insert(name.clone(), Box::new(tool));
-        self.policies.insert(name, policy);
-    }
-
-    /// Add a boxed tool to the toolbox.
-    pub fn add_boxed(&mut self, tool: BoxedTool) {
-        self.tools.insert(tool.name().to_owned(), tool);
-    }
-
-    /// Add a boxed tool with an execution policy.
-    pub fn add_boxed_with_policy(&mut self, tool: BoxedTool, policy: ToolExecutionPolicy) {
-        let name = tool.name().to_owned();
-        self.tools.insert(name.clone(), tool);
-        self.policies.insert(name, policy);
-    }
-
-    /// Get a tool by name.
-    #[must_use]
-    pub fn get(&self, name: &str) -> Option<&BoxedTool> {
-        self.tools.get(name)
-    }
-
-    /// Get all tool definitions.
-    #[must_use]
-    pub fn definitions(&self) -> Vec<ToolDefinition> {
-        self.tools.values().map(|t| t.definition()).collect()
-    }
-
-    /// Get the names of all tools.
-    #[must_use]
-    pub fn names(&self) -> Vec<&str> {
-        self.tools.values().map(|t| t.name()).collect()
-    }
-
-    /// Check if the toolbox contains a tool with the given name.
-    #[must_use]
-    pub fn contains(&self, name: &str) -> bool {
-        self.tools.contains_key(name)
-    }
-
-    /// Get the number of tools in the toolbox.
-    #[must_use]
-    pub fn len(&self) -> usize {
-        self.tools.len()
-    }
-
-    /// Check if the toolbox is empty.
-    #[must_use]
-    pub fn is_empty(&self) -> bool {
-        self.tools.is_empty()
-    }
-
-    /// Set the execution policy for a tool.
-    pub fn set_policy(&mut self, tool_name: impl Into<String>, policy: ToolExecutionPolicy) {
-        self.policies.insert(tool_name.into(), policy);
-    }
-
-    /// Get the execution policy for a tool.
-    #[must_use]
-    pub fn get_policy(&self, tool_name: &str) -> ToolExecutionPolicy {
-        if self.auto_approved.contains(tool_name) {
-            return ToolExecutionPolicy::Auto;
-        }
-        self.policies
-            .get(tool_name)
-            .copied()
-            .unwrap_or(ToolExecutionPolicy::Auto)
-    }
-
-    /// Mark a tool as auto-approved.
-    pub fn mark_auto_approved(&mut self, tool_name: impl Into<String>) {
-        self.auto_approved.insert(tool_name.into());
-    }
-
-    /// Check if a tool requires confirmation.
-    #[must_use]
-    pub fn requires_confirmation(&self, tool_name: &str) -> bool {
-        !self.auto_approved.contains(tool_name)
-            && self
-                .policies
-                .get(tool_name)
-                .is_some_and(ToolExecutionPolicy::requires_confirmation)
-    }
-
-    /// Check if a tool is forbidden.
-    #[must_use]
-    pub fn is_forbidden(&self, tool_name: &str) -> bool {
-        self.policies
-            .get(tool_name)
-            .is_some_and(ToolExecutionPolicy::is_forbidden)
-    }
-
-    /// Call a tool by name with JSON arguments.
-    pub async fn call(&self, name: &str, args: Value) -> Result<Value, ToolError> {
-        let tool = self
-            .tools
-            .get(name)
-            .ok_or_else(|| ToolError::NotFound(name.to_owned()))?;
-        tool.call_json(args).await
-    }
-
-    /// Returns all tool definitions for use in chat requests.
-    #[must_use]
-    pub fn to_tools(&self) -> Vec<ToolDefinition> {
-        self.definitions()
-    }
-}
-
-impl fmt::Debug for ToolBox {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        f.debug_struct("ToolBox")
-            .field("tools", &self.names())
-            .field("policies", &self.policies)
-            .finish_non_exhaustive()
-    }
-}
-
 #[cfg(test)]
 #[allow(
     clippy::unwrap_used,
@@ -800,7 +625,6 @@ mod tests {
             assert_eq!(def.name, "get_weather");
             assert_eq!(def.description, "Get weather info");
             assert!(def.strict.is_none());
-            assert!(def.output_type.is_none());
         }
 
         #[test]
@@ -849,13 +673,6 @@ mod tests {
         fn is_strict_returns_false_when_none() {
             let def = ToolDefinition::new("test", "Test", sample_parameters());
             assert!(!def.is_strict());
-        }
-
-        #[test]
-        fn with_output_type_sets_value() {
-            let def = ToolDefinition::new("test", "Test", sample_parameters())
-                .with_output_type("WeatherResult");
-            assert_eq!(def.output_type, Some("WeatherResult".to_owned()));
         }
 
         #[test]
@@ -1159,225 +976,6 @@ mod tests {
         }
     }
 
-    mod tool_box {
-        use super::*;
-
-        // Mock tool for testing
-        struct MockTool {
-            name: &'static str,
-        }
-
-        #[async_trait]
-        impl Tool for MockTool {
-            const NAME: &'static str = "mock_tool";
-            type Args = Value;
-            type Output = Value;
-            type Error = ToolError;
-
-            fn name(&self) -> &'static str {
-                self.name
-            }
-
-            fn description(&self) -> String {
-                format!("Mock tool: {}", self.name)
-            }
-
-            fn parameters_schema(&self) -> Value {
-                serde_json::json!({"type": "object"})
-            }
-
-            async fn call(&self, args: Self::Args) -> Result<Self::Output, Self::Error> {
-                Ok(serde_json::json!({"received": args}))
-            }
-        }
-
-        #[test]
-        fn new_creates_empty_toolbox() {
-            let toolbox = ToolBox::new();
-            assert!(toolbox.is_empty());
-            assert_eq!(toolbox.len(), 0);
-        }
-
-        #[test]
-        fn default_creates_empty_toolbox() {
-            let toolbox = ToolBox::default();
-            assert!(toolbox.is_empty());
-        }
-
-        #[test]
-        fn add_inserts_tool() {
-            let mut toolbox = ToolBox::new();
-            toolbox.add(MockTool { name: "test_tool" });
-            assert!(!toolbox.is_empty());
-            assert_eq!(toolbox.len(), 1);
-            assert!(toolbox.contains("test_tool"));
-        }
-
-        #[test]
-        fn add_with_policy_sets_policy() {
-            let mut toolbox = ToolBox::new();
-            toolbox.add_with_policy(
-                MockTool { name: "dangerous" },
-                ToolExecutionPolicy::RequireConfirmation,
-            );
-            assert!(toolbox.requires_confirmation("dangerous"));
-        }
-
-        #[test]
-        fn get_returns_tool() {
-            let mut toolbox = ToolBox::new();
-            toolbox.add(MockTool { name: "my_tool" });
-            let tool = toolbox.get("my_tool");
-            assert!(tool.is_some());
-            assert_eq!(tool.unwrap().name(), "my_tool");
-        }
-
-        #[test]
-        fn get_returns_none_for_missing() {
-            let toolbox = ToolBox::new();
-            assert!(toolbox.get("nonexistent").is_none());
-        }
-
-        #[test]
-        fn definitions_returns_all_definitions() {
-            let mut toolbox = ToolBox::new();
-            toolbox.add(MockTool { name: "tool1" });
-            toolbox.add(MockTool { name: "tool2" });
-            let defs = toolbox.definitions();
-            assert_eq!(defs.len(), 2);
-        }
-
-        #[test]
-        fn names_returns_all_names() {
-            let mut toolbox = ToolBox::new();
-            toolbox.add(MockTool { name: "alpha" });
-            toolbox.add(MockTool { name: "beta" });
-            let names = toolbox.names();
-            assert_eq!(names.len(), 2);
-            assert!(names.contains(&"alpha"));
-            assert!(names.contains(&"beta"));
-        }
-
-        #[test]
-        fn contains_checks_existence() {
-            let mut toolbox = ToolBox::new();
-            toolbox.add(MockTool { name: "exists" });
-            assert!(toolbox.contains("exists"));
-            assert!(!toolbox.contains("missing"));
-        }
-
-        #[test]
-        fn set_policy_updates_policy() {
-            let mut toolbox = ToolBox::new();
-            toolbox.add(MockTool { name: "tool" });
-            toolbox.set_policy("tool", ToolExecutionPolicy::Forbidden);
-            assert!(toolbox.is_forbidden("tool"));
-        }
-
-        #[test]
-        fn get_policy_returns_auto_by_default() {
-            let toolbox = ToolBox::new();
-            assert_eq!(toolbox.get_policy("unknown"), ToolExecutionPolicy::Auto);
-        }
-
-        #[test]
-        fn get_policy_returns_set_policy() {
-            let mut toolbox = ToolBox::new();
-            toolbox.set_policy("tool", ToolExecutionPolicy::RequireConfirmation);
-            assert_eq!(
-                toolbox.get_policy("tool"),
-                ToolExecutionPolicy::RequireConfirmation
-            );
-        }
-
-        #[test]
-        fn mark_auto_approved_overrides_confirmation() {
-            let mut toolbox = ToolBox::new();
-            toolbox.set_policy("tool", ToolExecutionPolicy::RequireConfirmation);
-            assert!(toolbox.requires_confirmation("tool"));
-
-            toolbox.mark_auto_approved("tool");
-            assert!(!toolbox.requires_confirmation("tool"));
-            assert_eq!(toolbox.get_policy("tool"), ToolExecutionPolicy::Auto);
-        }
-
-        #[test]
-        fn requires_confirmation_respects_policy() {
-            let mut toolbox = ToolBox::new();
-            toolbox.set_policy("confirm_tool", ToolExecutionPolicy::RequireConfirmation);
-            toolbox.set_policy("auto_tool", ToolExecutionPolicy::Auto);
-
-            assert!(toolbox.requires_confirmation("confirm_tool"));
-            assert!(!toolbox.requires_confirmation("auto_tool"));
-            assert!(!toolbox.requires_confirmation("unknown"));
-        }
-
-        #[test]
-        fn is_forbidden_respects_policy() {
-            let mut toolbox = ToolBox::new();
-            toolbox.set_policy("forbidden_tool", ToolExecutionPolicy::Forbidden);
-            toolbox.set_policy("allowed_tool", ToolExecutionPolicy::Auto);
-
-            assert!(toolbox.is_forbidden("forbidden_tool"));
-            assert!(!toolbox.is_forbidden("allowed_tool"));
-            assert!(!toolbox.is_forbidden("unknown"));
-        }
-
-        #[test]
-        fn to_tools_returns_definitions() {
-            let mut toolbox = ToolBox::new();
-            toolbox.add(MockTool { name: "tool1" });
-            let tools = toolbox.to_tools();
-            assert_eq!(tools.len(), 1);
-        }
-
-        #[tokio::test]
-        async fn call_executes_tool() {
-            let mut toolbox = ToolBox::new();
-            toolbox.add(MockTool { name: "echo" });
-
-            let result = toolbox
-                .call("echo", serde_json::json!({"input": "hello"}))
-                .await;
-            assert!(result.is_ok());
-            let value = result.unwrap();
-            assert!(value.get("received").is_some());
-        }
-
-        #[tokio::test]
-        async fn call_returns_error_for_missing_tool() {
-            let toolbox = ToolBox::new();
-            let result = toolbox.call("nonexistent", serde_json::json!({})).await;
-            assert!(result.is_err());
-            assert!(matches!(result.unwrap_err(), ToolError::NotFound(_)));
-        }
-
-        #[test]
-        fn debug_format() {
-            let mut toolbox = ToolBox::new();
-            toolbox.add(MockTool { name: "test" });
-            let debug = format!("{toolbox:?}");
-            assert!(debug.contains("ToolBox"));
-            assert!(debug.contains("test"));
-        }
-
-        #[test]
-        fn add_boxed_inserts_tool() {
-            let mut toolbox = ToolBox::new();
-            let tool: BoxedTool = Box::new(MockTool { name: "boxed" });
-            toolbox.add_boxed(tool);
-            assert!(toolbox.contains("boxed"));
-        }
-
-        #[test]
-        fn add_boxed_with_policy_sets_policy() {
-            let mut toolbox = ToolBox::new();
-            let tool: BoxedTool = Box::new(MockTool { name: "boxed" });
-            toolbox.add_boxed_with_policy(tool, ToolExecutionPolicy::Forbidden);
-            assert!(toolbox.is_forbidden("boxed"));
-        }
-    }
-
     mod tool_result_type {
         use super::*;
 
@@ -1395,151 +993,6 @@ mod tests {
                 Err(ToolError::Execution("failed".to_owned()))
             }
             assert!(returns_error().is_err());
-        }
-    }
-
-    mod integration {
-        use super::*;
-
-        struct CalculatorTool;
-
-        #[derive(Deserialize)]
-        struct CalcArgs {
-            a: i64,
-            b: i64,
-            op: String,
-        }
-
-        #[derive(Serialize)]
-        struct CalcResult {
-            result: i64,
-        }
-
-        #[async_trait]
-        impl Tool for CalculatorTool {
-            const NAME: &'static str = "calculator";
-            type Args = CalcArgs;
-            type Output = CalcResult;
-            type Error = ToolError;
-
-            fn description(&self) -> String {
-                "Perform basic arithmetic".to_owned()
-            }
-
-            fn parameters_schema(&self) -> Value {
-                serde_json::json!({
-                    "type": "object",
-                    "properties": {
-                        "a": {"type": "integer"},
-                        "b": {"type": "integer"},
-                        "op": {"type": "string", "enum": ["add", "sub", "mul", "div"]}
-                    },
-                    "required": ["a", "b", "op"]
-                })
-            }
-
-            async fn call(&self, args: Self::Args) -> Result<Self::Output, Self::Error> {
-                let result = match args.op.as_str() {
-                    "add" => args.a + args.b,
-                    "sub" => args.a - args.b,
-                    "mul" => args.a * args.b,
-                    "div" => {
-                        if args.b == 0 {
-                            return Err(ToolError::Execution("Division by zero".to_owned()));
-                        }
-                        args.a / args.b
-                    }
-                    _ => return Err(ToolError::InvalidArguments("Unknown operation".to_owned())),
-                };
-                Ok(CalcResult { result })
-            }
-        }
-
-        #[test]
-        fn tool_definition_generation() {
-            let tool = CalculatorTool;
-            let def = Tool::definition(&tool);
-            assert_eq!(def.name, "calculator");
-            assert_eq!(def.description, "Perform basic arithmetic");
-            assert!(def.parameters.get("properties").is_some());
-        }
-
-        #[tokio::test]
-        async fn tool_execution_success() {
-            let tool = CalculatorTool;
-            let args = serde_json::json!({"a": 10, "b": 5, "op": "add"});
-            let result = Tool::call_json(&tool, args).await.unwrap();
-            assert_eq!(result.get("result"), Some(&serde_json::json!(15)));
-        }
-
-        #[tokio::test]
-        async fn tool_execution_error() {
-            let tool = CalculatorTool;
-            let args = serde_json::json!({"a": 10, "b": 0, "op": "div"});
-            let result: Result<Value, ToolError> = Tool::call_json(&tool, args).await;
-            assert!(result.is_err());
-        }
-
-        #[tokio::test]
-        async fn tool_with_string_args() {
-            let tool = CalculatorTool;
-            let args = Value::String(r#"{"a": 3, "b": 4, "op": "mul"}"#.to_owned());
-            let result = Tool::call_json(&tool, args).await.unwrap();
-            assert_eq!(result.get("result"), Some(&serde_json::json!(12)));
-        }
-
-        #[tokio::test]
-        async fn toolbox_workflow() {
-            let mut toolbox = ToolBox::new();
-            toolbox.add_with_policy(CalculatorTool, ToolExecutionPolicy::Auto);
-
-            // Check tool exists
-            assert!(toolbox.contains("calculator"));
-
-            // Get definition for chat request
-            let definitions = toolbox.to_tools();
-            assert_eq!(definitions.len(), 1);
-
-            // Execute tool
-            let args = serde_json::json!({"a": 7, "b": 3, "op": "sub"});
-            let result = toolbox.call("calculator", args).await.unwrap();
-            assert_eq!(result.get("result"), Some(&serde_json::json!(4)));
-        }
-
-        #[test]
-        fn openai_format_serialization() {
-            let tool = CalculatorTool;
-            let def = Tool::definition(&tool);
-            let json = serde_json::to_value(&def).unwrap();
-
-            // Verify OpenAI format
-            assert_eq!(json["type"], "function");
-            assert!(json["function"].is_object());
-            assert_eq!(json["function"]["name"], "calculator");
-            assert!(json["function"]["parameters"].is_object());
-        }
-
-        #[test]
-        fn tool_call_result_workflow() {
-            // Simulate successful tool execution
-            let success_result = ToolCallResult::success(
-                "call_abc123",
-                "calculator",
-                serde_json::json!({"result": 42}),
-            );
-            assert!(success_result.is_success());
-            let llm_output = success_result.to_string_for_llm();
-            assert!(llm_output.contains("42"));
-
-            // Simulate failed tool execution
-            let error_result = ToolCallResult::failure(
-                "call_def456",
-                "calculator",
-                ToolError::Execution("Division by zero".to_owned()),
-            );
-            assert!(!error_result.is_success());
-            let llm_error = error_result.to_string_for_llm();
-            assert!(llm_error.contains("Error"));
         }
     }
 }

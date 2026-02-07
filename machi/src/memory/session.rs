@@ -57,8 +57,5 @@ pub trait Session: Send + Sync {
     }
 }
 
-/// A heap-allocated, type-erased session for dynamic dispatch.
-pub type BoxedSession = Box<dyn Session>;
-
 /// A shared, reference-counted session for use across tasks.
 pub type SharedSession = std::sync::Arc<dyn Session>;

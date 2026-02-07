@@ -217,11 +217,6 @@ impl TypeInfo {
             }
         }
     }
-
-    /// Get the output type string for LLM prompts.
-    const fn output_type_str(&self) -> &'static str {
-        self.schema_type.as_str()
-    }
 }
 
 /// State machine for parsing doc comment sections.
@@ -360,10 +355,6 @@ struct ToolArgs {
     /// List of required parameter names
     #[darling(default, multiple)]
     required: Vec<String>,
-    /// Output type hint for LLM prompts
-    output_type: Option<String>,
-    /// JSON schema for structured output (as JSON string)
-    output_schema: Option<String>,
 }
 
 /// Wrapper for parameter descriptions to implement FromMeta.
@@ -558,27 +549,6 @@ pub fn tool_impl(args: TokenStream, input: TokenStream) -> TokenStream {
     let return_type = &input_fn.sig.output;
     let (output_type, error_type) = extract_result_types(return_type);
 
-    // Determine output type string
-    let output_type_str = macro_args.output_type.clone().unwrap_or_else(|| {
-        if let ReturnType::Type(_, ty) = return_type {
-            TypeInfo::from_type(ty).output_type_str().to_string()
-        } else {
-            "null".to_string()
-        }
-    });
-
-    // Generate output_schema implementation
-    let output_schema_impl = if let Some(schema_str) = &macro_args.output_schema {
-        quote! {
-            ::std::option::Option::Some(
-                ::serde_json::from_str(#schema_str)
-                    .expect("Invalid JSON in output_schema attribute")
-            )
-        }
-    } else {
-        quote! { ::std::option::Option::None }
-    };
-
     // Generate names
     let struct_name = format_ident!("{}", fn_name_str.to_case(Case::Pascal));
     let params_struct_name = format_ident!("{}Args", struct_name);
@@ -676,14 +646,6 @@ pub fn tool_impl(args: TokenStream, input: TokenStream) -> TokenStream {
                     },
                     "required": [#(#required_params),*]
                 })
-            }
-
-            fn output_type(&self) -> &'static str {
-                #output_type_str
-            }
-
-            fn output_schema(&self) -> ::std::option::Option<::serde_json::Value> {
-                #output_schema_impl
             }
 
             #call_impl

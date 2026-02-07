@@ -327,10 +327,6 @@ impl Runner {
                         tool_calls: tool_records,
                     });
                 }
-
-                NextStep::MaxStepsExceeded => {
-                    unreachable!("MaxStepsExceeded is only set outside the loop");
-                }
             }
         }
 
@@ -671,9 +667,6 @@ impl Runner {
                         };
                     }
 
-                    NextStep::MaxStepsExceeded => {
-                        unreachable!("MaxStepsExceeded is only set outside the loop");
-                    }
                 }
             }
 

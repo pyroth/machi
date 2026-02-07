@@ -749,56 +749,8 @@ pub trait ChatProviderExt: ChatProvider {
 // Blanket implementation for all ChatProviders
 impl<T: ChatProvider> ChatProviderExt for T {}
 
-/// Type alias for a boxed ChatProvider.
-pub type BoxedChatProvider = Box<dyn ChatProvider>;
-
 /// Type alias for an Arc-wrapped ChatProvider.
 pub type SharedChatProvider = std::sync::Arc<dyn ChatProvider>;
-
-/// Capabilities information for a provider.
-#[derive(Debug, Clone, Copy, Default)]
-pub struct ProviderCapabilities {
-    /// Supports streaming responses.
-    pub streaming: bool,
-    /// Supports function/tool calling.
-    pub tools: bool,
-    /// Supports vision (image inputs).
-    pub vision: bool,
-    /// Supports JSON mode / structured outputs.
-    pub json_mode: bool,
-    /// Supports audio inputs.
-    pub audio_input: bool,
-    /// Supports audio outputs.
-    pub audio_output: bool,
-}
-
-impl ProviderCapabilities {
-    /// Creates capabilities with all features enabled.
-    #[must_use]
-    pub const fn full() -> Self {
-        Self {
-            streaming: true,
-            tools: true,
-            vision: true,
-            json_mode: true,
-            audio_input: true,
-            audio_output: true,
-        }
-    }
-
-    /// Creates capabilities for text-only models.
-    #[must_use]
-    pub const fn text_only() -> Self {
-        Self {
-            streaming: true,
-            tools: false,
-            vision: false,
-            json_mode: false,
-            audio_input: false,
-            audio_output: false,
-        }
-    }
-}
 
 #[cfg(test)]
 #[allow(clippy::unwrap_used, clippy::panic)]
@@ -1278,54 +1230,6 @@ mod tests {
 
             assert!(!json.contains("raw"));
             assert!(!json.contains("secret"));
-        }
-    }
-
-    mod provider_capabilities {
-        use super::*;
-
-        #[test]
-        fn default_all_false() {
-            let caps = ProviderCapabilities::default();
-
-            assert!(!caps.streaming);
-            assert!(!caps.tools);
-            assert!(!caps.vision);
-            assert!(!caps.json_mode);
-            assert!(!caps.audio_input);
-            assert!(!caps.audio_output);
-        }
-
-        #[test]
-        fn full_all_true() {
-            let caps = ProviderCapabilities::full();
-
-            assert!(caps.streaming);
-            assert!(caps.tools);
-            assert!(caps.vision);
-            assert!(caps.json_mode);
-            assert!(caps.audio_input);
-            assert!(caps.audio_output);
-        }
-
-        #[test]
-        fn text_only_streaming_only() {
-            let caps = ProviderCapabilities::text_only();
-
-            assert!(caps.streaming);
-            assert!(!caps.tools);
-            assert!(!caps.vision);
-            assert!(!caps.json_mode);
-            assert!(!caps.audio_input);
-            assert!(!caps.audio_output);
-        }
-
-        #[test]
-        fn copy_trait() {
-            let caps = ProviderCapabilities::full();
-            let caps2 = caps;
-            assert!(caps.streaming);
-            assert!(caps2.streaming);
         }
     }
 

@@ -113,22 +113,6 @@ impl Usage {
         }
     }
 
-    /// Create usage from OpenAI-style response.
-    #[must_use]
-    pub fn from_openai(
-        prompt_tokens: u32,
-        completion_tokens: u32,
-        total_tokens: Option<u32>,
-    ) -> Self {
-        Self {
-            input_tokens: prompt_tokens,
-            output_tokens: completion_tokens,
-            total_tokens: total_tokens.unwrap_or(prompt_tokens + completion_tokens),
-            prompt_tokens_details: None,
-            completion_tokens_details: None,
-        }
-    }
-
     /// Set prompt tokens details.
     #[must_use]
     pub const fn with_prompt_details(mut self, details: PromptTokensDetails) -> Self {
@@ -201,17 +185,6 @@ impl Usage {
             None => 0,
         };
         input + output
-    }
-
-    /// Get the effective output tokens (excluding reasoning if tracked separately).
-    #[must_use]
-    pub const fn effective_output_tokens(&self) -> u32 {
-        let reasoning = self.reasoning_tokens();
-        if reasoning <= self.output_tokens {
-            self.output_tokens - reasoning
-        } else {
-            self.output_tokens
-        }
     }
 }
 
@@ -473,20 +446,6 @@ mod tests {
         }
 
         #[test]
-        fn from_openai_creates_usage() {
-            let usage = Usage::from_openai(100, 50, Some(150));
-            assert_eq!(usage.input_tokens, 100);
-            assert_eq!(usage.output_tokens, 50);
-            assert_eq!(usage.total_tokens, 150);
-        }
-
-        #[test]
-        fn from_openai_calculates_total_if_none() {
-            let usage = Usage::from_openai(100, 50, None);
-            assert_eq!(usage.total_tokens, 150);
-        }
-
-        #[test]
         fn with_prompt_details() {
             let details = PromptTokensDetails {
                 cached_tokens: 20,
@@ -574,18 +533,6 @@ mod tests {
         fn audio_tokens_returns_zero_when_none() {
             let usage = Usage::new(100, 50);
             assert_eq!(usage.audio_tokens(), 0);
-        }
-
-        #[test]
-        fn effective_output_tokens_subtracts_reasoning() {
-            let usage = Usage::new(100, 50).with_reasoning(20);
-            assert_eq!(usage.effective_output_tokens(), 30);
-        }
-
-        #[test]
-        fn effective_output_tokens_returns_output_if_reasoning_greater() {
-            let usage = Usage::new(100, 50).with_reasoning(100);
-            assert_eq!(usage.effective_output_tokens(), 50);
         }
 
         #[test]
@@ -830,7 +777,6 @@ mod tests {
             let usage = Usage::new(100, 500).with_reasoning(400).with_cached(50);
 
             assert_eq!(usage.reasoning_tokens(), 400);
-            assert_eq!(usage.effective_output_tokens(), 100);
             assert_eq!(usage.cached_tokens(), 50);
 
             let display = usage.to_string();

@@ -801,10 +801,6 @@ impl Tool for WebSearchTool {
         })
     }
 
-    fn output_type(&self) -> &'static str {
-        "string"
-    }
-
     async fn call(&self, args: Self::Args) -> Result<Self::Output, Self::Error> {
         if args.query.trim().is_empty() {
             return Err(ToolError::invalid_args("Search query cannot be empty"));

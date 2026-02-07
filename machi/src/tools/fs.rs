@@ -101,10 +101,6 @@ impl Tool for ReadFileTool {
         })
     }
 
-    fn output_type(&self) -> &'static str {
-        "string"
-    }
-
     async fn call(&self, args: Self::Args) -> Result<Self::Output, Self::Error> {
         let path = Path::new(&args.path);
 
@@ -230,10 +226,6 @@ impl Tool for WriteFileTool {
         })
     }
 
-    fn output_type(&self) -> &'static str {
-        "string"
-    }
-
     async fn call(&self, args: Self::Args) -> Result<Self::Output, Self::Error> {
         let path = Path::new(&args.path);
 
@@ -344,10 +336,6 @@ impl Tool for EditFileTool {
             },
             "required": ["path", "old_text", "new_text"]
         })
-    }
-
-    fn output_type(&self) -> &'static str {
-        "string"
     }
 
     async fn call(&self, args: Self::Args) -> Result<Self::Output, Self::Error> {
@@ -465,10 +453,6 @@ impl Tool for ListDirTool {
             },
             "required": ["path"]
         })
-    }
-
-    fn output_type(&self) -> &'static str {
-        "string"
     }
 
     async fn call(&self, args: Self::Args) -> Result<Self::Output, Self::Error> {

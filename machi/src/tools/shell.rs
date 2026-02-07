@@ -161,10 +161,6 @@ impl Tool for ExecTool {
         })
     }
 
-    fn output_type(&self) -> &'static str {
-        "string"
-    }
-
     async fn call(&self, args: Self::Args) -> Result<Self::Output, Self::Error> {
         let timeout_secs = args.timeout.unwrap_or(self.timeout_secs);
         let effective_cwd = args.cwd.as_ref().or(self.working_dir.as_ref());

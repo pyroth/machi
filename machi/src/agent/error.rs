@@ -36,10 +36,6 @@ pub enum AgentError {
         /// Diagnostic information from the guardrail.
         info: serde_json::Value,
     },
-
-    /// Agent execution was interrupted.
-    #[error("Agent execution was interrupted")]
-    Interrupted,
 }
 
 impl AgentError {

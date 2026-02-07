@@ -54,9 +54,6 @@ pub enum NextStep {
         /// Tool calls already approved (auto policy).
         approved: Vec<ToolCallRequest>,
     },
-
-    /// The maximum step count was reached without a final answer.
-    MaxStepsExceeded,
 }
 
 /// A parsed tool call request extracted from the LLM response.
