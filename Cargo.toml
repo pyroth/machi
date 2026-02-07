@@ -7,7 +7,7 @@ resolver = "3"
 version = "0.7.0"
 edition = "2024"
 license = "MIT OR Apache-2.0"
-repository = "https://github.com/pyroth/machi"
+repository = "https://github.com/qntx/machi"
 
 [workspace.dependencies]
 machi = { version = "0.7.0", path = "machi" }
@@ -29,6 +29,7 @@ html-escape = "0.2"
 minijinja = { version = "2.6", features = ["loader"] }
 proc-macro2 = "1.0"
 quote = "1.0"
+ra2a = "0.4"
 regex = "1.11"
 reqwest = { version = "0.13.1", features = ["json", "stream", "multipart"] }
 rusqlite = { version = "0.38.0", features = ["bundled"] }

@@ -59,6 +59,9 @@ pub use crate::tool::{
 };
 pub use crate::usage::{CompletionTokensDetails, PromptTokensDetails, Usage, UsageTracker};
 
+#[cfg(feature = "mcp")]
+pub use crate::mcp::{HttpBuilder, McpServer, StdioBuilder};
+
 #[cfg(feature = "toolkit")]
 pub use crate::tools::{
     BingProvider, BraveProvider, DuckDuckGoProvider, EditFileTool, ExecTool, ListDirTool,

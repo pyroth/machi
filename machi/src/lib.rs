@@ -11,6 +11,8 @@ pub mod embedding;
 pub mod error;
 pub mod guardrail;
 pub mod llms;
+#[cfg(feature = "mcp")]
+pub mod mcp;
 pub mod memory;
 pub mod message;
 pub mod prelude;
