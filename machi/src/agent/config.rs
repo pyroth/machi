@@ -34,7 +34,7 @@ use crate::chat::SharedChatProvider;
 use crate::error::Result;
 use crate::tool::{BoxedTool, ToolDefinition, ToolExecutionPolicy};
 
-use super::result::{RunConfig, RunResult};
+use super::result::{RunConfig, RunResult, UserInput};
 
 /// Instructions that guide the agent's behavior.
 ///
@@ -292,6 +292,11 @@ impl Agent {
 
     /// Run this agent to completion with the given input.
     ///
+    /// Accepts any type that implements `Into<UserInput>`, including:
+    /// - `&str` or `String` for plain text
+    /// - `Vec<ContentPart>` for multimodal content (text + images + audio)
+    /// - [`UserInput`] for explicit construction
+    ///
     /// This is a convenience wrapper around [`Runner::run`](super::Runner::run)
     /// that uses the agent's own provider.
     ///
@@ -301,7 +306,7 @@ impl Agent {
     /// errors from the underlying [`Runner`](super::Runner) execution.
     pub fn run<'a>(
         &'a self,
-        input: &'a str,
+        input: impl Into<UserInput>,
         config: RunConfig,
     ) -> Pin<Box<dyn Future<Output = Result<RunResult>> + Send + 'a>> {
         super::Runner::run(self, input, config)

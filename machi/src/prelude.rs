@@ -18,7 +18,7 @@ pub use machi_derive::tool;
 
 pub use crate::agent::{
     Agent, Instructions, ManagedAgentTool, NextStep, RunConfig, RunResult, Runner, StepInfo,
-    ToolCallRecord, ToolCallRequest,
+    ToolCallRecord, ToolCallRequest, UserInput,
 };
 pub use crate::callback::{
     AgentHooks, BoxedAgentHooks, BoxedRunHooks, LoggingAgentHooks, LoggingRunHooks, NoopAgentHooks,

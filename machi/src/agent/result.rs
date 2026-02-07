@@ -15,7 +15,7 @@ use serde_json::Value;
 use crate::callback::SharedRunHooks;
 use crate::chat::ChatResponse;
 use crate::memory::SharedSession;
-use crate::message::ToolCall;
+use crate::message::{Content, ContentPart, ImageMime, Message, Role, ToolCall};
 use crate::tool::SharedConfirmationHandler;
 use crate::usage::Usage;
 
@@ -220,4 +220,142 @@ pub struct ToolCallRecord {
     pub result: String,
     /// Whether the call succeeded.
     pub success: bool,
+}
+
+/// Flexible input for an agent run, supporting text and multimodal content.
+///
+/// `UserInput` abstracts over plain text and multimodal payloads so that
+/// [`Runner::run`](super::Runner::run) and [`Agent::run`](super::Agent::run)
+/// accept both simple strings and rich content (images, audio) through
+/// a single, ergonomic API.
+///
+/// # Examples
+///
+/// ```rust,ignore
+/// use machi::agent::{Agent, RunConfig, UserInput};
+/// use machi::message::ContentPart;
+///
+/// // Simple text — most common case.
+/// agent.run("Hello!", RunConfig::default()).await?;
+///
+/// // Text + image via convenience constructor.
+/// agent.run(
+///     UserInput::with_image("Describe this", "https://example.com/img.png"),
+///     RunConfig::default(),
+/// ).await?;
+///
+/// // Full multimodal via Vec<ContentPart>.
+/// agent.run(
+///     vec![
+///         ContentPart::text("What's in these images?"),
+///         ContentPart::image_url("https://example.com/a.png"),
+///         ContentPart::image_url("https://example.com/b.png"),
+///     ],
+///     RunConfig::default(),
+/// ).await?;
+/// ```
+#[derive(Debug, Clone)]
+pub enum UserInput {
+    /// Plain text input (the most common case).
+    Text(String),
+
+    /// Multimodal content parts (text, images, audio, etc.).
+    Parts(Vec<ContentPart>),
+}
+
+impl UserInput {
+    /// Creates a text-only input.
+    #[inline]
+    #[must_use]
+    pub fn text(text: impl Into<String>) -> Self {
+        Self::Text(text.into())
+    }
+
+    /// Creates a multimodal input from raw content parts.
+    #[inline]
+    #[must_use]
+    pub const fn parts(parts: Vec<ContentPart>) -> Self {
+        Self::Parts(parts)
+    }
+
+    /// Convenience: text + a single image URL.
+    #[must_use]
+    pub fn with_image(text: impl Into<String>, image_url: impl Into<String>) -> Self {
+        Self::Parts(vec![
+            ContentPart::text(text),
+            ContentPart::image_url(image_url),
+        ])
+    }
+
+    /// Convenience: text + a single image from raw bytes with explicit MIME.
+    #[must_use]
+    pub fn with_image_bytes(text: impl Into<String>, data: &[u8], mime: ImageMime) -> Self {
+        Self::Parts(vec![
+            ContentPart::text(text),
+            ContentPart::image_bytes(data, mime),
+        ])
+    }
+
+    /// Convenience: text + a single image from raw bytes with auto-detected MIME.
+    #[must_use]
+    pub fn with_image_auto(text: impl Into<String>, data: &[u8]) -> Self {
+        Self::Parts(vec![
+            ContentPart::text(text),
+            ContentPart::image_bytes_auto(data),
+        ])
+    }
+
+    /// Converts this input into a user-role [`Message`].
+    #[must_use]
+    pub fn into_message(self) -> Message {
+        match self {
+            Self::Text(text) => Message::user(text),
+            Self::Parts(parts) => Message::new(Role::User, Content::Parts(parts)),
+        }
+    }
+
+    /// Returns `true` if this input contains any images.
+    #[must_use]
+    pub fn has_images(&self) -> bool {
+        match self {
+            Self::Text(_) => false,
+            Self::Parts(parts) => parts.iter().any(ContentPart::is_image),
+        }
+    }
+
+    /// Returns `true` if this input contains any audio.
+    #[must_use]
+    pub fn has_audio(&self) -> bool {
+        match self {
+            Self::Text(_) => false,
+            Self::Parts(parts) => parts.iter().any(ContentPart::is_audio),
+        }
+    }
+
+    /// Returns `true` if this is a multimodal input (contains non-text parts).
+    #[must_use]
+    pub fn is_multimodal(&self) -> bool {
+        self.has_images() || self.has_audio()
+    }
+}
+
+impl From<&str> for UserInput {
+    #[inline]
+    fn from(s: &str) -> Self {
+        Self::Text(s.to_owned())
+    }
+}
+
+impl From<String> for UserInput {
+    #[inline]
+    fn from(s: String) -> Self {
+        Self::Text(s)
+    }
+}
+
+impl From<Vec<ContentPart>> for UserInput {
+    #[inline]
+    fn from(parts: Vec<ContentPart>) -> Self {
+        Self::Parts(parts)
+    }
 }

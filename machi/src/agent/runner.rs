@@ -36,7 +36,9 @@ use crate::usage::Usage;
 
 use super::config::Agent;
 use super::hook::HookPair;
-use super::result::{NextStep, RunConfig, RunResult, StepInfo, ToolCallRecord, ToolCallRequest};
+use super::result::{
+    NextStep, RunConfig, RunResult, StepInfo, ToolCallRecord, ToolCallRequest, UserInput,
+};
 
 /// Stateless execution engine that drives an [`Agent`] through its reasoning loop.
 ///
@@ -56,7 +58,7 @@ impl Runner {
     /// # Arguments
     ///
     /// * `agent` — the agent to run (must have a provider configured)
-    /// * `input` — the user's input message
+    /// * `input` — the user's input (text, multimodal, or raw content parts)
     /// * `config` — run-level configuration (hooks, session, limits)
     ///
     /// # Returns
@@ -70,14 +72,15 @@ impl Runner {
     /// LLM / tool errors encountered during execution.
     pub fn run<'a>(
         agent: &'a Agent,
-        input: &'a str,
+        input: impl Into<UserInput>,
         config: RunConfig,
     ) -> Pin<Box<dyn Future<Output = Result<RunResult>> + Send + 'a>> {
+        let input = input.into();
         Box::pin(Self::run_inner(agent, input, config))
     }
 
     /// Internal async implementation of the agent run loop.
-    async fn run_inner(agent: &Agent, input: &str, config: RunConfig) -> Result<RunResult> {
+    async fn run_inner(agent: &Agent, input: UserInput, config: RunConfig) -> Result<RunResult> {
         let provider = agent.provider.as_deref().ok_or_else(|| {
             Error::agent(format!(
                 "Agent '{}' has no provider configured. Call .provider() before running.",
@@ -102,7 +105,8 @@ impl Runner {
         if !system_prompt.is_empty() {
             messages.push(Message::system(&system_prompt));
         }
-        messages.push(Message::user(input));
+        let user_message = input.into_message();
+        messages.push(user_message.clone());
 
         // Load session history (inserted between system prompt and user input).
         if let Some(ref session) = config.session {
@@ -157,7 +161,7 @@ impl Runner {
 
                     // Persist to session if configured.
                     if let Some(ref session) = config.session {
-                        let to_save = vec![Message::user(input), response.message.clone()];
+                        let to_save = vec![user_message, response.message.clone()];
                         let _ = session.add_messages(&to_save).await;
                     }
 
