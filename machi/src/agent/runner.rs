@@ -28,7 +28,7 @@ use tracing::{Instrument, debug, error, info, info_span, warn};
 
 use crate::callback::{NoopRunHooks, RunContext, RunHooks};
 use crate::chat::{ChatRequest, ChatResponse, ToolChoice};
-use crate::error::{Error, Result};
+use crate::error::{AgentError, Error, Result};
 use crate::guardrail::{
     InputGuardrail, InputGuardrailResult, OutputGuardrail, OutputGuardrailResult,
 };
@@ -98,7 +98,7 @@ impl Runner {
     /// Internal async implementation of the agent run loop.
     async fn run_inner(agent: &Agent, input: UserInput, config: RunConfig) -> Result<RunResult> {
         let provider = agent.provider.as_deref().ok_or_else(|| {
-            Error::agent(format!(
+            AgentError::runtime(format!(
                 "Agent '{}' has no provider configured. Call .provider() before running.",
                 agent.name
             ))
@@ -292,7 +292,7 @@ impl Runner {
                     );
 
                     let handler = config.confirmation_handler.as_deref().ok_or_else(|| {
-                        Error::agent(
+                        AgentError::runtime(
                             "Tool execution requires approval but no confirmation handler is configured",
                         )
                     })?;
@@ -335,7 +335,7 @@ impl Runner {
         }
 
         // Exceeded max steps.
-        let err = Error::max_steps(max_steps);
+        let err = Error::from(AgentError::max_steps(max_steps));
         error!(error = %err, agent = %agent.name, max_steps, "Max steps exceeded");
         tracing::Span::current().record("error", tracing::field::display(&err));
         hooks.error(&context, &err).await;
@@ -384,10 +384,10 @@ impl Runner {
     ) -> impl Stream<Item = Result<RunEvent>> + Send + '_ {
         async_stream::try_stream! {
             let provider = agent.provider.as_deref().ok_or_else(|| {
-                Error::agent(format!(
+                Error::from(AgentError::runtime(format!(
                     "Agent '{}' has no provider configured. Call .provider() before running.",
                     agent.name
-                ))
+                )))
             })?;
             let max_steps = config.max_steps.unwrap_or(agent.max_steps);
             let noop = NoopRunHooks;
@@ -628,9 +628,9 @@ impl Runner {
                         );
 
                         let handler = config.confirmation_handler.as_deref().ok_or_else(|| {
-                            Error::agent(
+                            Error::from(AgentError::runtime(
                                 "Tool execution requires approval but no confirmation handler is configured",
-                            )
+                            ))
                         })?;
 
                         let (confirmed, denied) =
@@ -678,7 +678,7 @@ impl Runner {
             }
 
             // Exceeded max steps.
-            let err = Error::max_steps(max_steps);
+            let err = Error::from(AgentError::max_steps(max_steps));
             error!(error = %err, agent = %agent.name, max_steps, "Streamed max steps exceeded");
             hooks.error(&context, &err).await;
             Err(err)?;
@@ -1014,7 +1014,7 @@ impl Runner {
                     guardrail = %name,
                     "Input guardrail tripwire triggered",
                 );
-                return Err(Error::input_guardrail_triggered(name, info));
+                return Err(AgentError::input_guardrail_triggered(name, info).into());
             }
             results.push(result);
         }
@@ -1052,7 +1052,7 @@ impl Runner {
                     guardrail = %name,
                     "Output guardrail tripwire triggered",
                 );
-                return Err(Error::output_guardrail_triggered(name, info));
+                return Err(AgentError::output_guardrail_triggered(name, info).into());
             }
             results.push(result);
         }

@@ -277,6 +277,7 @@ impl AgentHooks for LoggingAgentHooks {
 mod tests {
     use super::*;
 
+    use crate::agent::AgentError;
     use crate::callback::context::RunContext;
     use crate::callback::hooks::{AgentHooks, BoxedAgentHooks, BoxedRunHooks, RunHooks};
     use crate::chat::ChatResponse;
@@ -377,7 +378,7 @@ mod tests {
             let output = serde_json::json!({"answer": 42});
             let response = test_response();
             let messages = vec![Message::system("sys"), Message::user("hello")];
-            let error = Error::agent("something went wrong");
+            let error: Error = AgentError::runtime("something went wrong").into();
 
             hooks.on_agent_start(&ctx, "test").await;
             hooks.on_agent_end(&ctx, "test", &output).await;
@@ -470,7 +471,7 @@ mod tests {
             let output = serde_json::json!("done");
             let response = test_response();
             let messages = vec![Message::user("question")];
-            let error = Error::agent("agent failure");
+            let error: Error = AgentError::runtime("agent failure").into();
 
             hooks.on_start(&ctx).await;
             hooks.on_end(&ctx, &output).await;

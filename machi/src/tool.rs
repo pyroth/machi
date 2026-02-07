@@ -16,7 +16,88 @@ use serde_json::Value;
 use std::collections::{HashMap, HashSet};
 use std::fmt;
 
-use crate::error::ToolError;
+/// Error type for tool execution failures.
+#[derive(Debug, Clone, thiserror::Error)]
+#[non_exhaustive]
+pub enum ToolError {
+    /// Error during tool execution.
+    #[error("Execution error: {0}")]
+    Execution(String),
+
+    /// Invalid arguments provided to the tool.
+    #[error("Invalid arguments: {0}")]
+    InvalidArguments(String),
+
+    /// Tool not found.
+    #[error("Tool not found: {0}")]
+    NotFound(String),
+
+    /// Tool is not initialized.
+    #[error("Tool not initialized")]
+    NotInitialized,
+
+    /// Tool execution is forbidden by policy.
+    #[error("Tool '{0}' is forbidden by policy")]
+    Forbidden(String),
+
+    /// Tool execution was denied by human confirmation.
+    #[error("Tool '{0}' execution denied by confirmation")]
+    ConfirmationDenied(String),
+
+    /// Generic error.
+    #[error("Tool error: {0}")]
+    Other(String),
+}
+
+impl ToolError {
+    /// Create an execution error.
+    #[must_use]
+    pub fn execution(msg: impl Into<String>) -> Self {
+        Self::Execution(msg.into())
+    }
+
+    /// Create an invalid arguments error.
+    #[must_use]
+    pub fn invalid_args(msg: impl Into<String>) -> Self {
+        Self::InvalidArguments(msg.into())
+    }
+
+    /// Create a not found error.
+    #[must_use]
+    pub fn not_found(name: impl Into<String>) -> Self {
+        Self::NotFound(name.into())
+    }
+
+    /// Create a forbidden error.
+    #[must_use]
+    pub fn forbidden(tool_name: impl Into<String>) -> Self {
+        Self::Forbidden(tool_name.into())
+    }
+
+    /// Create a confirmation denied error.
+    #[must_use]
+    pub fn confirmation_denied(tool_name: impl Into<String>) -> Self {
+        Self::ConfirmationDenied(tool_name.into())
+    }
+}
+
+impl From<String> for ToolError {
+    fn from(s: String) -> Self {
+        Self::Other(s)
+    }
+}
+
+impl From<&str> for ToolError {
+    fn from(s: &str) -> Self {
+        Self::Other(s.to_string())
+    }
+}
+
+impl From<serde_json::Error> for ToolError {
+    fn from(err: serde_json::Error) -> Self {
+        Self::InvalidArguments(err.to_string())
+    }
+}
 
 /// A type alias for `Result<T, ToolError>`.
 pub type ToolResult<T> = Result<T, ToolError>;

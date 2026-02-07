@@ -8,11 +8,15 @@
 //! - [`openai`] - OpenAI API (GPT-4o, GPT-4, etc.)
 //! - [`ollama`] - Ollama local LLM server
 
+pub mod error;
+
 #[cfg(feature = "openai")]
 pub mod openai;
 
 #[cfg(feature = "ollama")]
 pub mod ollama;
+
+pub use error::{LlmError, LlmErrorKind};
 
 #[cfg(feature = "openai")]
 pub use openai::{OpenAI, OpenAIConfig};

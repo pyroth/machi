@@ -60,7 +60,7 @@ async fn main() -> Result<()> {
         )
         .await
     {
-        Err(Error::InputGuardrailTriggered { name, info, .. }) => {
+        Err(Error::Agent(AgentError::InputGuardrailTriggered { name, info })) => {
             println!("Blocked by '{name}': {info}");
         }
         other => println!("Unexpected: {other:?}"),

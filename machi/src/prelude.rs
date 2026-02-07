@@ -16,6 +16,7 @@ pub use crate::llms::{OpenAI, OpenAIConfig};
 #[cfg(feature = "derive")]
 pub use machi_derive::tool;
 
+pub use crate::agent::AgentError;
 pub use crate::agent::{
     Agent, Instructions, ManagedAgentTool, NextStep, OutputSchema, RunConfig, RunEvent, RunResult,
     Runner, StepInfo, ToolCallRecord, ToolCallRequest, UserInput,
@@ -24,11 +25,13 @@ pub use crate::callback::{
     AgentHooks, BoxedAgentHooks, BoxedRunHooks, LoggingAgentHooks, LoggingRunHooks, NoopAgentHooks,
     NoopRunHooks, RunContext, RunHooks, SharedAgentHooks, SharedRunHooks,
 };
-pub use crate::error::{Error, LlmError, Result, ToolError};
+pub use crate::error::{Error, Result};
 pub use crate::guardrail::{
     GuardrailOutput, InputGuardrail, InputGuardrailCheck, InputGuardrailResult, OutputGuardrail,
     OutputGuardrailCheck, OutputGuardrailResult,
 };
+pub use crate::llms::{LlmError, LlmErrorKind};
+pub use crate::tool::ToolError;
 
 pub use crate::audio::{
     AudioFormat, AudioProvider, SpeechRequest, SpeechResponse, SpeechToTextProvider,
@@ -64,6 +67,9 @@ pub use crate::a2a::{A2aAgent, A2aAgentBuilder};
 
 #[cfg(feature = "mcp")]
 pub use crate::mcp::{HttpBuilder, McpServer, StdioBuilder};
+
+#[cfg(feature = "wallet")]
+pub use crate::wallet::{EvmWallet, EvmWalletBuilder, WalletError};
 
 #[cfg(feature = "toolkit")]
 pub use crate::tools::{

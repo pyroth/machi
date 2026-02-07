@@ -23,8 +23,18 @@ pub mod tool;
 #[cfg(feature = "toolkit")]
 pub mod tools;
 pub mod usage;
+#[cfg(feature = "wallet")]
+pub mod wallet;
 
-pub use error::{Error, LlmError, Result, ToolError};
+pub use error::{Error, Result};
+
+// Re-export submodule error types at crate root for convenience.
+pub use agent::AgentError;
+pub use llms::{LlmError, LlmErrorKind};
+pub use memory::MemoryError;
+pub use tool::ToolError;
+#[cfg(feature = "wallet")]
+pub use wallet::WalletError;
 
 #[cfg(feature = "derive")]
 pub use machi_derive::tool;

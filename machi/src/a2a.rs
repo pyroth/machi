@@ -40,10 +40,10 @@
 
 use async_trait::async_trait;
 use futures::StreamExt;
-use std::fmt::Write as _;
 use ra2a::client::{A2AClient, A2AClientBuilder, Client, ClientEvent};
 use ra2a::types::{AgentCard, Message as A2aMessage};
 use serde_json::Value;
+use std::fmt::Write as _;
 use std::sync::Arc;
 use tokio::sync::RwLock;
 use tracing::{debug, info};
@@ -115,7 +115,7 @@ impl A2aAgentBuilder {
         info!(url = %self.url, "Connecting to A2A agent");
 
         let client = self.inner.build().map_err(|e| {
-            crate::Error::agent(format!(
+            crate::error::AgentError::runtime(format!(
                 "Failed to build A2A client for '{}': {e}",
                 self.url
             ))
@@ -123,7 +123,7 @@ impl A2aAgentBuilder {
 
         // Fetch agent card to discover capabilities.
         let card = client.get_agent_card().await.map_err(|e| {
-            crate::Error::agent(format!(
+            crate::error::AgentError::runtime(format!(
                 "Failed to fetch agent card from '{}': {e}",
                 self.url,
             ))
@@ -226,7 +226,7 @@ impl A2aAgent {
     /// Refresh the agent card from the remote server.
     pub async fn refresh_card(&self) -> crate::Result<AgentCard> {
         let card = self.client.get_agent_card().await.map_err(|e| {
-            crate::Error::agent(format!(
+            crate::error::AgentError::runtime(format!(
                 "Failed to refresh agent card for '{}': {e}",
                 self.name,
             ))

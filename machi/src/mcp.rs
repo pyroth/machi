@@ -143,14 +143,14 @@ impl StdioBuilder {
         }
 
         let transport = TokioChildProcess::new(cmd).map_err(|e| {
-            crate::Error::agent(format!(
+            crate::error::AgentError::runtime(format!(
                 "Failed to spawn MCP server process '{}': {e}",
                 self.command,
             ))
         })?;
 
         let service = ().serve(transport).await.map_err(|e| {
-            crate::Error::agent(format!(
+            crate::error::AgentError::runtime(format!(
                 "Failed to initialize MCP connection to '{}': {e}",
                 self.command,
             ))
@@ -219,7 +219,7 @@ impl HttpBuilder {
         let transport = StreamableHttpClientTransport::from_config(config);
 
         let service: RunningService<RoleClient, ()> = ().serve(transport).await.map_err(|e| {
-            crate::Error::agent(format!(
+            crate::error::AgentError::runtime(format!(
                 "Failed to initialize MCP connection to '{}': {e}",
                 self.url,
             ))
@@ -388,7 +388,7 @@ impl McpServer {
     pub async fn refresh_tools(&self) -> crate::Result<Vec<McpToolDef>> {
         let svc = self.service.read().await;
         let tools = svc.peer().list_all_tools().await.map_err(|e| {
-            crate::Error::agent(format!(
+            crate::error::AgentError::runtime(format!(
                 "Failed to list tools from MCP server '{}': {e}",
                 self.name
             ))
@@ -476,7 +476,10 @@ impl McpServer {
     pub async fn close(&self) -> crate::Result<()> {
         let mut svc = self.service.write().await;
         svc.close().await.map_err(|e| {
-            crate::Error::agent(format!("Failed to close MCP server '{}': {e}", self.name))
+            crate::error::AgentError::runtime(format!(
+                "Failed to close MCP server '{}': {e}",
+                self.name
+            ))
         })?;
         info!(server = %self.name, "MCP server connection closed");
         Ok(())

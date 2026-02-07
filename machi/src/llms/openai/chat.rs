@@ -10,7 +10,8 @@ use tracing::{Instrument, debug, error, info, info_span};
 
 use crate::chat::ChatProvider;
 use crate::chat::{ChatRequest, ChatResponse};
-use crate::error::{LlmError, Result};
+use crate::error::Result;
+use crate::llms::LlmError;
 use crate::message::{Content, Role, ToolCall as MsgToolCall};
 use crate::stream::{StopReason, StreamChunk};
 use crate::usage::Usage;

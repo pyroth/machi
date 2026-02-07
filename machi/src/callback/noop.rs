@@ -59,6 +59,7 @@ mod tests {
     use super::*;
     use std::sync::Arc;
 
+    use crate::agent::AgentError;
     use crate::callback::context::RunContext;
     use crate::callback::hooks::{
         BoxedAgentHooks, BoxedRunHooks, SharedAgentHooks, SharedRunHooks,
@@ -108,7 +109,7 @@ mod tests {
             let output = serde_json::json!("test");
             let response = test_response();
             let messages = vec![Message::user("hello")];
-            let error = Error::agent("err");
+            let error: Error = AgentError::runtime("err").into();
 
             // All these should complete without panicking or side effects.
             hooks.on_agent_start(&ctx, "agent").await;
@@ -168,7 +169,7 @@ mod tests {
             let output = serde_json::json!("test");
             let response = test_response();
             let messages = vec![Message::user("hello")];
-            let error = Error::agent("err");
+            let error: Error = AgentError::runtime("err").into();
 
             hooks.on_start(&ctx).await;
             hooks.on_end(&ctx, &output).await;

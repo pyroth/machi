@@ -144,6 +144,7 @@ mod tests {
     use std::sync::Arc;
     use std::sync::atomic::{AtomicUsize, Ordering};
 
+    use crate::agent::AgentError;
     use crate::chat::ChatResponse;
     use crate::message::Message;
 
@@ -297,7 +298,7 @@ mod tests {
             let output = serde_json::json!("result");
             let response = test_response();
             let messages = vec![Message::user("hello")];
-            let error = Error::agent("test error");
+            let error = Error::from(AgentError::runtime("test error"));
 
             hooks.on_agent_start(&ctx, "test").await;
             hooks.on_agent_end(&ctx, "test", &output).await;
@@ -373,7 +374,7 @@ mod tests {
             let output = serde_json::json!("done");
             let response = test_response();
             let messages = vec![Message::user("hello")];
-            let error = Error::agent("fail");
+            let error = Error::from(AgentError::runtime("fail"));
 
             hooks.on_start(&ctx).await;
             hooks.on_end(&ctx, &output).await;

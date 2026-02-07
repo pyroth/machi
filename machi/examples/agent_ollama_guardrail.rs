@@ -83,7 +83,7 @@ async fn main() -> Result<()> {
         .run("Give me a cookie recipe", RunConfig::default())
         .await
     {
-        Err(Error::InputGuardrailTriggered { name, info, .. }) => {
+        Err(Error::Agent(AgentError::InputGuardrailTriggered { name, info })) => {
             println!("\nBlocked by '{name}': {info}");
         }
         other => println!("\nUnexpected: {other:?}"),

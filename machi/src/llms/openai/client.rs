@@ -8,7 +8,8 @@ use serde::{Deserialize, Serialize};
 use serde_json::Value;
 
 use crate::chat::ChatRequest;
-use crate::error::{LlmError, Result};
+use crate::error::Result;
+use crate::llms::LlmError;
 use crate::message::{Content, ContentPart, Message, Role};
 use crate::tool::ToolDefinition;
 

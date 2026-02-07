@@ -50,12 +50,14 @@
 //! ```
 
 mod config;
+pub mod error;
 mod hook;
 mod managed;
 pub mod result;
 mod runner;
 
 pub use config::{Agent, Instructions, OutputSchema};
+pub use error::AgentError;
 pub use managed::ManagedAgentTool;
 pub use result::{
     NextStep, RunConfig, RunEvent, RunResult, StepInfo, ToolCallRecord, ToolCallRequest, UserInput,
