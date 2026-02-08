@@ -115,6 +115,10 @@ impl StdioBuilder {
     }
 
     /// Establish the connection to the MCP server.
+    ///
+    /// # Errors
+    ///
+    /// Returns an error if the stdio transport or MCP handshake fails.
     pub async fn connect(self) -> crate::Result<McpServer> {
         info!(
             command = %self.command,
@@ -199,6 +203,10 @@ impl HttpBuilder {
     }
 
     /// Establish the connection to the MCP server.
+    ///
+    /// # Errors
+    ///
+    /// Returns an error if the HTTP transport or MCP handshake fails.
     pub async fn connect(self) -> crate::Result<McpServer> {
         info!(url = %self.url, "Connecting to MCP server via HTTP");
 
@@ -358,6 +366,10 @@ impl McpServer {
     ///
     /// Results are cached after the first call. Use [`refresh_tools`](Self::refresh_tools)
     /// to force a re-fetch.
+    ///
+    /// # Errors
+    ///
+    /// Returns an error if the server communication fails.
     pub async fn list_tools(&self) -> crate::Result<Vec<McpToolDef>> {
         // Return cached if available.
         {
@@ -371,6 +383,10 @@ impl McpServer {
     }
 
     /// Re-fetch the tool list from the server, updating the cache.
+    ///
+    /// # Errors
+    ///
+    /// Returns an error if the server communication fails.
     pub async fn refresh_tools(&self) -> crate::Result<Vec<McpToolDef>> {
         let svc = self.service.read().await;
         let tools = svc.peer().list_all_tools().await.map_err(|e| {
@@ -398,6 +414,10 @@ impl McpServer {
     ///
     /// * `name` — tool name as exposed by the server
     /// * `arguments` — JSON arguments (must be a JSON object or `Value::Null`)
+    ///
+    /// # Errors
+    ///
+    /// Returns an error if the tool call fails or returns an error response.
     pub async fn call_tool(
         &self,
         name: impl Into<Cow<'static, str>>,
@@ -443,6 +463,10 @@ impl McpServer {
     ///
     /// Each tool is wrapped in an [`McpTool`] that implements [`DynTool`],
     /// forwarding calls to this server.
+    ///
+    /// # Errors
+    ///
+    /// Returns an error if fetching the tool list fails.
     pub async fn tools(&self) -> crate::Result<Vec<BoxedTool>> {
         let mcp_tools = self.list_tools().await?;
         let server = Arc::new(self.clone_inner());
@@ -459,6 +483,10 @@ impl McpServer {
     }
 
     /// Close the MCP server connection gracefully.
+    ///
+    /// # Errors
+    ///
+    /// Returns an error if the shutdown handshake fails.
     pub async fn close(&self) -> crate::Result<()> {
         let mut svc = self.service.write().await;
         svc.close().await.map_err(|e| {

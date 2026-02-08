@@ -29,7 +29,7 @@ use crate::tool::Tool;
 /// ```
 #[derive(Debug, Clone, Copy)]
 pub struct ReadFileTool {
-    /// Maximum file size in bytes. Default: 1 MiB.
+    /// Maximum file size in bytes. Default: 1 `MiB`.
     max_size: usize,
 }
 

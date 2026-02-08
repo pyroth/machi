@@ -110,6 +110,10 @@ pub struct Ollama {
 
 impl Ollama {
     /// Create a new Ollama client with the given configuration.
+    ///
+    /// # Errors
+    ///
+    /// Returns an error if the HTTP client fails to build.
     pub fn new(config: OllamaConfig) -> Result<Self> {
         let mut builder = Client::builder();
         if let Some(timeout) = config.timeout_secs {
@@ -127,11 +131,19 @@ impl Ollama {
     }
 
     /// Create a client with default configuration.
+    ///
+    /// # Errors
+    ///
+    /// Returns an error if the HTTP client fails to build.
     pub fn with_defaults() -> Result<Self> {
         Self::new(OllamaConfig::default())
     }
 
     /// Create a client from environment variables.
+    ///
+    /// # Errors
+    ///
+    /// Returns an error if the HTTP client fails to build.
     pub fn from_env() -> Result<Self> {
         Self::new(OllamaConfig::from_env())
     }

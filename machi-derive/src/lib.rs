@@ -1,3 +1,4 @@
+#![allow(clippy::option_if_let_else)]
 //! Procedural macros for the machi AI agents framework.
 //!
 //! This crate provides derive macros and attribute macros that simplify the process

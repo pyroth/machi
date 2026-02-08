@@ -218,6 +218,10 @@ impl InputGuardrail {
     ///
     /// Returns an [`InputGuardrailResult`] containing the guardrail reference
     /// and the check output.
+    ///
+    /// # Errors
+    ///
+    /// Returns an error if the guardrail check function fails.
     pub async fn run(
         &self,
         context: &RunContext,
@@ -319,6 +323,10 @@ impl OutputGuardrail {
     ///
     /// Returns an [`OutputGuardrailResult`] containing the guardrail reference
     /// and the check output.
+    ///
+    /// # Errors
+    ///
+    /// Returns an error if the guardrail check function fails.
     pub async fn run(
         &self,
         context: &RunContext,

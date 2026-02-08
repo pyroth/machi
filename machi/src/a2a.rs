@@ -103,6 +103,10 @@ impl A2aAgentBuilder {
     }
 
     /// Connect to the remote A2A agent and fetch its agent card.
+    ///
+    /// # Errors
+    ///
+    /// Returns an error if the A2A client fails to build or the agent card cannot be fetched.
     pub async fn connect(self) -> crate::Result<A2aAgent> {
         info!(url = %self.url, "Connecting to A2A agent");
 
@@ -210,6 +214,10 @@ impl A2aAgent {
     }
 
     /// Refresh the agent card from the remote server.
+    ///
+    /// # Errors
+    ///
+    /// Returns an error if the remote server is unreachable or returns an invalid response.
     pub async fn refresh_card(&self) -> crate::Result<AgentCard> {
         let card = self.client.get_agent_card().await.map_err(|e| {
             crate::error::AgentError::runtime(format!(
@@ -225,12 +233,20 @@ impl A2aAgent {
     /// Send a text message to the remote agent and collect the response.
     ///
     /// This consumes all streaming events and returns the final text output.
+    ///
+    /// # Errors
+    ///
+    /// Returns an error if the message fails to send or the response stream encounters an error.
     pub async fn send(&self, text: impl Into<String>) -> Result<String, ToolError> {
         let message = A2aMessage::user_text(text);
         self.send_message(message).await
     }
 
     /// Send a full [`Message`](ra2a::types::Message) and collect the response.
+    ///
+    /// # Errors
+    ///
+    /// Returns an error if the message fails to send or the response stream encounters an error.
     pub async fn send_message(&self, message: A2aMessage) -> Result<String, ToolError> {
         let mut stream = self.client.send_message(message).await.map_err(|e| {
             ToolError::execution(format!("A2A agent '{}' send failed: {e}", self.name))
@@ -323,8 +339,9 @@ impl DynTool for A2aTool {
 
     fn description(&self) -> String {
         // We cannot await here, so use try_read for best-effort description.
-        match self.agent.card.try_read() {
-            Ok(card) => {
+        self.agent.card.try_read().map_or_else(
+            |_| "A2A remote agent".to_owned(),
+            |card| {
                 let mut desc = card.description.clone();
                 if !card.skills.is_empty() {
                     desc.push_str("\n\nSkills:");
@@ -333,9 +350,8 @@ impl DynTool for A2aTool {
                     }
                 }
                 desc
-            }
-            Err(_) => "A2A remote agent".to_owned(),
-        }
+            },
+        )
     }
 
     fn definition(&self) -> ToolDefinition {

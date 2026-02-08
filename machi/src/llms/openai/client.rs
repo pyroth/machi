@@ -214,6 +214,10 @@ pub struct OpenAI {
 
 impl OpenAI {
     /// Create a new `OpenAI` client with the given configuration.
+    ///
+    /// # Errors
+    ///
+    /// Returns an error if the API key is empty or the HTTP client fails to build.
     pub fn new(config: OpenAIConfig) -> Result<Self> {
         if config.api_key.is_empty() {
             return Err(LlmError::auth("openai", "API key is required").into());
@@ -235,6 +239,10 @@ impl OpenAI {
     }
 
     /// Create a client from environment variables.
+    ///
+    /// # Errors
+    ///
+    /// Returns an error if required environment variables are missing or the client fails to build.
     pub fn from_env() -> Result<Self> {
         let config = OpenAIConfig::from_env()?;
         Self::new(config)
@@ -397,10 +405,9 @@ impl OpenAI {
         };
 
         // Prefer max_completion_tokens over deprecated max_tokens
-        let (max_tokens, max_completion_tokens) = match request.max_completion_tokens {
-            Some(tokens) => (None, Some(tokens)),
-            None => (request.max_tokens, None),
-        };
+        let (max_tokens, max_completion_tokens) = request
+            .max_completion_tokens
+            .map_or((request.max_tokens, None), |tokens| (None, Some(tokens)));
 
         OpenAIChatRequest {
             model,

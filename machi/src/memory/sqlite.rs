@@ -38,12 +38,20 @@ impl SqliteSession {
     /// Opens (or creates) a database at `path` and initializes the schema.
     ///
     /// Pass `":memory:"` for an ephemeral in-process database.
+    ///
+    /// # Errors
+    ///
+    /// Returns an error if the database cannot be opened or schema initialization fails.
     pub fn open(path: impl AsRef<Path>, session_id: impl Into<String>) -> Result<Self> {
         let conn = Connection::open(path.as_ref()).map_err(MemoryError::from)?;
         Self::from_connection(conn, session_id)
     }
 
     /// Opens an ephemeral in-memory database (data lost on drop).
+    ///
+    /// # Errors
+    ///
+    /// Returns an error if the in-memory database cannot be created.
     pub fn in_memory(session_id: impl Into<String>) -> Result<Self> {
         let conn = Connection::open_in_memory().map_err(MemoryError::from)?;
         Self::from_connection(conn, session_id)
@@ -52,6 +60,10 @@ impl SqliteSession {
     /// Wraps an existing [`Connection`], applying pragmas and schema setup.
     ///
     /// Useful for custom connection configuration (encryption, extra pragmas).
+    ///
+    /// # Errors
+    ///
+    /// Returns an error if pragma execution or schema setup fails.
     pub fn from_connection(conn: Connection, session_id: impl Into<String>) -> Result<Self> {
         conn.execute_batch(
             "PRAGMA journal_mode = WAL;\

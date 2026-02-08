@@ -98,6 +98,10 @@ impl EvmWalletBuilder {
     /// Build the [`EvmWallet`].
     ///
     /// Either `mnemonic` or `private_key` must be set. `rpc_url` is required.
+    ///
+    /// # Errors
+    ///
+    /// Returns an error if required fields are missing or key derivation / RPC connection fails.
     pub async fn build(mut self) -> crate::Result<EvmWallet> {
         let rpc_url = self
             .rpc_url
@@ -242,11 +246,19 @@ impl EvmWallet {
     }
 
     /// Get the native token (ETH) balance for the wallet's address.
+    ///
+    /// # Errors
+    ///
+    /// Returns an error if the RPC call fails.
     pub async fn balance(&self) -> Result<U256, WalletError> {
         self.balance_of(self.address).await
     }
 
     /// Get the native token (ETH) balance for any address.
+    ///
+    /// # Errors
+    ///
+    /// Returns an error if the RPC call fails.
     pub async fn balance_of(&self, address: Address) -> Result<U256, WalletError> {
         self.provider
             .get_balance(address)
@@ -255,6 +267,10 @@ impl EvmWallet {
     }
 
     /// Get the current block number.
+    ///
+    /// # Errors
+    ///
+    /// Returns an error if the RPC call fails.
     pub async fn block_number(&self) -> Result<u64, WalletError> {
         self.provider
             .get_block_number()
@@ -263,6 +279,10 @@ impl EvmWallet {
     }
 
     /// Sign an arbitrary message (EIP-191 `personal_sign`).
+    ///
+    /// # Errors
+    ///
+    /// Returns an error if the signing operation fails.
     pub async fn sign_message(&self, message: &[u8]) -> Result<String, WalletError> {
         let sig = self
             .signer
@@ -276,6 +296,10 @@ impl EvmWallet {
     }
 
     /// Sign an arbitrary message synchronously.
+    ///
+    /// # Errors
+    ///
+    /// Returns an error if the signing operation fails.
     pub fn sign_message_sync(&self, message: &[u8]) -> Result<String, WalletError> {
         let sig = self
             .signer
@@ -290,6 +314,10 @@ impl EvmWallet {
     /// Send native token (ETH) to an address.
     ///
     /// Returns the transaction hash.
+    ///
+    /// # Errors
+    ///
+    /// Returns an error if the transaction fails to send or confirm.
     pub async fn transfer(&self, to: Address, value: U256) -> Result<String, WalletError> {
         use alloy::network::TransactionBuilder;
         use alloy::rpc::types::TransactionRequest;

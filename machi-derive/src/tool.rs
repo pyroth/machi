@@ -194,20 +194,23 @@ impl TypeInfo {
         let type_str = self.schema_type.as_str();
 
         match self.schema_type {
-            JsonSchemaType::Array => {
-                if let Some(inner) = &self.inner {
+            JsonSchemaType::Array => self.inner.as_ref().map_or_else(
+                || {
+                    if self.nullable {
+                        quote! { "type": #type_str, "nullable": true }
+                    } else {
+                        quote! { "type": #type_str }
+                    }
+                },
+                |inner| {
                     let inner_schema = inner.to_schema_tokens();
                     if self.nullable {
                         quote! { "type": #type_str, "items": { #inner_schema }, "nullable": true }
                     } else {
                         quote! { "type": #type_str, "items": { #inner_schema } }
                     }
-                } else if self.nullable {
-                    quote! { "type": #type_str, "nullable": true }
-                } else {
-                    quote! { "type": #type_str }
-                }
-            }
+                },
+            ),
             _ => {
                 if self.nullable {
                     quote! { "type": #type_str, "nullable": true }
@@ -328,7 +331,7 @@ impl DocInfo {
         }
     }
 
-    /// Parse a parameter documentation line: `* `param_name` - Description`
+    /// Parse a parameter documentation line: `* ``param_name`` - Description`
     fn parse_param_line(line: &str) -> Option<(String, String)> {
         let rest = line.strip_prefix("* `")?;
         let end_pos = rest.find('`')?;
@@ -357,7 +360,7 @@ struct ToolArgs {
     required: Vec<String>,
 }
 
-/// Wrapper for parameter descriptions to implement FromMeta.
+/// Wrapper for parameter descriptions to implement `FromMeta`.
 #[derive(Debug, Default)]
 struct ParamDescriptions(HashMap<String, String>);
 
@@ -445,7 +448,7 @@ fn validate_tool_function(input_fn: &ItemFn) -> syn::Result<()> {
     Ok(())
 }
 
-/// Extract Output and Error types from Result<T, E> or ToolResult<T>.
+/// Extract Output and Error types from Result<T, E> or `ToolResult`<T>.
 fn extract_result_types(return_type: &ReturnType) -> (TokenStream2, TokenStream2) {
     if let ReturnType::Type(_, ty) = return_type {
         if let Type::Path(type_path) = &**ty

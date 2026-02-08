@@ -42,6 +42,10 @@ impl OpenAIConfig {
     /// - `OPENAI_BASE_URL` - Optional base URL
     /// - `OPENAI_MODEL` - Optional default model
     /// - `OPENAI_ORGANIZATION` - Optional organization ID
+    ///
+    /// # Errors
+    ///
+    /// Returns an error if the `OPENAI_API_KEY` environment variable is not set.
     pub fn from_env() -> Result<Self> {
         let api_key = std::env::var("OPENAI_API_KEY")
             .map_err(|_| LlmError::auth("openai", "OPENAI_API_KEY environment variable not set"))?;

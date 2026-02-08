@@ -39,7 +39,7 @@ pub struct ExecTool {
     working_dir: Option<String>,
     /// Command timeout in seconds. Default: 60.
     timeout_secs: u64,
-    /// Maximum captured output size in bytes. Default: 100 KiB.
+    /// Maximum captured output size in bytes. Default: 100 `KiB`.
     max_output_size: usize,
 }
 

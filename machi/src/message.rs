@@ -97,7 +97,7 @@ pub enum ImageMime {
     Png,
     /// GIF image.
     Gif,
-    /// WebP image.
+    /// `WebP` image.
     WebP,
 }
 
@@ -421,6 +421,10 @@ impl FunctionCall {
     }
 
     /// Parses arguments as a typed value.
+    ///
+    /// # Errors
+    ///
+    /// Returns an error if the arguments string is not valid JSON or cannot be deserialized into `T`.
     pub fn parse_arguments<T: for<'de> Deserialize<'de>>(&self) -> Result<T, serde_json::Error> {
         serde_json::from_str(&self.arguments)
     }
@@ -478,6 +482,10 @@ impl ToolCall {
     }
 
     /// Parse arguments as a typed value.
+    ///
+    /// # Errors
+    ///
+    /// Returns an error if the arguments string is not valid JSON or cannot be deserialized into `T`.
     pub fn parse_arguments<T: for<'de> Deserialize<'de>>(&self) -> Result<T, serde_json::Error> {
         self.function.parse_arguments()
     }
