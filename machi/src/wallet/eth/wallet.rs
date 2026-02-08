@@ -630,8 +630,18 @@ impl EvmWallet {
     /// Provides tools for:
     /// - `get_wallet_info` — address, chain, derivation path
     /// - `get_balance` — query native token balance
+    /// - `get_nonce` — transaction count / sequence number
+    /// - `get_block_number` — latest block number
+    /// - `get_gas_price` — gas price and EIP-1559 fee estimates
+    /// - `is_contract` — check if an address has bytecode
+    /// - `get_transaction_receipt` — receipt for a mined transaction
+    /// - `get_transaction` — transaction details by hash
     /// - `sign_message` — EIP-191 personal sign
     /// - `transfer` — send native token
+    /// - `erc20_balance` — ERC-20 token balance with symbol/decimals
+    /// - `erc20_transfer` — transfer ERC-20 tokens
+    /// - `resolve_ens` — ENS name → address (mainnet only)
+    /// - `reverse_ens` — address → ENS name (mainnet only)
     #[must_use]
     pub fn into_tools(self) -> Vec<BoxedTool> {
         let wallet = Arc::new(self);

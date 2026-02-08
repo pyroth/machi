@@ -2,6 +2,8 @@
 //!
 //! See [`EvmWallet`] for construction and usage.
 
+mod ens;
+mod erc20;
 pub(crate) mod tools;
 mod wallet;
 
