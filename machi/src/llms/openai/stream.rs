@@ -1,4 +1,4 @@
-//! OpenAI SSE stream parsing.
+//! `OpenAI` SSE stream parsing.
 
 use serde::Deserialize;
 
@@ -6,7 +6,7 @@ use crate::error::Result;
 use crate::stream::{StopReason, StreamChunk};
 use crate::usage::Usage;
 
-/// OpenAI streaming chunk.
+/// `OpenAI` streaming chunk.
 #[derive(Debug, Clone, Deserialize)]
 struct OpenAIStreamChunk {
     pub choices: Vec<OpenAIStreamChoice>,
@@ -14,21 +14,21 @@ struct OpenAIStreamChunk {
     pub usage: Option<Usage>,
 }
 
-/// OpenAI stream choice.
+/// `OpenAI` stream choice.
 #[derive(Debug, Clone, Deserialize)]
 struct OpenAIStreamChoice {
     pub delta: OpenAIStreamDelta,
     pub finish_reason: Option<String>,
 }
 
-/// OpenAI stream delta.
+/// `OpenAI` stream delta.
 #[derive(Debug, Clone, Default, Deserialize)]
 struct OpenAIStreamDelta {
     pub content: Option<String>,
     pub tool_calls: Option<Vec<OpenAIStreamToolCall>>,
 }
 
-/// OpenAI stream tool call delta.
+/// `OpenAI` stream tool call delta.
 #[derive(Debug, Clone, Deserialize)]
 struct OpenAIStreamToolCall {
     pub index: usize,
@@ -37,7 +37,7 @@ struct OpenAIStreamToolCall {
     pub function: Option<OpenAIStreamFunctionCall>,
 }
 
-/// OpenAI stream function call delta.
+/// `OpenAI` stream function call delta.
 #[derive(Debug, Clone, Deserialize)]
 struct OpenAIStreamFunctionCall {
     pub name: Option<String>,
@@ -81,7 +81,7 @@ pub fn parse_sse_events(text: &str) -> Vec<Result<StreamChunk>> {
     results
 }
 
-/// Convert an OpenAI stream chunk to our format.
+/// Convert an `OpenAI` stream chunk to our format.
 fn convert_chunk(chunk: &OpenAIStreamChunk) -> Vec<Result<StreamChunk>> {
     let mut results = Vec::new();
 

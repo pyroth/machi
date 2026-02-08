@@ -1,14 +1,14 @@
 //! Chat types, traits, and utilities for LLM operations.
 //!
 //! This module provides:
-//! - [`ChatRequest`]: Request parameters for chat completions
-//! - [`ChatResponse`]: Response from chat completions
-//! - [`ChatProvider`]: Core trait for LLM providers
+//! - [`ChatRequest`] — request parameters for chat completions
+//! - [`ChatResponse`] — response from chat completions
+//! - [`ChatProvider`] — core trait for LLM providers
 //!
-//! # Example
+//! # Examples
 //!
-//! ```rust,ignore
-//! use machi::prelude::*;
+//! ```rust
+//! use machi::chat::{ChatRequest, ChatResponse};
 //!
 //! let request = ChatRequest::new("gpt-4o")
 //!     .system("You are helpful.")
@@ -16,8 +16,8 @@
 //!     .max_tokens(100)
 //!     .temperature(0.7);
 //!
-//! let response = provider.chat(&request).await?;
-//! println!("{}", response.text().unwrap_or_default());
+//! let response = ChatResponse::from_text("Hello! How can I help?");
+//! assert_eq!(response.text().unwrap(), "Hello! How can I help?");
 //! ```
 
 use std::pin::Pin;
@@ -70,8 +70,8 @@ impl ReasoningEffort {
 
 /// A chat completion request to an LLM.
 ///
-/// # OpenAI API Alignment
-/// This struct aligns with OpenAI's Chat Completions API parameters.
+/// # `OpenAI` API Alignment
+/// This struct aligns with `OpenAI`'s Chat Completions API parameters.
 /// Some fields are provider-specific and may be ignored by other backends.
 #[derive(Debug, Clone, Default, Serialize, Deserialize)]
 pub struct ChatRequest {
@@ -83,11 +83,11 @@ pub struct ChatRequest {
     #[serde(default)]
     pub messages: Vec<Message>,
 
-    /// Maximum tokens to generate (deprecated, use max_completion_tokens).
+    /// Maximum tokens to generate (deprecated, use `max_completion_tokens`).
     #[serde(skip_serializing_if = "Option::is_none")]
     pub max_tokens: Option<u32>,
 
-    /// Maximum completion tokens (preferred over max_tokens for newer models).
+    /// Maximum completion tokens (preferred over `max_tokens` for newer models).
     #[serde(skip_serializing_if = "Option::is_none")]
     pub max_completion_tokens: Option<u32>,
 
@@ -223,7 +223,7 @@ impl ChatRequest {
         self
     }
 
-    /// Sets max tokens (legacy, prefer max_completion_tokens).
+    /// Sets max tokens (legacy, prefer `max_completion_tokens`).
     #[must_use]
     pub const fn max_tokens(mut self, max_tokens: u32) -> Self {
         self.max_tokens = Some(max_tokens);
@@ -244,7 +244,7 @@ impl ChatRequest {
         self
     }
 
-    /// Sets top_p.
+    /// Sets `top_p`.
     #[must_use]
     pub const fn top_p(mut self, top_p: f32) -> Self {
         self.top_p = Some(top_p);
@@ -309,9 +309,10 @@ impl ChatRequest {
     ///
     /// # Examples
     ///
-    /// ```rust,ignore
+    /// ```rust
     /// use schemars::JsonSchema;
     /// use serde::Deserialize;
+    /// use machi::chat::ChatRequest;
     ///
     /// #[derive(Deserialize, JsonSchema)]
     /// struct Country {
@@ -324,8 +325,7 @@ impl ChatRequest {
     ///     .user("Tell me about France.")
     ///     .output_type::<Country>();
     ///
-    /// let response = provider.chat(&request).await?;
-    /// let country: Country = response.parse()?;
+    /// assert!(request.response_format.is_some());
     /// ```
     #[cfg(feature = "schema")]
     #[must_use]
@@ -465,8 +465,9 @@ impl ResponseFormat {
     ///
     /// # Examples
     ///
-    /// ```rust,ignore
+    /// ```rust
     /// use schemars::JsonSchema;
+    /// use machi::chat::ResponseFormat;
     ///
     /// #[derive(JsonSchema)]
     /// struct Country { name: String, capital: String }
@@ -621,9 +622,16 @@ impl ChatResponse {
     ///
     /// # Examples
     ///
-    /// ```rust,ignore
-    /// let response = provider.chat(&request).await?;
-    /// let country: Country = response.parse()?;
+    /// ```rust
+    /// use machi::chat::ChatResponse;
+    /// use serde::Deserialize;
+    ///
+    /// #[derive(Deserialize)]
+    /// struct Info { name: String }
+    ///
+    /// let response = ChatResponse::from_text(r#"{"name":"Rust"}"#);
+    /// let info: Info = response.parse().unwrap();
+    /// assert_eq!(info.name, "Rust");
     /// ```
     pub fn parse<T: serde::de::DeserializeOwned>(&self) -> serde_json::Result<T> {
         let text = self.text().unwrap_or_default();
@@ -764,7 +772,7 @@ pub trait ChatProviderExt: ChatProvider {
 // Blanket implementation for all ChatProviders
 impl<T: ChatProvider> ChatProviderExt for T {}
 
-/// Type alias for an Arc-wrapped ChatProvider.
+/// Type alias for an Arc-wrapped `ChatProvider`.
 pub type SharedChatProvider = std::sync::Arc<dyn ChatProvider>;
 
 #[cfg(test)]

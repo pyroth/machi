@@ -1,4 +1,4 @@
-//! Agent with lifecycle callbacks example using OpenAI.
+//! Agent with lifecycle callbacks example using `OpenAI`.
 //!
 //! Demonstrates custom `AgentHooks` to observe the agent's
 //! reasoning loop — start, LLM calls, tool invocations, and end.

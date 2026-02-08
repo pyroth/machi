@@ -10,17 +10,16 @@
 //! systems where different agents use different LLMs (e.g., GPT-4o for reasoning,
 //! Claude for writing, a local model for simple tasks).
 //!
-//! # Example
+//! # Examples
 //!
-//! ```rust,ignore
+//! ```rust
 //! use machi::agent::Agent;
 //!
 //! let agent = Agent::new("researcher")
 //!     .instructions("You are a research assistant.")
-//!     .model("gpt-4o")
-//!     .provider(openai_provider.clone());
+//!     .model("gpt-4o");
 //!
-//! let result = agent.run("Research Rust async patterns", Default::default()).await?;
+//! assert_eq!(agent.name(), "researcher");
 //! ```
 
 use std::collections::HashMap;
@@ -55,17 +54,9 @@ use super::result::{RunConfig, RunEvent, RunResult, UserInput};
 ///
 /// # Examples
 ///
-/// ```rust,ignore
-/// use machi::prelude::*;
-/// use serde::Deserialize;
+/// ```rust
+/// use machi::agent::OutputSchema;
 /// use serde_json::json;
-///
-/// #[derive(Deserialize)]
-/// struct Country {
-///     name: String,
-///     capital: String,
-///     population: u64,
-/// }
 ///
 /// let schema = OutputSchema::new("country", json!({
 ///     "type": "object",
@@ -78,14 +69,8 @@ use super::result::{RunConfig, RunEvent, RunResult, UserInput};
 ///     "additionalProperties": false
 /// }));
 ///
-/// let agent = Agent::new("geo")
-///     .instructions("You provide country facts as structured JSON.")
-///     .model("gpt-4o")
-///     .provider(provider.clone())
-///     .output_schema(schema);
-///
-/// let result = agent.run("Tell me about France", RunConfig::default()).await?;
-/// let country: Country = serde_json::from_value(result.output)?;
+/// assert_eq!(schema.name(), "country");
+/// assert!(schema.is_strict());
 /// ```
 #[derive(Debug, Clone)]
 pub struct OutputSchema {
@@ -165,8 +150,8 @@ impl OutputSchema {
     ///
     /// # Examples
     ///
-    /// ```rust,ignore
-    /// use machi::prelude::*;
+    /// ```rust
+    /// use machi::agent::OutputSchema;
     /// use schemars::JsonSchema;
     /// use serde::Deserialize;
     ///
@@ -178,6 +163,7 @@ impl OutputSchema {
     /// }
     ///
     /// let schema = OutputSchema::from_type::<Country>();
+    /// assert_eq!(schema.name(), "Country");
     /// ```
     #[cfg(feature = "schema")]
     #[must_use]
@@ -499,8 +485,8 @@ impl Agent {
     ///
     /// # Examples
     ///
-    /// ```rust,ignore
-    /// use machi::prelude::*;
+    /// ```rust
+    /// use machi::agent::Agent;
     /// use schemars::JsonSchema;
     /// use serde::Deserialize;
     ///
@@ -514,11 +500,7 @@ impl Agent {
     /// let agent = Agent::new("geo")
     ///     .instructions("You provide country facts as structured JSON.")
     ///     .model("gpt-4o")
-    ///     .provider(provider.clone())
     ///     .output_type::<Country>();
-    ///
-    /// let result = agent.run("Tell me about France", RunConfig::default()).await?;
-    /// let country: Country = result.parse()?;
     /// ```
     #[cfg(feature = "schema")]
     #[must_use]

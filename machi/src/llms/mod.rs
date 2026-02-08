@@ -5,7 +5,7 @@
 //!
 //! # Available Backends
 //!
-//! - [`openai`] - OpenAI API (GPT-4o, GPT-4, etc.)
+//! - [`openai`] - `OpenAI` API (GPT-4o, GPT-4, etc.)
 //! - [`ollama`] - Ollama local LLM server
 
 pub mod error;

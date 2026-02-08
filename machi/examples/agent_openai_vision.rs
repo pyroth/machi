@@ -1,4 +1,4 @@
-//! Agent with vision (multimodal input) example using OpenAI.
+//! Agent with vision (multimodal input) example using `OpenAI`.
 //!
 //! Demonstrates passing an image to an agent via `ContentPart`
 //! for visual question answering.

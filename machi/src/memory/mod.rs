@@ -13,7 +13,8 @@
 //!
 //! # Quick Start
 //!
-//! ```rust,ignore
+//! ```rust
+//! # tokio_test::block_on(async {
 //! use machi::memory::{Session, InMemorySession};
 //! use machi::message::Message;
 //!
@@ -25,7 +26,12 @@
 //! ]).await?;
 //!
 //! let history = session.get_messages(None).await?;
+//! assert_eq!(history.len(), 2);
+//!
 //! let removed = session.pop_message().await?;
+//! assert!(removed.is_some());
+//! # Ok::<(), machi::Error>(())
+//! # }).unwrap();
 //! ```
 
 mod error;

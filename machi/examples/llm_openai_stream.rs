@@ -1,4 +1,4 @@
-//! Streaming chat example using OpenAI.
+//! Streaming chat example using `OpenAI`.
 //!
 //! ```bash
 //! export OPENAI_API_KEY=sk-...

@@ -1,4 +1,4 @@
-//! Multi-agent collaboration example using OpenAI.
+//! Multi-agent collaboration example using `OpenAI`.
 //!
 //! Demonstrates managed agents: a parent "coordinator" delegates
 //! tasks to specialized sub-agents, each with its own instructions.

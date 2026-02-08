@@ -3,19 +3,19 @@
 //! This module provides types for tracking token consumption across
 //! different LLM providers with a unified interface.
 //!
-//! # OpenAI API Alignment
+//! # `OpenAI` API Alignment
 //!
-//! The `Usage` struct aligns with OpenAI's usage object:
+//! The `Usage` struct aligns with `OpenAI`'s usage object:
 //! - `prompt_tokens` / `completion_tokens` / `total_tokens`
-//! - `prompt_tokens_details` (cached_tokens, audio_tokens)
-//! - `completion_tokens_details` (reasoning_tokens, audio_tokens, prediction tokens)
+//! - `prompt_tokens_details` (`cached_tokens`, `audio_tokens`)
+//! - `completion_tokens_details` (`reasoning_tokens`, `audio_tokens`, prediction tokens)
 
 use serde::{Deserialize, Serialize};
 use std::ops::{Add, AddAssign};
 
 /// Detailed breakdown of prompt/input tokens.
 ///
-/// # OpenAI API Alignment
+/// # `OpenAI` API Alignment
 /// Maps to `prompt_tokens_details` in the API response.
 #[derive(Debug, Clone, Copy, Default, PartialEq, Eq, Serialize, Deserialize)]
 pub struct PromptTokensDetails {
@@ -30,7 +30,7 @@ pub struct PromptTokensDetails {
 
 /// Detailed breakdown of completion/output tokens.
 ///
-/// # OpenAI API Alignment
+/// # `OpenAI` API Alignment
 /// Maps to `completion_tokens_details` in the API response.
 #[derive(Debug, Clone, Copy, Default, PartialEq, Eq, Serialize, Deserialize)]
 pub struct CompletionTokensDetails {
@@ -53,9 +53,9 @@ pub struct CompletionTokensDetails {
 
 /// Token usage statistics from an LLM operation.
 ///
-/// # OpenAI API Alignment
+/// # `OpenAI` API Alignment
 ///
-/// This struct maps to OpenAI's usage object in API responses:
+/// This struct maps to `OpenAI`'s usage object in API responses:
 /// ```json
 /// {
 ///     "prompt_tokens": 100,

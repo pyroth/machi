@@ -13,19 +13,22 @@
 //!   ([`TavilyProvider`], [`SearxngProvider`], [`BraveProvider`],
 //!   [`DuckDuckGoProvider`], [`BingProvider`])
 //!
-//! # Example
+//! # Examples
 //!
-//! ```rust,ignore
-//! use machi::tools::{ReadFileTool, ExecTool, WebSearchTool, create_tool};
+//! ```rust
+//! use machi::tools::{ReadFileTool, ExecTool, create_tool, fs_tools};
 //!
-//! // Use specific tools
-//! let agent = Agent::new("coder")
-//!     .tool(ReadFileTool::new())
-//!     .tool(ExecTool::new())
-//!     .tool(WebSearchTool::tavily("tvly-..."));
+//! // Create individual tools
+//! let read = ReadFileTool::new();
+//! let exec = ExecTool::new();
 //!
-//! // Or create a tool by name
-//! let tool = create_tool("read_file").unwrap();
+//! // Create a tool by name
+//! let tool = create_tool("read_file");
+//! assert!(tool.is_some());
+//!
+//! // Get all filesystem tools at once
+//! let tools = fs_tools();
+//! assert_eq!(tools.len(), 4);
 //! ```
 
 mod fs;

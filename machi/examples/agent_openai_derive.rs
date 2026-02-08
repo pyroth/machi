@@ -1,4 +1,4 @@
-//! Agent with derive-macro tools example using OpenAI.
+//! Agent with derive-macro tools example using `OpenAI`.
 //!
 //! Demonstrates the `#[tool]` attribute macro that eliminates
 //! boilerplate when defining tools for an agent.

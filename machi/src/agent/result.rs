@@ -152,7 +152,7 @@ impl RunConfig {
         self
     }
 
-    /// Override the agent's max_steps for this run.
+    /// Override the agent's `max_steps` for this run.
     #[must_use]
     pub const fn max_steps(mut self, max_steps: usize) -> Self {
         self.max_steps = Some(max_steps);
@@ -236,9 +236,25 @@ impl RunResult {
     ///
     /// # Examples
     ///
-    /// ```rust,ignore
-    /// let result = agent.run("Tell me about France", config).await?;
-    /// let country: Country = result.parse()?;
+    /// ```rust
+    /// use machi::agent::RunResult;
+    /// use serde::Deserialize;
+    /// use serde_json::json;
+    ///
+    /// #[derive(Deserialize)]
+    /// struct Info { name: String }
+    ///
+    /// let result = RunResult {
+    ///     output: json!({"name": "Rust"}),
+    ///     usage: Default::default(),
+    ///     steps: 1,
+    ///     step_history: vec![],
+    ///     agent_name: "test".into(),
+    ///     input_guardrail_results: vec![],
+    ///     output_guardrail_results: vec![],
+    /// };
+    /// let info: Info = result.parse().unwrap();
+    /// assert_eq!(info.name, "Rust");
     /// ```
     pub fn parse<T: serde::de::DeserializeOwned>(&self) -> serde_json::Result<T> {
         serde_json::from_value(self.output.clone())
@@ -363,28 +379,25 @@ pub enum RunEvent {
 ///
 /// # Examples
 ///
-/// ```rust,ignore
-/// use machi::agent::{Agent, RunConfig, UserInput};
+/// ```rust
+/// use machi::agent::UserInput;
 /// use machi::message::ContentPart;
 ///
 /// // Simple text — most common case.
-/// agent.run("Hello!", RunConfig::default()).await?;
+/// let input: UserInput = "Hello!".into();
 ///
 /// // Text + image via convenience constructor.
-/// agent.run(
-///     UserInput::with_image("Describe this", "https://example.com/img.png"),
-///     RunConfig::default(),
-/// ).await?;
+/// let input = UserInput::with_image(
+///     "Describe this",
+///     "https://example.com/img.png",
+/// );
 ///
 /// // Full multimodal via Vec<ContentPart>.
-/// agent.run(
-///     vec![
-///         ContentPart::text("What's in these images?"),
-///         ContentPart::image_url("https://example.com/a.png"),
-///         ContentPart::image_url("https://example.com/b.png"),
-///     ],
-///     RunConfig::default(),
-/// ).await?;
+/// let input: UserInput = vec![
+///     ContentPart::text("What's in these images?"),
+///     ContentPart::image_url("https://example.com/a.png"),
+///     ContentPart::image_url("https://example.com/b.png"),
+/// ].into();
 /// ```
 #[derive(Debug, Clone)]
 pub enum UserInput {

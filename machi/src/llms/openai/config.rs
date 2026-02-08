@@ -1,13 +1,13 @@
-//! OpenAI client configuration.
+//! `OpenAI` client configuration.
 
 use crate::error::{LlmError, Result};
 
-/// Configuration for the OpenAI client.
+/// Configuration for the `OpenAI` client.
 #[derive(Debug, Clone)]
 pub struct OpenAIConfig {
     /// API key for authentication.
     pub api_key: String,
-    /// Base URL for the API (defaults to OpenAI's API).
+    /// Base URL for the API (defaults to `OpenAI`'s API).
     pub base_url: String,
     /// Default model to use.
     pub model: String,
@@ -18,7 +18,7 @@ pub struct OpenAIConfig {
 }
 
 impl OpenAIConfig {
-    /// Default OpenAI API base URL.
+    /// Default `OpenAI` API base URL.
     pub const DEFAULT_BASE_URL: &'static str = "https://api.openai.com/v1";
     /// Default model.
     pub const DEFAULT_MODEL: &'static str = "gpt-4o";
@@ -91,7 +91,7 @@ impl OpenAIConfig {
         self
     }
 
-    /// Creates config for Azure OpenAI.
+    /// Creates config for Azure `OpenAI`.
     #[must_use]
     pub fn azure(endpoint: impl Into<String>, api_key: impl Into<String>) -> Self {
         Self {

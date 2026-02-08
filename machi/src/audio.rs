@@ -1,28 +1,23 @@
 //! Audio processing types and provider traits.
 //!
 //! This module provides types and traits for audio-related operations:
-//! - **Text-to-Speech (TTS)**: Converting text into audio
-//! - **Speech-to-Text (STT)**: Converting audio into text (transcription)
+//! - **Text-to-Speech (TTS)** — converting text into audio
+//! - **Speech-to-Text (STT)** — converting audio into text (transcription)
 //!
-//! # Example
+//! # Examples
 //!
-//! ```rust,ignore
-//! use machi::prelude::*;
+//! ```rust
+//! use machi::audio::{AudioFormat, SpeechRequest, TranscriptionRequest};
 //!
-//! // Text-to-Speech
+//! // Text-to-Speech request
 //! let request = SpeechRequest::new("tts-1", "Hello, world!", "alloy")
 //!     .format(AudioFormat::Mp3)
 //!     .speed(1.0);
-//! let response = provider.speech(&request).await?;
-//! response.save("output.mp3")?;
 //!
-//! // Speech-to-Text
-//! let audio = std::fs::read("input.mp3")?;
-//! let request = TranscriptionRequest::new("whisper-1", audio)
+//! // Speech-to-Text request
+//! let request = TranscriptionRequest::new("whisper-1", vec![0u8; 16])
 //!     .format(AudioFormat::Mp3)
 //!     .language("en");
-//! let response = provider.transcribe(&request).await?;
-//! println!("Transcribed: {}", response.text);
 //! ```
 
 use async_trait::async_trait;
@@ -33,8 +28,8 @@ use crate::error::Result;
 /// Audio format for input/output operations.
 ///
 /// Note: Not all formats are supported by all providers or operations.
-/// - **TTS (OpenAI)**: mp3, opus, aac, flac, wav, pcm
-/// - **STT (OpenAI)**: flac, mp3, mp4, mpeg, mpga, m4a, ogg, wav, webm
+/// - **TTS (`OpenAI`)**: mp3, opus, aac, flac, wav, pcm
+/// - **STT (`OpenAI`)**: flac, mp3, mp4, mpeg, mpga, m4a, ogg, wav, webm
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Default, Serialize, Deserialize)]
 #[serde(rename_all = "lowercase")]
 pub enum AudioFormat {
@@ -47,7 +42,7 @@ pub enum AudioFormat {
     Flac,
     /// OGG format
     Ogg,
-    /// WebM format
+    /// `WebM` format
     WebM,
     /// M4A format
     M4a,
@@ -118,7 +113,7 @@ impl AudioFormat {
 
 /// Voice options for text-to-speech.
 ///
-/// OpenAI built-in voices: `alloy`, `ash`, `ballad`, `coral`, `echo`,
+/// `OpenAI` built-in voices: `alloy`, `ash`, `ballad`, `coral`, `echo`,
 /// `fable`, `onyx`, `nova`, `sage`, `shimmer`, `verse`, `marin`, `cedar`.
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub struct Voice {
@@ -308,7 +303,7 @@ impl TimestampGranularity {
 /// Request for transcribing audio to text.
 ///
 /// # Models
-/// - `whisper-1`: OpenAI Whisper V2
+/// - `whisper-1`: `OpenAI` Whisper V2
 /// - `gpt-4o-transcribe`: GPT-4o based transcription
 /// - `gpt-4o-mini-transcribe`: Smaller, faster GPT-4o transcription
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -333,7 +328,7 @@ pub struct TranscriptionRequest {
     /// Sampling temperature (0.0 to 1.0).
     #[serde(skip_serializing_if = "Option::is_none")]
     pub temperature: Option<f32>,
-    /// Timestamp granularities to include (requires verbose_json format).
+    /// Timestamp granularities to include (requires `verbose_json` format).
     #[serde(skip_serializing_if = "Option::is_none")]
     pub timestamp_granularities: Option<Vec<TimestampGranularity>>,
 }
@@ -389,7 +384,7 @@ impl TranscriptionRequest {
         self
     }
 
-    /// Enable word-level timestamps (requires verbose_json format).
+    /// Enable word-level timestamps (requires `verbose_json` format).
     #[must_use]
     pub fn with_word_timestamps(mut self) -> Self {
         let mut granularities = self.timestamp_granularities.unwrap_or_default();
@@ -401,7 +396,7 @@ impl TranscriptionRequest {
         self
     }
 
-    /// Enable segment-level timestamps (requires verbose_json format).
+    /// Enable segment-level timestamps (requires `verbose_json` format).
     #[must_use]
     pub fn with_segment_timestamps(mut self) -> Self {
         let mut granularities = self.timestamp_granularities.unwrap_or_default();
@@ -449,10 +444,10 @@ pub struct TranscriptionResponse {
     /// Optional duration of the audio in seconds.
     #[serde(skip_serializing_if = "Option::is_none")]
     pub duration: Option<f32>,
-    /// Word-level timestamps (when requested with verbose_json).
+    /// Word-level timestamps (when requested with `verbose_json`).
     #[serde(skip_serializing_if = "Option::is_none")]
     pub words: Option<Vec<TranscriptionWord>>,
-    /// Segment-level timestamps (when requested with verbose_json).
+    /// Segment-level timestamps (when requested with `verbose_json`).
     #[serde(skip_serializing_if = "Option::is_none")]
     pub segments: Option<Vec<TranscriptionSegment>>,
 }
@@ -485,7 +480,7 @@ impl TranscriptionResponse {
 /// Trait for providers that support text-to-speech synthesis.
 ///
 /// This trait defines the interface for converting text into audio.
-/// Providers like OpenAI implement this trait.
+/// Providers like `OpenAI` implement this trait.
 #[async_trait]
 pub trait TextToSpeechProvider: Send + Sync {
     /// Generate speech from text.
@@ -536,7 +531,7 @@ pub trait TextToSpeechProvider: Send + Sync {
 /// Trait for providers that support speech-to-text transcription.
 ///
 /// This trait defines the interface for converting audio data into text.
-/// Providers like OpenAI (Whisper) implement this trait.
+/// Providers like `OpenAI` (Whisper) implement this trait.
 #[async_trait]
 pub trait SpeechToTextProvider: Send + Sync {
     /// Transcribe audio data to text.

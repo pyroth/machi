@@ -20,9 +20,9 @@ use crate::tool::Tool;
 /// Supports reading entire files or specific line ranges (1-indexed, inclusive).
 /// Has a configurable maximum file size to prevent excessive memory usage.
 ///
-/// # Example
+/// # Examples
 ///
-/// ```rust,ignore
+/// ```rust
 /// use machi::tools::ReadFileTool;
 ///
 /// let tool = ReadFileTool::new().with_max_size(2 * 1024 * 1024); // 2 MB
@@ -374,9 +374,9 @@ impl Tool for EditFileTool {
 /// Supports recursive listing with configurable depth and optional display of
 /// hidden files.
 ///
-/// # Example
+/// # Examples
 ///
-/// ```rust,ignore
+/// ```rust
 /// use machi::tools::ListDirTool;
 ///
 /// let tool = ListDirTool::new().with_max_depth(3);

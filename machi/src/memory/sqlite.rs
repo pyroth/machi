@@ -1,6 +1,6 @@
 //! SQLite-backed session implementation.
 //!
-//! [`SqliteSession`] persists conversation history in a SQLite database,
+//! [`SqliteSession`] persists conversation history in a `SQLite` database,
 //! surviving process restarts. Uses [`rusqlite`] for synchronous access,
 //! bridged to async via [`tokio::task::spawn_blocking`].
 //!

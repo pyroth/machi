@@ -1,4 +1,4 @@
-//! OpenAI ChatProvider implementation.
+//! `OpenAI` `ChatProvider` implementation.
 
 use std::pin::Pin;
 
@@ -19,7 +19,7 @@ use crate::usage::Usage;
 use super::client::{OpenAI, OpenAIToolCall, StreamOptions};
 use super::stream::parse_sse_events;
 
-/// OpenAI chat completion response.
+/// `OpenAI` chat completion response.
 #[derive(Debug, Clone, Deserialize)]
 struct OpenAIChatResponse {
     pub id: String,
@@ -32,14 +32,14 @@ struct OpenAIChatResponse {
     pub service_tier: Option<String>,
 }
 
-/// OpenAI response choice.
+/// `OpenAI` response choice.
 #[derive(Debug, Clone, Deserialize)]
 struct OpenAIChoice {
     pub message: OpenAIResponseMessage,
     pub finish_reason: Option<String>,
 }
 
-/// OpenAI response message.
+/// `OpenAI` response message.
 #[derive(Debug, Clone, Deserialize)]
 struct OpenAIResponseMessage {
     pub content: Option<String>,
@@ -50,7 +50,7 @@ struct OpenAIResponseMessage {
 }
 
 impl OpenAI {
-    /// Parse the response into ChatResponse.
+    /// Parse the response into `ChatResponse`.
     fn parse_response(response: OpenAIChatResponse) -> Result<ChatResponse> {
         let choice = response
             .choices

@@ -9,9 +9,9 @@ use crate::usage::Usage;
 
 /// A chunk of streaming response from an LLM.
 ///
-/// # OpenAI API Alignment
+/// # `OpenAI` API Alignment
 /// This enum represents the various types of content that can be streamed
-/// from an LLM provider, following OpenAI's streaming response format.
+/// from an LLM provider, following `OpenAI`'s streaming response format.
 #[derive(Debug, Clone, Serialize, Deserialize)]
 #[serde(tag = "type", rename_all = "snake_case")]
 #[non_exhaustive]
@@ -179,8 +179,8 @@ impl StreamChunk {
 
 /// Reason why the model stopped generating.
 ///
-/// # OpenAI API Alignment
-/// Maps to `finish_reason` in OpenAI's Chat Completions API response.
+/// # `OpenAI` API Alignment
+/// Maps to `finish_reason` in `OpenAI`'s Chat Completions API response.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Default, Serialize, Deserialize)]
 #[serde(rename_all = "snake_case")]
 #[non_exhaustive]
@@ -195,7 +195,7 @@ pub enum StopReason {
     ToolCalls,
     /// Content was filtered by safety systems.
     ContentFilter,
-    /// Model is still generating (streaming only, no finish_reason yet).
+    /// Model is still generating (streaming only, no `finish_reason` yet).
     Null,
 }
 
@@ -215,8 +215,8 @@ impl StopReason {
     /// Parse from a string (case-insensitive).
     ///
     /// Handles various provider-specific finish reason strings:
-    /// - OpenAI: "stop", "length", "tool_calls", "content_filter", "function_call"
-    /// - Anthropic: "end_turn", "max_tokens", "tool_use"
+    /// - `OpenAI`: "stop", "length", "`tool_calls`", "`content_filter`", "`function_call`"
+    /// - Anthropic: "`end_turn`", "`max_tokens`", "`tool_use`"
     /// - Ollama: "stop", "length"
     #[must_use]
     pub fn parse(s: &str) -> Self {

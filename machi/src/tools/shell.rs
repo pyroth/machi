@@ -23,9 +23,9 @@ use crate::tool::Tool;
 /// [`ToolExecutionPolicy::RequireConfirmation`](crate::tool::ToolExecutionPolicy)
 /// to enable human-in-the-loop approval before execution.
 ///
-/// # Example
+/// # Examples
 ///
-/// ```rust,ignore
+/// ```rust
 /// use machi::tools::ExecTool;
 ///
 /// let tool = ExecTool::new()

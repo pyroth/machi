@@ -23,23 +23,12 @@
 //!
 //! # Examples
 //!
-//! ```rust,ignore
-//! use machi::wallet::EvmWallet;
+//! ```rust
+//! use machi::wallet::EvmWalletBuilder;
 //!
-//! // Create wallet from mnemonic
-//! let wallet = EvmWallet::builder()
-//!     .mnemonic("abandon abandon abandon ...")
-//!     .rpc_url("https://eth-mainnet.g.alchemy.com/v2/xxx")
-//!     .build()
-//!     .await?;
-//!
-//! // Check balance
-//! let balance = wallet.balance().await?;
-//!
-//! // Use as agent tools
-//! let agent = Agent::new("defi-bot")
-//!     .tools(wallet.tools())
-//!     .provider(llm_provider);
+//! let builder = EvmWalletBuilder::default()
+//!     .mnemonic("abandon abandon abandon abandon abandon abandon abandon abandon abandon abandon abandon about")
+//!     .rpc_url("https://eth-mainnet.g.alchemy.com/v2/xxx");
 //! ```
 
 mod error;

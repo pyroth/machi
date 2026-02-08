@@ -13,7 +13,7 @@ use crate::usage::Usage;
 /// Context passed to all hook methods during an agent run.
 ///
 /// This struct carries shared state that is available to every hook invocation,
-/// following the OpenAI Agents SDK pattern of providing a context wrapper
+/// following the `OpenAI` Agents SDK pattern of providing a context wrapper
 /// that flows through the entire agent lifecycle.
 ///
 /// # Design

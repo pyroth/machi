@@ -1,4 +1,4 @@
-//! OpenAI API client implementation.
+//! `OpenAI` API client implementation.
 
 use std::sync::Arc;
 use std::time::Duration;
@@ -15,12 +15,12 @@ use crate::tool::ToolDefinition;
 
 use super::config::OpenAIConfig;
 
-/// OpenAI chat completion request.
+/// `OpenAI` chat completion request.
 #[derive(Debug, Clone, Serialize)]
 pub struct OpenAIChatRequest {
     pub model: String,
     pub messages: Vec<OpenAIMessage>,
-    /// Deprecated: use max_completion_tokens instead.
+    /// Deprecated: use `max_completion_tokens` instead.
     #[serde(skip_serializing_if = "Option::is_none")]
     pub max_tokens: Option<u32>,
     /// Max tokens including visible output and reasoning tokens.
@@ -78,13 +78,13 @@ pub struct OpenAIChatRequest {
     pub metadata: Option<std::collections::HashMap<String, String>>,
 }
 
-/// Stream options for OpenAI.
+/// Stream options for `OpenAI`.
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct StreamOptions {
     pub include_usage: bool,
 }
 
-/// OpenAI message format.
+/// `OpenAI` message format.
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct OpenAIMessage {
     pub role: String,
@@ -98,7 +98,7 @@ pub struct OpenAIMessage {
     pub name: Option<String>,
 }
 
-/// OpenAI message content variants.
+/// `OpenAI` message content variants.
 #[derive(Debug, Clone, Serialize, Deserialize)]
 #[serde(untagged)]
 pub enum OpenAIContent {
@@ -106,7 +106,7 @@ pub enum OpenAIContent {
     Array(Vec<OpenAIContentPart>),
 }
 
-/// OpenAI content part.
+/// `OpenAI` content part.
 #[derive(Debug, Clone, Serialize, Deserialize)]
 #[serde(tag = "type", rename_all = "snake_case")]
 pub enum OpenAIContentPart {
@@ -115,7 +115,7 @@ pub enum OpenAIContentPart {
     InputAudio { input_audio: OpenAIInputAudio },
 }
 
-/// OpenAI image URL.
+/// `OpenAI` image URL.
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct OpenAIImageUrl {
     pub url: String,
@@ -123,14 +123,14 @@ pub struct OpenAIImageUrl {
     pub detail: Option<String>,
 }
 
-/// OpenAI input audio.
+/// `OpenAI` input audio.
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct OpenAIInputAudio {
     pub data: String,
     pub format: String,
 }
 
-/// OpenAI tool definition.
+/// `OpenAI` tool definition.
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct OpenAITool {
     #[serde(rename = "type")]
@@ -138,7 +138,7 @@ pub struct OpenAITool {
     pub function: OpenAIFunction,
 }
 
-/// OpenAI function definition.
+/// `OpenAI` function definition.
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct OpenAIFunction {
     pub name: String,
@@ -148,7 +148,7 @@ pub struct OpenAIFunction {
     pub strict: Option<bool>,
 }
 
-/// OpenAI tool call.
+/// `OpenAI` tool call.
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct OpenAIToolCall {
     pub id: String,
@@ -157,14 +157,14 @@ pub struct OpenAIToolCall {
     pub function: OpenAIFunctionCall,
 }
 
-/// OpenAI function call details.
+/// `OpenAI` function call details.
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct OpenAIFunctionCall {
     pub name: String,
     pub arguments: String,
 }
 
-/// OpenAI response format.
+/// `OpenAI` response format.
 #[derive(Debug, Clone, Serialize, Deserialize)]
 #[serde(tag = "type", rename_all = "snake_case")]
 pub enum OpenAIResponseFormat {
@@ -174,7 +174,7 @@ pub enum OpenAIResponseFormat {
 }
 
 impl OpenAIResponseFormat {
-    /// Creates from our ResponseFormat type.
+    /// Creates from our `ResponseFormat` type.
     pub fn from_response_format(format: &crate::chat::ResponseFormat) -> Self {
         match format {
             crate::chat::ResponseFormat::Text => Self::Text,
@@ -190,13 +190,13 @@ impl OpenAIResponseFormat {
     }
 }
 
-/// OpenAI error response.
+/// `OpenAI` error response.
 #[derive(Debug, Clone, Deserialize)]
 struct OpenAIErrorResponse {
     pub error: OpenAIError,
 }
 
-/// OpenAI error details.
+/// `OpenAI` error details.
 #[derive(Debug, Clone, Deserialize)]
 struct OpenAIError {
     pub message: String,
@@ -205,7 +205,7 @@ struct OpenAIError {
     pub code: Option<String>,
 }
 
-/// OpenAI API client.
+/// `OpenAI` API client.
 #[derive(Debug, Clone)]
 pub struct OpenAI {
     pub(crate) config: Arc<OpenAIConfig>,
@@ -213,7 +213,7 @@ pub struct OpenAI {
 }
 
 impl OpenAI {
-    /// Create a new OpenAI client with the given configuration.
+    /// Create a new `OpenAI` client with the given configuration.
     pub fn new(config: OpenAIConfig) -> Result<Self> {
         if config.api_key.is_empty() {
             return Err(LlmError::auth("openai", "API key is required").into());
@@ -307,7 +307,7 @@ impl OpenAI {
         req
     }
 
-    /// Convert Message to OpenAI format.
+    /// Convert Message to `OpenAI` format.
     pub(crate) fn convert_message(msg: &Message) -> OpenAIMessage {
         let role = match msg.role {
             Role::System => "system",
@@ -367,7 +367,7 @@ impl OpenAI {
         }
     }
 
-    /// Convert ToolDefinition to OpenAI format.
+    /// Convert `ToolDefinition` to `OpenAI` format.
     pub(crate) fn convert_tool(tool: &ToolDefinition) -> OpenAITool {
         OpenAITool {
             tool_type: "function".to_owned(),
@@ -439,7 +439,7 @@ impl OpenAI {
         }
     }
 
-    /// Parse an error response from OpenAI.
+    /// Parse an error response from `OpenAI`.
     pub(crate) fn parse_error(status: u16, body: &str) -> LlmError {
         if let Ok(error_response) = serde_json::from_str::<OpenAIErrorResponse>(body) {
             let error = error_response.error;
@@ -461,9 +461,9 @@ impl OpenAI {
     }
 }
 
-/// Extract token counts from an OpenAI context-length error message.
+/// Extract token counts from an `OpenAI` context-length error message.
 ///
-/// OpenAI error messages typically look like:
+/// `OpenAI` error messages typically look like:
 /// "This model's maximum context length is 8192 tokens. However, your messages resulted in 9500 tokens."
 /// Returns `(used, max)`, defaulting to `(0, 0)` if parsing fails.
 fn parse_context_length_tokens(message: &str) -> (usize, usize) {

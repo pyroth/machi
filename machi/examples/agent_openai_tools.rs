@@ -1,4 +1,4 @@
-//! Agent with tool calling example using OpenAI.
+//! Agent with tool calling example using `OpenAI`.
 //!
 //! Demonstrates how to define a custom tool and let the agent
 //! invoke it autonomously during its reasoning loop.

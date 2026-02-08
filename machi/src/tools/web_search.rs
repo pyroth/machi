@@ -17,16 +17,13 @@
 //!
 //! Users can implement [`SearchProvider`] to add custom backends.
 //!
-//! # Example
+//! # Examples
 //!
-//! ```rust,ignore
-//! use machi::tools::{WebSearchTool, TavilyProvider};
+//! ```rust
+//! use machi::tools::WebSearchTool;
 //!
 //! let tool = WebSearchTool::tavily("tvly-...")
 //!     .with_max_results(5);
-//!
-//! let agent = Agent::new("researcher")
-//!     .tool(tool);
 //! ```
 
 use async_trait::async_trait;
@@ -217,12 +214,14 @@ impl SearchProvider for TavilyProvider {
 
 /// Search provider backed by a [SearXNG](https://docs.searxng.org/) instance.
 ///
-/// SearXNG is an open-source, self-hostable meta-search engine that aggregates
+/// `SearXNG` is an open-source, self-hostable meta-search engine that aggregates
 /// results from multiple search engines. **No API key required.**
 ///
-/// # Example
+/// # Examples
 ///
-/// ```rust,ignore
+/// ```rust
+/// use machi::tools::SearxngProvider;
+///
 /// let provider = SearxngProvider::new("https://searx.example.com");
 /// ```
 #[derive(Debug, Clone)]
@@ -232,7 +231,7 @@ pub struct SearxngProvider {
 }
 
 impl SearxngProvider {
-    /// Create a new SearXNG provider pointing at the given instance URL.
+    /// Create a new `SearXNG` provider pointing at the given instance URL.
     pub fn new(base_url: impl Into<String>) -> Self {
         let mut url = base_url.into();
         // Normalise: strip trailing slash
@@ -431,14 +430,16 @@ static DDG_SNIPPET_RE: LazyLock<Regex> = LazyLock::new(|| {
 
 /// Search provider backed by [DuckDuckGo](https://duckduckgo.com) Lite.
 ///
-/// Uses the DuckDuckGo Lite HTML interface — **no API key required**.
+/// Uses the `DuckDuckGo` Lite HTML interface — **no API key required**.
 ///
 /// > **Note:** DuckDuckGo may occasionally serve a CAPTCHA page instead of
 /// > results. This provider works best for low-volume or infrequent queries.
 ///
-/// # Example
+/// # Examples
 ///
-/// ```rust,ignore
+/// ```rust
+/// use machi::tools::{DuckDuckGoProvider, WebSearchTool};
+///
 /// let provider = DuckDuckGoProvider::new();
 /// let tool = WebSearchTool::new(provider);
 /// ```
@@ -454,7 +455,8 @@ impl Default for DuckDuckGoProvider {
 }
 
 impl DuckDuckGoProvider {
-    /// Create a new DuckDuckGo provider with a browser-like User-Agent.
+    /// Create a new `DuckDuckGo` provider with a browser-like User-Agent.
+    #[must_use]
     pub fn new() -> Self {
         let client = reqwest::Client::builder()
             .user_agent(
@@ -473,7 +475,7 @@ impl DuckDuckGoProvider {
         self
     }
 
-    /// Parse DuckDuckGo Lite HTML into search results.
+    /// Parse `DuckDuckGo` Lite HTML into search results.
     fn parse_html(html: &str) -> Vec<SearchResult> {
         let links: Vec<_> = DDG_LINK_RE.captures_iter(html).collect();
         let snippets: Vec<_> = DDG_SNIPPET_RE.captures_iter(html).collect();
@@ -556,9 +558,11 @@ static RSS_ITEM_RE: LazyLock<Regex> = LazyLock::new(|| {
 ///
 /// Uses Bing's public RSS search endpoint — **no API key required**.
 ///
-/// # Example
+/// # Examples
 ///
-/// ```rust,ignore
+/// ```rust
+/// use machi::tools::{BingProvider, WebSearchTool};
+///
 /// let provider = BingProvider::new();
 /// let tool = WebSearchTool::new(provider);
 /// ```
@@ -575,6 +579,7 @@ impl Default for BingProvider {
 
 impl BingProvider {
     /// Create a new Bing RSS provider.
+    #[must_use]
     pub fn new() -> Self {
         Self {
             client: reqwest::Client::new(),
@@ -669,9 +674,9 @@ pub struct WebSearchArgs {
 
 /// Web search tool backed by a configurable [`SearchProvider`].
 ///
-/// # Quick start
+/// # Examples
 ///
-/// ```rust,ignore
+/// ```rust
 /// use machi::tools::WebSearchTool;
 ///
 /// // Tavily (AI-optimised, requires API key)
@@ -688,9 +693,6 @@ pub struct WebSearchArgs {
 ///
 /// // Bing RSS (free, no API key)
 /// let tool = WebSearchTool::bing();
-///
-/// // Custom provider
-/// let tool = WebSearchTool::new(my_provider).with_max_results(10);
 /// ```
 pub struct WebSearchTool {
     provider: BoxedSearchProvider,
@@ -734,12 +736,14 @@ impl WebSearchTool {
 
     /// Create a web search tool backed by
     /// [DuckDuckGo](https://duckduckgo.com) Lite. **No API key required.**
+    #[must_use]
     pub fn duckduckgo() -> Self {
         Self::new(DuckDuckGoProvider::new())
     }
 
     /// Create a web search tool backed by
     /// [Bing](https://www.bing.com) RSS feed. **No API key required.**
+    #[must_use]
     pub fn bing() -> Self {
         Self::new(BingProvider::new())
     }

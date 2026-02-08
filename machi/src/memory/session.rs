@@ -17,7 +17,7 @@ use crate::message::Message;
 /// Async trait for session-based conversation memory.
 ///
 /// Stores a chronological sequence of [`Message`]s identified by a unique
-/// session ID. Implementations may be backed by in-memory storage, SQLite,
+/// session ID. Implementations may be backed by in-memory storage, `SQLite`,
 /// or any other persistent store.
 ///
 /// All implementations must be `Send + Sync` for use across async tasks.

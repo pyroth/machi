@@ -3,9 +3,9 @@
 //! Tools are the primary way agents interact with the world. Each tool
 //! represents a specific capability that an agent can invoke.
 //!
-//! # OpenAI API Alignment
+//! # `OpenAI` API Alignment
 //!
-//! This module aligns with OpenAI's Function Calling API:
+//! This module aligns with `OpenAI`'s Function Calling API:
 //! - `ToolDefinition` serializes to `{"type": "function", "function": {...}}` format
 //! - Supports `strict` mode for Structured Outputs
 //! - Compatible with both Chat Completions and Responses APIs
@@ -99,9 +99,9 @@ pub type ToolResult<T> = Result<T, ToolError>;
 
 /// Definition of a tool for LLM function calling.
 ///
-/// # OpenAI API Alignment
+/// # `OpenAI` API Alignment
 ///
-/// This type serializes to OpenAI's function calling format:
+/// This type serializes to `OpenAI`'s function calling format:
 /// ```json
 /// {
 ///     "type": "function",
@@ -119,8 +119,8 @@ pub type ToolResult<T> = Result<T, ToolError>;
 #[derive(Debug, Clone, Deserialize)]
 #[non_exhaustive]
 pub struct ToolDefinition {
-    /// Name of the tool (e.g., "get_weather").
-    /// Should be descriptive and use snake_case.
+    /// Name of the tool (e.g., "`get_weather`").
+    /// Should be descriptive and use `snake_case`.
     pub name: String,
 
     /// Description of what the tool does.
@@ -131,7 +131,7 @@ pub struct ToolDefinition {
     /// Should follow JSON Schema specification.
     pub parameters: Value,
 
-    /// Whether to use strict schema validation (OpenAI Structured Outputs).
+    /// Whether to use strict schema validation (`OpenAI` Structured Outputs).
     /// When enabled, the model output will exactly match the schema.
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub strict: Option<bool>,
@@ -205,7 +205,7 @@ impl ToolDefinition {
     }
 }
 
-/// Custom serialization to OpenAI function calling format.
+/// Custom serialization to `OpenAI` function calling format.
 impl Serialize for ToolDefinition {
     fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
     where
@@ -463,7 +463,7 @@ impl ConfirmationHandler for AlwaysDenyHandler {
 
 /// Result of a tool call execution.
 ///
-/// # OpenAI API Alignment
+/// # `OpenAI` API Alignment
 ///
 /// This maps to a tool message in the conversation:
 /// ```json

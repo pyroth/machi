@@ -1,4 +1,4 @@
-//! Agent with streaming output example using OpenAI.
+//! Agent with streaming output example using `OpenAI`.
 //!
 //! Demonstrates `Agent::run_streamed()` which yields `RunEvent`s
 //! in real-time, enabling progressive display of tokens.

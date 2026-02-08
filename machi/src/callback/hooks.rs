@@ -1,6 +1,6 @@
 //! Core hook traits for agent lifecycle callbacks.
 //!
-//! This module defines two async trait hierarchies following the OpenAI Agents SDK
+//! This module defines two async trait hierarchies following the `OpenAI` Agents SDK
 //! dual-layer hooks pattern:
 //!
 //! - [`RunHooks`]: Global run-level hooks that observe **all** agents in a run.

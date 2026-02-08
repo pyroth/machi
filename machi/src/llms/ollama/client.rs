@@ -263,7 +263,7 @@ impl Ollama {
         Ok(base64::engine::general_purpose::STANDARD.encode(&bytes))
     }
 
-    /// Convert ToolDefinition to Ollama format.
+    /// Convert `ToolDefinition` to Ollama format.
     pub(crate) fn convert_tool(tool: &ToolDefinition) -> OllamaTool {
         OllamaTool {
             tool_type: "function".to_owned(),

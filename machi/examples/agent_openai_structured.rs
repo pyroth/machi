@@ -1,4 +1,4 @@
-//! Agent with structured output example using OpenAI.
+//! Agent with structured output example using `OpenAI`.
 //!
 //! Demonstrates `Agent::output_type::<T>()` for type-safe structured
 //! output that is automatically parsed into a Rust struct.

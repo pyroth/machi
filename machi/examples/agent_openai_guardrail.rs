@@ -1,4 +1,4 @@
-//! Agent with input and output guardrails using OpenAI.
+//! Agent with input and output guardrails using `OpenAI`.
 //!
 //! Demonstrates `InputGuardrail` (PII detector, sequential mode) on
 //! the agent, and `OutputGuardrail` (length limiter) on the run config.

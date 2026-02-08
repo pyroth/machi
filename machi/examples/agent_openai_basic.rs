@@ -1,4 +1,4 @@
-//! Basic agent example using OpenAI.
+//! Basic agent example using `OpenAI`.
 //!
 //! Demonstrates the simplest possible agent: a single agent with
 //! instructions, a model, and a provider.

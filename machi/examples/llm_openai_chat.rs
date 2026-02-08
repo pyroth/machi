@@ -1,4 +1,4 @@
-//! Basic chat example using OpenAI.
+//! Basic chat example using `OpenAI`.
 //!
 //! ```bash
 //! export OPENAI_API_KEY=sk-...

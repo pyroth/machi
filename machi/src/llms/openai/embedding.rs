@@ -1,4 +1,4 @@
-//! OpenAI Embedding API implementation.
+//! `OpenAI` Embedding API implementation.
 
 use async_trait::async_trait;
 use serde::{Deserialize, Serialize};
@@ -10,7 +10,7 @@ use crate::error::{LlmError, Result};
 
 use super::client::OpenAI;
 
-/// OpenAI embedding request.
+/// `OpenAI` embedding request.
 #[derive(Debug, Clone, Serialize)]
 struct OpenAIEmbeddingRequest {
     pub model: String,
@@ -21,14 +21,14 @@ struct OpenAIEmbeddingRequest {
     pub dimensions: Option<u32>,
 }
 
-/// OpenAI embedding data.
+/// `OpenAI` embedding data.
 #[derive(Debug, Clone, Deserialize)]
 struct OpenAIEmbeddingData {
     pub embedding: Vec<f32>,
     pub index: usize,
 }
 
-/// OpenAI embedding response.
+/// `OpenAI` embedding response.
 #[derive(Debug, Clone, Deserialize)]
 struct OpenAIEmbeddingResponse {
     pub data: Vec<OpenAIEmbeddingData>,
@@ -36,14 +36,14 @@ struct OpenAIEmbeddingResponse {
     pub usage: Option<OpenAIEmbeddingUsage>,
 }
 
-/// OpenAI embedding usage statistics.
+/// `OpenAI` embedding usage statistics.
 #[derive(Debug, Clone, Deserialize)]
 struct OpenAIEmbeddingUsage {
     pub prompt_tokens: u32,
     pub total_tokens: u32,
 }
 
-/// Default embedding model for OpenAI.
+/// Default embedding model for `OpenAI`.
 const DEFAULT_EMBEDDING_MODEL: &str = "text-embedding-3-small";
 /// Default embedding dimension for text-embedding-3-small.
 const DEFAULT_EMBEDDING_DIMENSION: usize = 1536;

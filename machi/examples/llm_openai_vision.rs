@@ -1,4 +1,4 @@
-//! Vision example using OpenAI with multimodal models.
+//! Vision example using `OpenAI` with multimodal models.
 //!
 //! ```bash
 //! export OPENAI_API_KEY=sk-...

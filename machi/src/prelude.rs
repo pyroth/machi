@@ -1,11 +1,18 @@
 //! Prelude module for convenient imports.
 //!
-//! This module re-exports commonly used types and traits for easy access.
+//! Re-exports the most commonly used types and traits so you can get
+//! started with a single `use` statement.
 //!
-//! # Usage
-//!
-//! ```rust,ignore
+//! ```rust
 //! use machi::prelude::*;
+//!
+//! let request = ChatRequest::new("gpt-4o")
+//!     .system("You are helpful.")
+//!     .user("Hello!");
+//!
+//! let agent = Agent::new("assistant")
+//!     .instructions("You are helpful.")
+//!     .model("gpt-4o");
 //! ```
 
 #[cfg(feature = "a2a")]

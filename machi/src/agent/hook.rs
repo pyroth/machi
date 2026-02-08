@@ -2,7 +2,7 @@
 //!
 //! [`HookPair`] combines run-level [`RunHooks`] and per-agent [`AgentHooks`]
 //! into a single dispatcher, firing both layers concurrently via
-//! [`tokio::join!`] — mirroring the OpenAI Agents SDK's `asyncio.gather`
+//! [`tokio::join!`] — mirroring the `OpenAI` Agents SDK's `asyncio.gather`
 //! pattern for parallel hook execution.
 
 use serde_json::Value;

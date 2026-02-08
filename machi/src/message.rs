@@ -32,7 +32,7 @@ pub enum Role {
     Assistant,
     /// Tool/function response message.
     Tool,
-    /// Developer message for OpenAI o1/o3 models.
+    /// Developer message for `OpenAI` o1/o3 models.
     Developer,
 }
 
@@ -584,7 +584,7 @@ pub struct Message {
     #[serde(skip_serializing_if = "Option::is_none")]
     pub name: Option<String>,
 
-    /// Reasoning content from OpenAI o1/o3 models.
+    /// Reasoning content from `OpenAI` o1/o3 models.
     #[serde(skip_serializing_if = "Option::is_none")]
     pub reasoning_content: Option<String>,
 

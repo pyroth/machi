@@ -22,19 +22,19 @@ use crate::tool::BoxedTool;
 ///
 /// # Examples
 ///
-/// ```rust,ignore
+/// ```rust
+/// use machi::wallet::EvmWalletBuilder;
+///
 /// // From HD mnemonic
-/// let wallet = EvmWallet::builder()
-///     .mnemonic("abandon abandon ...")
+/// let builder = EvmWalletBuilder::default()
+///     .mnemonic("abandon abandon abandon abandon abandon abandon abandon abandon abandon abandon abandon about")
 ///     .index(0)
-///     .rpc_url("https://eth-mainnet.g.alchemy.com/v2/xxx")
-///     .build()?;
+///     .rpc_url("https://eth-mainnet.g.alchemy.com/v2/xxx");
 ///
 /// // From private key
-/// let wallet = EvmWallet::builder()
-///     .private_key("0xabc...")
-///     .rpc_url("https://eth-mainnet.g.alchemy.com/v2/xxx")
-///     .build()?;
+/// let builder = EvmWalletBuilder::default()
+///     .private_key("0xac0974bec39a17e36ba4a6b4d238ff944bacb478cbed5efcae784d7bf4f2ff80")
+///     .rpc_url("https://eth-mainnet.g.alchemy.com/v2/xxx");
 /// ```
 #[derive(Debug, Default)]
 pub struct EvmWalletBuilder {
@@ -189,23 +189,12 @@ impl EvmWalletBuilder {
 ///
 /// Use [`EvmWallet::builder`] with method chaining:
 ///
-/// ```rust,ignore
-/// let wallet = EvmWallet::builder()
-///     .mnemonic("abandon abandon abandon ...")
-///     .rpc_url("https://eth-mainnet.g.alchemy.com/v2/xxx")
-///     .build()
-///     .await?;
-/// ```
+/// ```rust
+/// use machi::wallet::EvmWalletBuilder;
 ///
-/// # As Agent Tools
-///
-/// Convert the wallet into agent-callable tools:
-///
-/// ```rust,ignore
-/// let tools = wallet.tools();
-/// let agent = Agent::new("defi-agent")
-///     .tools(tools)
-///     .provider(llm_provider);
+/// let builder = EvmWalletBuilder::default()
+///     .mnemonic("abandon abandon abandon abandon abandon abandon abandon abandon abandon abandon abandon about")
+///     .rpc_url("https://eth-mainnet.g.alchemy.com/v2/xxx");
 /// ```
 pub struct EvmWallet {
     /// Local signer for transaction and message signing.
@@ -273,7 +262,7 @@ impl EvmWallet {
             .map_err(|e| WalletError::Provider(format!("failed to get block number: {e}")))
     }
 
-    /// Sign an arbitrary message (EIP-191 personal_sign).
+    /// Sign an arbitrary message (EIP-191 `personal_sign`).
     pub async fn sign_message(&self, message: &[u8]) -> Result<String, WalletError> {
         let sig = self
             .signer
@@ -338,6 +327,7 @@ impl EvmWallet {
     /// - `get_eth_balance` — query ETH balance
     /// - `sign_message` — EIP-191 personal sign
     /// - `transfer_eth` — send ETH to an address
+    #[must_use]
     pub fn tools(self) -> Vec<BoxedTool> {
         let wallet = Arc::new(self);
         vec![

@@ -19,31 +19,22 @@
 //!
 //! # Examples
 //!
-//! ```rust,ignore
+//! ```rust
 //! use machi::mcp::McpServer;
 //!
-//! // Simple — just command + args
-//! let server = McpServer::stdio("npx", ["-y", "@anthropic/mcp-server-filesystem"])
-//!     .connect().await?;
+//! // Builder for a stdio MCP server
+//! let builder = McpServer::stdio("npx", ["-y", "@anthropic/mcp-server-filesystem"]);
 //!
-//! // With environment variables and working directory
-//! let server = McpServer::stdio("uvx", ["mcp-server-github"])
+//! // Builder with env vars and working directory
+//! let builder = McpServer::stdio("uvx", ["mcp-server-github"])
 //!     .env("GITHUB_TOKEN", "ghp_xxx")
 //!     .working_dir("/projects/myrepo")
-//!     .name("github")
-//!     .connect().await?;
+//!     .name("github");
 //!
-//! // HTTP with auth
-//! let server = McpServer::http("https://mcp.example.com/v1")
+//! // HTTP builder with auth
+//! let builder = McpServer::http("https://mcp.example.com/v1")
 //!     .bearer_auth("sk-xxx")
-//!     .name("remote-tools")
-//!     .connect().await?;
-//!
-//! // Get all tools as BoxedTool for use with Agent
-//! let tools = server.tools().await?;
-//! let agent = Agent::new("assistant")
-//!     .tools(tools)
-//!     .provider(provider);
+//!     .name("remote-tools");
 //! ```
 
 use async_trait::async_trait;
@@ -69,16 +60,16 @@ use crate::tool::{BoxedTool, DynTool, ToolDefinition};
 /// Created by [`McpServer::stdio`]. Use method chaining to configure the
 /// subprocess, then call [`connect`](Self::connect) to establish the connection.
 ///
-/// # Example
+/// # Examples
 ///
-/// ```rust,ignore
-/// let server = McpServer::stdio("uvx", ["mcp-server-github"])
+/// ```rust
+/// use machi::mcp::McpServer;
+///
+/// let builder = McpServer::stdio("uvx", ["mcp-server-github"])
 ///     .env("GITHUB_TOKEN", "ghp_xxx")
 ///     .envs([("FOO", "bar"), ("BAZ", "qux")])
 ///     .working_dir("/home/user/project")
-///     .name("github")
-///     .connect()
-///     .await?;
+///     .name("github");
 /// ```
 #[derive(Debug)]
 pub struct StdioBuilder {
@@ -174,14 +165,14 @@ impl StdioBuilder {
 /// Created by [`McpServer::http`]. Use method chaining to configure the
 /// HTTP connection, then call [`connect`](Self::connect).
 ///
-/// # Example
+/// # Examples
 ///
-/// ```rust,ignore
-/// let server = McpServer::http("https://mcp.example.com/v1")
+/// ```rust
+/// use machi::mcp::McpServer;
+///
+/// let builder = McpServer::http("https://mcp.example.com/v1")
 ///     .bearer_auth("sk-xxx")
-///     .name("remote-tools")
-///     .connect()
-///     .await?;
+///     .name("remote-tools");
 /// ```
 #[derive(Debug)]
 pub struct HttpBuilder {
@@ -254,29 +245,22 @@ impl HttpBuilder {
 ///
 /// # Examples
 ///
-/// ```rust,ignore
-/// // Minimal
-/// let server = McpServer::stdio("npx", ["-y", "mcp-server-fs"]).connect().await?;
+/// ```rust
+/// use machi::mcp::McpServer;
 ///
-/// // With env vars (e.g. API key) and working directory
-/// let server = McpServer::stdio("uvx", ["mcp-server-github"])
-///     .env("GITHUB_TOKEN", std::env::var("GITHUB_TOKEN").unwrap())
+/// // Stdio builder
+/// let builder = McpServer::stdio("npx", ["-y", "mcp-server-fs"]);
+///
+/// // With env vars and working directory
+/// let builder = McpServer::stdio("uvx", ["mcp-server-github"])
+///     .env("GITHUB_TOKEN", "ghp_xxx")
 ///     .working_dir("/projects/myrepo")
-///     .name("github")
-///     .connect().await?;
+///     .name("github");
 ///
-/// // HTTP with bearer auth
-/// let server = McpServer::http("https://mcp.acme.com/v1")
+/// // HTTP builder with bearer auth
+/// let builder = McpServer::http("https://mcp.acme.com/v1")
 ///     .bearer_auth("sk-xxx")
-///     .connect().await?;
-///
-/// // Use tools directly
-/// let result = server.call_tool("git_log", serde_json::json!({"count": 5})).await?;
-///
-/// // Or extract as agent tools
-/// let agent = Agent::new("dev")
-///     .tools(server.tools().await?)
-///     .provider(provider);
+///     .name("acme");
 /// ```
 pub struct McpServer {
     /// The running rmcp client service.
@@ -306,14 +290,15 @@ impl McpServer {
     /// * `command` — the executable to run (e.g. `"npx"`, `"uvx"`, `"python"`)
     /// * `args` — arguments to pass to the command
     ///
-    /// # Example
+    /// # Examples
     ///
-    /// ```rust,ignore
-    /// let server = McpServer::stdio("npx", [
+    /// ```rust
+    /// use machi::mcp::McpServer;
+    ///
+    /// let builder = McpServer::stdio("npx", [
     ///     "-y", "@anthropic/mcp-server-filesystem", "/tmp"
     /// ])
-    /// .env("HOME", "/home/user")
-    /// .connect().await?;
+    /// .env("HOME", "/home/user");
     /// ```
     pub fn stdio(
         command: impl AsRef<str>,
@@ -337,13 +322,14 @@ impl McpServer {
     ///
     /// * `url` — the HTTP(S) endpoint of the MCP server
     ///
-    /// # Example
+    /// # Examples
     ///
-    /// ```rust,ignore
-    /// let server = McpServer::http("https://mcp.example.com/v1")
+    /// ```rust
+    /// use machi::mcp::McpServer;
+    ///
+    /// let builder = McpServer::http("https://mcp.example.com/v1")
     ///     .bearer_auth("sk-xxx")
-    ///     .name("remote")
-    ///     .connect().await?;
+    ///     .name("remote");
     /// ```
     pub fn http(url: impl Into<String>) -> HttpBuilder {
         HttpBuilder {

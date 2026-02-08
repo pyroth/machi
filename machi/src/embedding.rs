@@ -3,24 +3,22 @@
 //! This module defines the interface for text embedding operations,
 //! which convert text into dense vector representations.
 //!
-//! # Example
+//! # Examples
 //!
-//! ```rust,ignore
-//! use machi::prelude::*;
+//! ```rust
+//! use machi::embedding::{Embedding, EmbeddingRequest};
 //!
-//! // Single text embedding
-//! let embedding = provider.embed_single("text-embedding-3-small", "Hello, world!").await?;
-//! println!("Dimension: {}", embedding.dimension());
-//!
-//! // Batch embedding
+//! // Build a request
 //! let request = EmbeddingRequest::new("text-embedding-3-small", vec![
 //!     "First text".to_string(),
 //!     "Second text".to_string(),
 //! ]).dimensions(256);
-//! let response = provider.embed(&request).await?;
 //!
-//! // Compute similarity
-//! let similarity = response.embeddings[0].cosine_similarity(&response.embeddings[1]);
+//! // Compute cosine similarity between two embeddings
+//! let a = Embedding::new(vec![1.0, 0.0, 0.0], 0);
+//! let b = Embedding::new(vec![0.0, 1.0, 0.0], 1);
+//! assert_eq!(a.cosine_similarity(&b), 0.0);
+//! assert_eq!(a.dimension(), 3);
 //! ```
 
 use async_trait::async_trait;
@@ -189,7 +187,7 @@ impl Embedding {
 pub struct EmbeddingUsage {
     /// Number of tokens in the input prompt.
     pub prompt_tokens: u32,
-    /// Total tokens used (same as prompt_tokens for embeddings).
+    /// Total tokens used (same as `prompt_tokens` for embeddings).
     pub total_tokens: u32,
 }
 

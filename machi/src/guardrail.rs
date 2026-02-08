@@ -29,8 +29,10 @@
 //!
 //! # Quick Start
 //!
-//! ```rust,ignore
-//! use machi::prelude::*;
+//! ```rust
+//! use machi::callback::RunContext;
+//! use machi::guardrail::{GuardrailOutput, InputGuardrailCheck, InputGuardrail};
+//! use machi::message::Message;
 //!
 //! struct ContentFilter;
 //!
@@ -41,7 +43,7 @@
 //!         _context: &RunContext,
 //!         _agent_name: &str,
 //!         input: &[Message],
-//!     ) -> Result<GuardrailOutput> {
+//!     ) -> machi::Result<GuardrailOutput> {
 //!         let text = input.iter()
 //!             .filter_map(|m| m.text())
 //!             .collect::<String>();
@@ -53,11 +55,8 @@
 //!     }
 //! }
 //!
-//! let agent = Agent::new("safe-agent")
-//!     .instructions("You are a helpful assistant.")
-//!     .model("gpt-4o")
-//!     .provider(provider.clone())
-//!     .input_guardrail(InputGuardrail::new("content-filter", ContentFilter));
+//! let guardrail = InputGuardrail::new("content-filter", ContentFilter);
+//! assert_eq!(guardrail.name(), "content-filter");
 //! ```
 
 use std::sync::Arc;

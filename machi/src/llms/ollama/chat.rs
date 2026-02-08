@@ -1,4 +1,4 @@
-//! Ollama ChatProvider implementation.
+//! Ollama `ChatProvider` implementation.
 
 use std::pin::Pin;
 
@@ -43,7 +43,7 @@ struct OllamaResponseMessage {
 }
 
 impl Ollama {
-    /// Parse the response into ChatResponse.
+    /// Parse the response into `ChatResponse`.
     fn parse_response(response: OllamaChatResponse) -> ChatResponse {
         let stop_reason = match response.done_reason.as_deref() {
             Some("length") => StopReason::Length,

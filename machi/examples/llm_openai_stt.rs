@@ -1,4 +1,4 @@
-//! Speech-to-Text example using OpenAI.
+//! Speech-to-Text example using `OpenAI`.
 //!
 //! ```bash
 //! export OPENAI_API_KEY=sk-...

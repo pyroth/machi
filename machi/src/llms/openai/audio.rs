@@ -1,4 +1,4 @@
-//! OpenAI Audio API implementation (TTS & STT).
+//! `OpenAI` Audio API implementation (TTS & STT).
 
 use async_trait::async_trait;
 use serde::{Deserialize, Serialize};
@@ -11,7 +11,7 @@ use crate::error::{LlmError, Result};
 
 use super::client::OpenAI;
 
-/// OpenAI text-to-speech request.
+/// `OpenAI` text-to-speech request.
 #[derive(Debug, Clone, Serialize)]
 struct OpenAISpeechRequest {
     pub model: String,
@@ -25,7 +25,7 @@ struct OpenAISpeechRequest {
     pub instructions: Option<String>,
 }
 
-/// OpenAI transcription response (verbose JSON format).
+/// `OpenAI` transcription response (verbose JSON format).
 #[derive(Debug, Clone, Deserialize)]
 struct OpenAITranscriptionResponse {
     pub text: String,

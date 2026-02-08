@@ -1,4 +1,4 @@
-//! Agent with tracing / observability example using OpenAI.
+//! Agent with tracing / observability example using `OpenAI`.
 //!
 //! Demonstrates how to wire up `tracing-subscriber` so that the
 //! built-in agent, LLM, and tool spans are printed to stderr.

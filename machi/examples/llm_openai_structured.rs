@@ -1,4 +1,4 @@
-//! Structured output example using OpenAI with JSON schema.
+//! Structured output example using `OpenAI` with JSON schema.
 //!
 //! ```bash
 //! export OPENAI_API_KEY=sk-...

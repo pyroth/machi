@@ -1,4 +1,4 @@
-//! DynTool implementations for wallet operations.
+//! `DynTool` implementations for wallet operations.
 //!
 //! Each tool wraps an `Arc<EvmWallet>` and exposes a specific wallet
 //! capability to the agent via the [`DynTool`] interface.
@@ -100,7 +100,7 @@ impl DynTool for GetEthBalanceTool {
     }
 }
 
-/// Sign an arbitrary message using EIP-191 personal_sign.
+/// Sign an arbitrary message using EIP-191 `personal_sign`.
 #[derive(Debug)]
 pub struct SignMessageTool {
     wallet: Arc<EvmWallet>,

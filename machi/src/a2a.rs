@@ -18,24 +18,16 @@
 //!
 //! # Examples
 //!
-//! ```rust,ignore
+//! ```rust
 //! use machi::a2a::A2aAgent;
 //!
-//! // Simple connection
-//! let agent = A2aAgent::new("https://remote-agent.example.com")
-//!     .connect().await?;
+//! // Simple builder
+//! let builder = A2aAgent::new("https://remote-agent.example.com");
 //!
 //! // With auth and custom name
-//! let agent = A2aAgent::new("https://remote-agent.example.com")
+//! let builder = A2aAgent::new("https://remote-agent.example.com")
 //!     .bearer_auth("sk-xxx")
-//!     .name("currency-agent")
-//!     .connect().await?;
-//!
-//! // Use as a tool in a machi agent
-//! let tools = vec![agent.into_tool()];
-//! let my_agent = Agent::new("orchestrator")
-//!     .tools(tools)
-//!     .provider(provider);
+//!     .name("currency-agent");
 //! ```
 
 use async_trait::async_trait;
@@ -56,16 +48,16 @@ use crate::tool::{BoxedTool, DynTool, ToolDefinition};
 /// Created by [`A2aAgent::new`]. Use method chaining to configure
 /// authentication, then call [`connect`](Self::connect).
 ///
-/// # Example
+/// # Examples
 ///
-/// ```rust,ignore
-/// let agent = A2aAgent::new("https://agent.example.com")
+/// ```rust
+/// use machi::a2a::A2aAgent;
+///
+/// let builder = A2aAgent::new("https://agent.example.com")
 ///     .bearer_auth("sk-xxx")
 ///     .header("X-Custom", "value")
 ///     .timeout(60)
-///     .name("my-agent")
-///     .connect()
-///     .await?;
+///     .name("my-agent");
 /// ```
 #[derive(Debug)]
 pub struct A2aAgentBuilder {
@@ -156,19 +148,12 @@ impl A2aAgentBuilder {
 ///
 /// # Examples
 ///
-/// ```rust,ignore
-/// // Connect
-/// let agent = A2aAgent::new("https://agent.example.com")
+/// ```rust
+/// use machi::a2a::A2aAgent;
+///
+/// let builder = A2aAgent::new("https://agent.example.com")
 ///     .bearer_auth("token")
-///     .connect().await?;
-///
-/// // Send a message directly
-/// let reply = agent.send("What is the weather in Tokyo?").await?;
-///
-/// // Or use as a tool
-/// let my_agent = Agent::new("orchestrator")
-///     .tools(vec![agent.into_tool()])
-///     .provider(provider);
+///     .name("weather");
 /// ```
 pub struct A2aAgent {
     /// The underlying ra2a client.
@@ -194,12 +179,13 @@ impl A2aAgent {
     ///
     /// * `url` — the base URL of the A2A agent
     ///
-    /// # Example
+    /// # Examples
     ///
-    /// ```rust,ignore
-    /// let agent = A2aAgent::new("https://agent.example.com")
-    ///     .bearer_auth("sk-xxx")
-    ///     .connect().await?;
+    /// ```rust
+    /// use machi::a2a::A2aAgent;
+    ///
+    /// let builder = A2aAgent::new("https://agent.example.com")
+    ///     .bearer_auth("sk-xxx");
     /// ```
     #[allow(clippy::new_ret_no_self)]
     pub fn new(url: impl Into<String>) -> A2aAgentBuilder {
@@ -300,6 +286,7 @@ impl A2aAgent {
     /// The tool name is derived from the agent name, and the description
     /// from the agent card. When called, the tool sends the input text to
     /// the remote agent and returns the response.
+    #[must_use]
     pub fn into_tool(self) -> BoxedTool {
         Box::new(A2aTool {
             agent: Arc::new(self),
@@ -307,6 +294,7 @@ impl A2aAgent {
     }
 
     /// Get a reference to the underlying [`A2AClient`] for advanced usage.
+    #[must_use]
     pub fn client(&self) -> &A2AClient {
         &self.client
     }
