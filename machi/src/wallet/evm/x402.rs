@@ -14,21 +14,6 @@
 //!       ├→ V2Eip155ExactClient signs payment with PrivateKeySigner
 //!       └→ GET /resource + X-PAYMENT header → 200 OK
 //! ```
-//!
-//! # Example
-//!
-//! ```rust,no_run
-//! use machi::wallet::EvmWallet;
-//! use machi::wallet::x402::X402HttpClient;
-//!
-//! # async fn example() -> machi::Result<()> {
-//! let wallet = EvmWallet::from_private_key("0x...", "https://base-rpc.example.com").await?;
-//! let client = X402HttpClient::from_wallet(&wallet);
-//! let body = client.get("https://api.example.com/paid-resource").await?;
-//! println!("{body}");
-//! # Ok(())
-//! # }
-//! ```
 
 use std::sync::Arc;
 
