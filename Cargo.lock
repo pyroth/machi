@@ -5691,9 +5691,9 @@ dependencies = [
 
 [[package]]
 name = "x402-reqwest"
-version = "1.1.0"
+version = "1.1.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "a3aac5a2c5bccd86f2f2c258846de6d659c9148d88c09b096e699b0d5393fd05"
+checksum = "5df27583da8b71cb6ac1e9eeeb1b3a2abf3342c7bea5d5c40d185666d58b813b"
 dependencies = [
  "async-trait",
  "http",
